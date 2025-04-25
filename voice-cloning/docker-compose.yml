@@ -10,7 +10,7 @@ services:
   worker:
     container_name: byoc-worker
     build:
-      dockerfile: dockerfile.worker
+      dockerfile: Dockerfile.worker
       context: .
     volumes:
       - ./data/outputs:/outputs
