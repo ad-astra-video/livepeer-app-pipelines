@@ -1,0 +1,46 @@
+services:
+  webserver:
+    image: caddy:latest
+    container_name: byoc-webserver
+    ports:
+      - 8088:8088
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - ./webapp/dist:/var/www/html/app
+  register-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.register_worker
+    container_name: byoc-register-worker
+    volumes:
+      - ./register_worker.py:/app/register_worker.py
+    environment:
+      - "ORCH_URL=https://orchestrator:9995"
+      - "ORCH_SECRET=orch-secret"
+      - "CAPABILITY_NAME=llm-generate"
+      - "CAPABILITY_DESCRIPTION=generate text with llm"
+      - "CAPABILITY_URL=http://192.168.50.6:9100"
+      - "CAPABILITY_PRICE_PER_UNIT=100"
+      - "CAPABILITY_PRICE_SCALING=1"
+      - "CAPABILITY_CAPACITY=2"
+  orchestrator:
+    image: adastravideo/go-livepeer:dynamic-capabilities
+    container_name: byoc-orchestrator
+    volumes:
+      - ./data/orchestrator:/data
+    ports:
+      - 9995:9995
+    command: ["-orchestrator",
+          "-orchSecret=orch-secret",
+          "-serviceAddr=0.0.0.0:9995",
+          "-v=6",
+          "-network=arbitrum-one-mainnet",
+          "-ethUrl=https://arb1.arbitrum.io/rpc",
+          "-ethPassword=some-random-password",
+          "-dataDir=/data",
+          "-ethOrchAddr=0x3b28a7d785356dc67c7970666747e042305bfb79",
+          "-pricePerUnit=1"]
+networks:
+  default:
+    name: byoc
+    external: true
