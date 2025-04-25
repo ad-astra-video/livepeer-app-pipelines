@@ -6,5 +6,6 @@ See the readmes in each folder to setup and run the sample applications.
 
 Some things you will need for both:
 - docker image that contains the generic pipeline code: `docker pull adastravideo/go-livepeer:dynamic-capabilities`
+  - link to the repo and branch used to build the docker image https://github.com/ad-astra-video/go-livepeer/tree/av-livepeer-external-capabilities
 - if want to run on chain an eth address with a deposit and reserve available to sign messages in browser (this may change to a backend api to process the signatures)
   - see docs on funding a Gateway ethereum account https://docs.livepeer.org/gateways/guides/fund-gateway
