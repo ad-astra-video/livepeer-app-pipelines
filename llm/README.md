@@ -16,9 +16,6 @@ This is a sample web application that uses livepeer/ai-runner:llm runner contain
      `docker pull adastravideo/go-livepeer:dynamic-capabilities`
 
 2) Build the webapp for static file serving (need to have node/npm installed)
-
-    make sure vite is installed `npm install vite`
-
     ```
     cd webapp
     npm install
@@ -27,22 +24,16 @@ This is a sample web application that uses livepeer/ai-runner:llm runner contain
     ```
 3) make folders
     ```
-    mkdir -p data/checkpoints
+    mkdir -p data/models
     mkdir -p data/orchestrator
-    mkdir -p data/outputs
     mkdir worker
     ```
 
-4) clone the IndexTTS repo
-     ```
-   cd worker
-   git clone https://github.com/index-tts/index-tts.git .
-   ```
-5) create docker network
+4) create docker network
     ```
     docker network create byoc
     ```
-6) Update the docker-compose.yml file and Orchestrator config
+5) Update the docker-compose.yml file and Orchestrator config
     - Orchestrator
       - update the `-serviceAddr` in `orchestrator` container section to the ip address and port want to use.
       - Change the -ethOrchAddr to your on chain orchestrator if want to test on chain. If not updated you will pay to send tickets to another ethereum account, don't forget to update this.
