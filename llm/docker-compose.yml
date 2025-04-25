@@ -19,7 +19,7 @@ services:
       - "ORCH_SECRET=orch-secret"
       - "CAPABILITY_NAME=llm-generate"
       - "CAPABILITY_DESCRIPTION=generate text with llm"
-      - "CAPABILITY_URL=http://192.168.50.6:9100"
+      - "CAPABILITY_URL=http://172.17.0.1:9100"
       - "CAPABILITY_PRICE_PER_UNIT=100"
       - "CAPABILITY_PRICE_SCALING=1"
       - "CAPABILITY_CAPACITY=2"

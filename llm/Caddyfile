@@ -28,4 +28,10 @@
 			}
 		}
 	}
+
+	handle {
+		root * /var/www/html/app
+		try_files {path} /index.html
+		file_server
+	}
 }

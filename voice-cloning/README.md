@@ -9,7 +9,7 @@ This is a sample web application that uses IndexTTS to clone a voice from a samp
 
 ### Prerequisites
 
-- docker installed
+- docker installed and running
 
 - access to an Nvidia GPU
 
@@ -22,7 +22,9 @@ This is a sample web application that uses IndexTTS to clone a voice from a samp
 2) Build the webapp for static file serving (need to have node/npm installed)
     ```
     cd webapp
-    node run build
+    npm install
+    npm run build
+    cd ..
     ```
 3) make folders
     ```
