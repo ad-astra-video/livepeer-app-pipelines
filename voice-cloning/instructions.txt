@@ -1,0 +1,6 @@
+
+Get docker container for voice-clone-worker.  
+	Build: docker build -f Dockerfile.worker -t adastravideo/voice-clone-worker:latest
+
+Get docker container for BYOC (Bring Your Own Container) livepeer Orchestrator
+	Download: docker pull adastravideo/go-livepeer:dynamic-capabilities
