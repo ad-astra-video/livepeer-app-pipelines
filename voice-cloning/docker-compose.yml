@@ -23,9 +23,9 @@ services:
       - "ORCH_URL=https://orchestrator:9995"
       - "ORCH_SECRET=orch-secret"
       - "CAPABILITY_NAME=voice-clone"
-      - "CAPABILITY_DESCRIPTION=clone your voice1"
+      - "CAPABILITY_DESCRIPTION=clone your voice"
       - "CAPABILITY_URL=http://worker:9876"
-      - "CAPABILITY_PRICE_PER_UNIT=1"
+      - "CAPABILITY_PRICE_PER_UNIT=100"
       - "CAPABILITY_PRICE_SCALING=1"
       - "CAPABILITY_CAPACITY=2"
   orchestrator:
