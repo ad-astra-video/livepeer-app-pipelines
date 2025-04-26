@@ -45,7 +45,7 @@ Notes on interacting with Orchestrator
     - `Livepeer-Payment-Balance` is returned as a header in the response to assist with payment balance tracking.  Requesting a new token from `/process/token` can also be used to track payment balance.
     - The request should include headers:
       - `Livepeer-Job` that is base64 encoded json. See the services/api.ts example apps for how to format the request.
-        - The json should be:
+        - The json should be ([example](https://github.com/ad-astra-video/livepeer-app-pipelines/blob/2bcd845a17e9a28c700d4b2bb050ad2eb00f89a6/llm/webapp/src/services/api.ts#L248)):
              ```
              {
                "request": "{"run": "process this"}",     # note this can be anything, but is the base of the signed message proving the sender sent the request
@@ -58,6 +58,7 @@ Notes on interacting with Orchestrator
              ```
       - `Livepeer-Job-Payment` this is base64 encoded payment ticket.
         - See services/api.ts in example apps for how to format the ticket
+        - If no payment is needed only include `sender` and `expected_price`.  [See example here](https://github.com/ad-astra-video/livepeer-app-pipelines/blob/2bcd845a17e9a28c700d4b2bb050ad2eb00f89a6/llm/webapp/src/services/api.ts#L265)
       - Body of the request with everything needed to complete the work requested (can be json or multipart).  The entire body is passed through, headers from the request are not passed through to the worker.
       - The response is directly passed through from the Orchestrator in response
         - response can by synchronous http or Server Sent Events (SSE) streaming
