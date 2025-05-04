@@ -1,0 +1,40 @@
+FROM nvidia/cuda:12.8.1-cudnn-devel-ubuntu24.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install prerequisites
+RUN apt-get update && \
+  apt-get install -y build-essential libssl-dev zlib1g-dev libbz2-dev \
+  libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev libncursesw5-dev \
+  xz-utils tk-dev libffi-dev liblzma-dev python3-openssl git \
+  ffmpeg
+  
+
+# Install pyenv
+RUN curl https://pyenv.run | bash
+
+# Set environment variables for pyenv
+ENV PYENV_ROOT=/root/.pyenv
+ENV PATH=$PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH
+
+# Install your desired Python version
+ARG PYTHON_VERSION=3.11
+RUN pyenv install $PYTHON_VERSION && \
+  pyenv global $PYTHON_VERSION && \
+  pyenv rehash
+
+WORKDIR /app
+COPY ./server/ ./server
+
+RUN pip install --no-cache-dir -r server/requirements.txt
+
+RUN mkdir /models
+
+ENV HUGGINGFACE_HUB_CACHE=/models
+ENV DIFFUSERS_CACHE=/models
+ENV MODEL_DIR=/models
+
+ARG SERVER_PORT=9876
+ENV SERVER_PORT=${SERVER_PORT}
+
+CMD ["uvicorn", "server.server:app", "--host", "", "--port", "9876"]

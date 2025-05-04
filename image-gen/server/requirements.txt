@@ -1,0 +1,13 @@
+setuptools
+wheel
+torch>=2.6.0
+torchaudio
+torchvision
+transformers>=4.51.0
+diffusers>=0.33.1
+accelerate
+fastapi[standard]
+requests
+python-multipart
+huggingface_hub[cli,hf_transfer]
+nvidia-ml-py
