@@ -26,7 +26,7 @@ const Sidebar = ({ open, setOpen, onGenerate, isLoading, settings }) => {
     negative_prompt: '',
     num_inference_steps: 2,
     guidance_scale: 4.5,
-    seed: '',
+    seed: 0,
     num_images_per_prompt: 1,
     use_random_seed: true
   })
@@ -209,7 +209,11 @@ const Sidebar = ({ open, setOpen, onGenerate, isLoading, settings }) => {
             label="Seed"
             name="seed"
             value={formData.seed}
-            onChange={handleChange}
+            onChange={(e) => {
+              // Convert to integer and handle empty string
+              const value = e.target.value === '' ? '' : parseInt(e.target.value, 10);
+              setFormData(prev => ({ ...prev, seed: value }));
+            }}
             margin="normal"
             type="number"
             inputProps={{ min: 0, max: 9999999999 }}

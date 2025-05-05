@@ -5,6 +5,8 @@ torchaudio
 torchvision
 transformers>=4.51.0
 diffusers>=0.33.1
+torchao
+bitsandbytes
 accelerate
 fastapi[standard]
 requests

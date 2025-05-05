@@ -146,3 +146,8 @@ llm/data/orchestrator/
 
 #gen video sample app exclusions
 gen-video/data/orchestrator*
+
+#image gen sample app
+image-gen/data/orchestrator/
+image-gen/data/gateway/
+image-gen/data/models/

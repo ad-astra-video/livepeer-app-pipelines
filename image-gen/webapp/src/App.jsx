@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
-import { Box, Container, Snackbar, Alert, IconButton, CssBaseline, Fab, Paper, CircularProgress, Typography } from '@mui/material'
+import { Box, Container, Snackbar, Alert, IconButton, CssBaseline, Fab, Paper, CircularProgress, Typography, Tooltip } from '@mui/material'
 import SettingsIcon from '@mui/icons-material/Settings'
 import MenuIcon from '@mui/icons-material/Menu'
+import DeleteSweepIcon from '@mui/icons-material/DeleteSweep'
 import Sidebar from './components/Sidebar'
 import ImageGallery from './components/ImageGallery'
 import SettingsModal from './components/SettingsModal'
@@ -18,6 +19,7 @@ function App() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [settings, setSettings] = useState({ apiBaseUrl: '', timeout: 5 })
   const [newImageId, setNewImageId] = useState(null)
+  const [successMessage, setSuccessMessage] = useState(null)
 
   // Load settings and favorites from localStorage on initial load
   useEffect(() => {
@@ -147,8 +149,26 @@ function App() {
     )
   }
 
+  const handleClearImages = () => {
+    // Keep only favorite images
+    const favoriteImages = images.filter(img => img.isFavorite)
+    setImages(favoriteImages)
+    
+    // Show success message
+    setSuccessMessage("Non-favorite images cleared successfully")
+    
+    // Hide success message after 3 seconds
+    setTimeout(() => {
+      setSuccessMessage(null)
+    }, 3000)
+  }
+
   const handleCloseError = () => {
     setError(null)
+  }
+
+  const handleCloseSuccess = () => {
+    setSuccessMessage(null)
   }
 
   const handleOpenSettings = () => {
@@ -209,19 +229,35 @@ function App() {
             overflow: 'hidden', // Prevent main container from scrolling
           }}
         >
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-            <IconButton 
-              onClick={handleOpenSettings}
-              color="primary"
-              sx={{ 
-                backgroundColor: 'rgba(0, 0, 0, 0.04)',
-                '&:hover': {
-                  backgroundColor: 'rgba(0, 0, 0, 0.08)',
-                }
-              }}
-            >
-              <SettingsIcon />
-            </IconButton>
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2, gap: 1 }}>
+            <Tooltip title="Clear non-favorite images">
+              <IconButton 
+                onClick={handleClearImages}
+                color="primary"
+                sx={{ 
+                  backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                  '&:hover': {
+                    backgroundColor: 'rgba(0, 0, 0, 0.08)',
+                  }
+                }}
+              >
+                <DeleteSweepIcon />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Settings">
+              <IconButton 
+                onClick={handleOpenSettings}
+                color="primary"
+                sx={{ 
+                  backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                  '&:hover': {
+                    backgroundColor: 'rgba(0, 0, 0, 0.08)',
+                  }
+                }}
+              >
+                <SettingsIcon />
+              </IconButton>
+            </Tooltip>
           </Box>
           
           <Container 
@@ -283,6 +319,17 @@ function App() {
         >
           <Alert onClose={handleCloseError} severity="error" sx={{ width: '100%' }}>
             {error}
+          </Alert>
+        </Snackbar>
+        
+        <Snackbar 
+          open={!!successMessage} 
+          autoHideDuration={3000} 
+          onClose={handleCloseSuccess}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        >
+          <Alert onClose={handleCloseSuccess} severity="success" sx={{ width: '100%' }}>
+            {successMessage}
           </Alert>
         </Snackbar>
         

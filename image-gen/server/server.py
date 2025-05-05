@@ -12,6 +12,7 @@ from server.hardware import HardwareInfo
 
 from diffusers import DiffusionPipeline
 from transformers import T5TokenizerFast, T5ForConditionalGeneration
+from torchao.quantization import autoquant
 
 # Get the logger instance
 logger = logging.getLogger(__name__)
@@ -21,6 +22,7 @@ handler.setLevel(logging.DEBUG)
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s')
 handler.setFormatter(formatter)
 logger.addHandler(handler)
+logger.propagate = False
 
 pipeline_overrides = {}
 
@@ -105,14 +107,33 @@ def load_pipeline():
 def compile_pipeline(pipeline):
     compile_text_encoder = os.environ.get("TORCH_COMPILE_TEXT_ENCODER","")
     compile_transformer = os.environ.get("TORCH_COMPILE_TRANSFORMER", "")
+    quantize_transformer = os.environ.get("QUANTIZE_MODEL", "")
     
     if compile_text_encoder != "":
         pipeline.text_encoder = torch.compile(pipeline.text_encoder, mode="reduce-overhead")
     
+    if quantize_transformer != "":
+        from torchao.quantization import quantize_, PerTensor, Float8WeightOnlyConfig
+        quantize_(pipeline.transformer, Float8WeightOnlyConfig())
+        #pipeline.transformer = autoquant(pipeline.transformer, error_on_unseen=False)
+    
     if compile_transformer != "":
+        #see compile optimizations here: https://modal.com/docs/examples/flux
+        
+        torch._inductor.config.disable_progress = False
+        torch._inductor.config.conv_1x1_as_mm = True
+        torch._inductor.config.coordinate_descent_tuning = True
+        torch._inductor.config.coordinate_descent_check_all_directions = True
+        torch._inductor.config.epilogue_fusion = False
+        
         pipeline.transformer.to(memory_format=torch.channels_last)
-        pipeline.transformer = torch.compile(pipeline.transformer, mode="max-autotune", fullgraph=True)
-
+        pipeline.transformer = torch.compile(pipeline.transformer, mode="reduce-overhead", fullgraph=True)
+        pipeline.vae.to(memory_format=torch.channels_last)
+        pipeline.vae.decode = torch.compile(pipeline.vae.decode, mode="reduce-overhead", fullgraph=True)
+    
+    #run first req to quantize and compile
+    pipeline(prompt="a green ball", num_inference_steps=2)
+    
 def load_llm():
     model_id = os.environ.get("LLM_MODEL_ID", "roborovski/superprompt-v1")
     model = T5ForConditionalGeneration.from_pretrained(model_id)
@@ -134,7 +155,7 @@ async def hardware_info(request: Request):
 async def t2i(request: Request):
     params = await request.json()
     seed = params.pop("seed", 0)
-    if seed == 0:
+    if int(seed) == 0:
         seed = int(''.join(random.choice('0123456789') for _ in range(10)))
     params["generator"] = torch.Generator("cuda").manual_seed(seed)
     
