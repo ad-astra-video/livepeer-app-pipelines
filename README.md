@@ -7,7 +7,7 @@ See the readmes in each folder to setup and run the sample applications.
 Some things you will need for both:
 - Docker image that contains the generic pipeline code: `docker pull adastravideo/go-livepeer:dynamic-capabilities-2`
   - Link to the repo and branch used to build the docker image https://github.com/ad-astra-video/go-livepeer/tree/av-livepeer-external-capabilities
-- If want to run with payments need an eth address with a deposit and reserve available to sign messages in browser.
+- If want to run with payments need an eth address with a deposit and reserve available to sign messages in browser or run the gateway (see image-gen sample app docker compose).
   - Will add a simple backend api to run the eth signer on a server soon
   - See docs on funding a Gateway ethereum account https://docs.livepeer.org/gateways/guides/fund-gateway
 
