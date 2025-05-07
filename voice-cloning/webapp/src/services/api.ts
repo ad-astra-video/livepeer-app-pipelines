@@ -214,39 +214,49 @@ export async function processJob(
     // Add signature to job request
     jobRequest.sig = signature;
 
-    // Get the next nonce for these ticket params
-    const nonce = incrementNonce(tokenData.ticket_params);
-    
-    // Create a message to sign for the ticket
-    const ticketSigMsg = await createTicketSigMsg(tokenData.ticket_params, nonce, ethAddress);
-    
-    // Sign the ticket message
-    let ticketSignature;
-    try {
-      ticketSignature = await signMessage(ethers.utils.arrayify(ticketSigMsg));
-    } catch (signError) {
-      console.error('Error signing ticket message:', signError);
-      throw new Error('Failed to sign the ticket with your wallet');
-    }
-
-    // Prepare payment data
-    const senderBytes = ethers.utils.arrayify(ethAddress);
-    const paymentData: JobPayment = {
-      ticket_params: tokenData.ticket_params,
+    let paymentData: JobPayment = {
       sender: hexToBase64(ethAddress.toLowerCase().substring(2)),
-      expiration_params: tokenData.ticket_params.expiration_params,
-      ticket_sender_params: [
-        {
-          sig: hexToBase64(ticketSignature.toLowerCase().substring(2)),
-          sender_nonce: nonce,
-        },
-      ],
       expected_price: {
-        pricePerUnit: tokenData.price.pricePerUnit,
-        pixelsPerUnit: tokenData.price.pixelsPerUnit,
+        pricePerUnit: 0,
+        pixelsPerUnit: 1,
       },
     };
+    
+    if (tokenData.price) {
+        paymentData.expected_price = { 
+                    pricePerUnit: tokenData.price.pricePerUnit,
+                    pixelsPerUnit: tokenData.price.pixelsPerUnit
+        };
+    }
+    // Get the next nonce for these ticket params
+    if (tokenData.ticket_params) {
+        const nonce = incrementNonce(tokenData.ticket_params);
+    
+        // Create a message to sign for the ticket
+        const ticketSigMsg = await createTicketSigMsg(tokenData.ticket_params, nonce, ethAddress);
+        
+        // Sign the ticket message
+        let ticketSignature;
+        try {
+          ticketSignature = await signMessage(ethers.utils.arrayify(ticketSigMsg));
+        } catch (signError) {
+          console.error('Error signing ticket message:', signError);
+          throw new Error('Failed to sign the ticket with your wallet');
+        }
 
+        // Prepare payment data
+        const senderBytes = ethers.utils.arrayify(ethAddress);
+        
+        // update payment if ticket included
+        paymentData.ticket_params = tokenData.ticket_params;
+        paymentData.expiration_params = tokenData.ticket_params.expiration_params;
+        paymentData.ticket_sender_params = [
+            {
+              sig: hexToBase64(ticketSignature.toLowerCase().substring(2)),
+              sender_nonce: nonce,
+            },
+          ];
+    }
     // Base64 encode the headers
     const jobHeader = btoa(JSON.stringify(jobRequest));
     const paymentHeader = btoa(JSON.stringify(paymentData));
