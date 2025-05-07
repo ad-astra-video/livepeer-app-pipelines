@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 import requests
 import torch
 import asyncio
+import numpy as np
 
 from fastapi import FastAPI, Request, HTTPException, Response
 
@@ -13,6 +14,7 @@ from server.hardware import HardwareInfo
 from diffusers import DiffusionPipeline
 from transformers import T5TokenizerFast, T5ForConditionalGeneration
 from torchao.quantization import autoquant
+from PIL import Image
 
 # Get the logger instance
 logger = logging.getLogger(__name__)
@@ -168,11 +170,13 @@ async def t2i(request: Request):
         params["prompt_embeds"] = embeds
         params["prompt_attention_mask"] = attn_mask
         start_time = time.time()
-        output = await generate_image(request.app.pipeline, **params)
+        output = await generate_image(request.app.pipeline, output_type="np",**params)
         logger.info(f"inference took {time.time() - start_time} seconds")
+        image_array = (output.images[0] * 255).astype(np.uint8)
+        image = Image.fromarray(image_array)
         img_buf.seek(0)
         img_buf.truncate(0)
-        output.images[0].save(img_buf, format="PNG")
+        image.save(img_buf, format="JPEG")
         logger.info(f"save to binary took {time.time() - start_time} seconds")
         #output.images[0].save("/models/test.png")
         img_bytes = img_buf.getvalue()

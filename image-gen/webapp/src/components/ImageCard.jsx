@@ -5,7 +5,9 @@ import {
   CardActions, 
   IconButton, 
   Tooltip,
-  Zoom
+  Zoom,
+  useMediaQuery,
+  useTheme
 } from '@mui/material'
 import FavoriteIcon from '@mui/icons-material/Favorite'
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder'
@@ -15,9 +17,14 @@ import MetadataOverlay from './MetadataOverlay'
 import ImageModal from './ImageModal'
 import { formatDate } from '../services/api'
 
-const ImageCard = ({ image, toggleFavorite, isNew }) => {
+const ImageCard = ({ image, toggleFavorite, isNew, isMobile }) => {
   const [showMetadata, setShowMetadata] = useState(false)
   const [showModal, setShowModal] = useState(false)
+  const theme = useTheme()
+  
+  // Use the passed isMobile prop or determine from theme if not provided
+  const isSmallScreen = isMobile !== undefined ? isMobile : useMediaQuery(theme.breakpoints.down('sm'))
+  const isMediumScreen = useMediaQuery(theme.breakpoints.between('sm', 'md'))
 
   const handleToggleMetadata = (e) => {
     e.stopPropagation() // Prevent card click event
@@ -55,6 +62,7 @@ const ImageCard = ({ image, toggleFavorite, isNew }) => {
           },
           cursor: 'pointer',
           minHeight: { xs: '200px', sm: '220px', md: '240px' }, // Minimum height for different screen sizes
+          minWidth: { xs: '200px', sm: '220px', md: '240px' }, // Minimum width for different screen sizes
           animation: isNew ? 'pulse 1.5s' : 'none',
           '@keyframes pulse': {
             '0%': {
@@ -89,9 +97,10 @@ const ImageCard = ({ image, toggleFavorite, isNew }) => {
             bottom: 0,
             right: 0,
             bgcolor: 'rgba(0, 0, 0, 0.5)',
-            opacity: 0,
+            opacity: isSmallScreen ? 1 : 0, // Always visible on mobile
             transition: 'opacity 0.3s',
-            borderTopLeftRadius: 8
+            borderTopLeftRadius: 8,
+            padding: isSmallScreen ? '2px' : 'auto', // Smaller padding on mobile
           }}
           onClick={(e) => e.stopPropagation()} // Prevent card click when clicking actions
         >
@@ -102,8 +111,9 @@ const ImageCard = ({ image, toggleFavorite, isNew }) => {
                 handleOpenModal();
               }}
               sx={{ color: 'white' }}
+              size={isSmallScreen ? "small" : "medium"}
             >
-              <ZoomInIcon />
+              <ZoomInIcon fontSize={isSmallScreen ? "small" : "medium"} />
             </IconButton>
           </Tooltip>
           
@@ -111,8 +121,9 @@ const ImageCard = ({ image, toggleFavorite, isNew }) => {
             <IconButton 
               onClick={handleToggleMetadata}
               sx={{ color: 'white' }}
+              size={isSmallScreen ? "small" : "medium"}
             >
-              <InfoIcon />
+              <InfoIcon fontSize={isSmallScreen ? "small" : "medium"} />
             </IconButton>
           </Tooltip>
           
@@ -123,8 +134,12 @@ const ImageCard = ({ image, toggleFavorite, isNew }) => {
                 toggleFavorite(image.id);
               }}
               sx={{ color: 'white' }}
+              size={isSmallScreen ? "small" : "medium"}
             >
-              {image.isFavorite ? <FavoriteIcon color="error" /> : <FavoriteBorderIcon />}
+              {image.isFavorite ? 
+                <FavoriteIcon color="error" fontSize={isSmallScreen ? "small" : "medium"} /> : 
+                <FavoriteBorderIcon fontSize={isSmallScreen ? "small" : "medium"} />
+              }
             </IconButton>
           </Tooltip>
         </CardActions>

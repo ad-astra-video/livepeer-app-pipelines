@@ -19,7 +19,8 @@ services:
     ports:
       - 9876:9876
     environment:
-      - "MODEL_ID=Efficient-Large-Model/Sana_Sprint_1.6B_1024px_diffusers"
+#      - "MODEL_ID=Efficient-Large-Model/Sana_Sprint_1.6B_1024px_diffusers"
+      - "MODEL_ID=Efficient-Large-Model/Sana_Sprint_0.6B_1024px_diffusers"
       - "ORCH_URL=https://orchestrator:9995"
       - "ORCH_SECRET=orch-secret"
       - "CAPABILITY_NAME=gen-image"
