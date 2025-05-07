@@ -251,7 +251,7 @@ export async function processJob(
     const jobHeader = btoa(JSON.stringify(jobRequest));
     const paymentHeader = btoa(JSON.stringify(paymentData));
 
-    const response = await fetch(`${baseUrl}/process/request`, {
+    const response = await fetch(`${baseUrl}/process/request/voice-clone`, {
       method: 'POST',
       headers: {
         'Livepeer-Job': jobHeader,

@@ -29,7 +29,7 @@ services:
       - "CAPABILITY_PRICE_SCALING=1"
       - "CAPABILITY_CAPACITY=2"
   orchestrator:
-    image: adastravideo/go-livepeer:dynamic-capabilities
+    image: adastravideo/go-livepeer:dynamic-capabilities-2
     container_name: byoc-orchestrator
     volumes:
       - ./data/orchestrator:/data
