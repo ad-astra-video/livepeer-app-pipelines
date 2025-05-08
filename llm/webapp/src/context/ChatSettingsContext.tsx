@@ -14,6 +14,7 @@ const defaultChatSettings: ChatSettings = {
   topP: 1.0,
   topK: -1.0,
 	stream: false,
+  stream_options: {"include_usage": true},
   model: "Qwen/Qwen2.5-32B-Instruct"
 };
 

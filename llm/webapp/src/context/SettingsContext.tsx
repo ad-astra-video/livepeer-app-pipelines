@@ -8,10 +8,10 @@ interface SettingsContextType {
 }
 
 const defaultSettings: AppSettings = {
-  apiBaseUrl: 'https://api.example.com',
+  apiBaseUrl: 'http://localhost:8088/orchestrator',
   ethereumAddress: '',
   capability: 'llm-generate',
-	resourceUrlPath: ''
+	resourceUrlPath: '/llm',
 };
 
 const STORAGE_KEY = 'local-chat-settings';

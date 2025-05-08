@@ -17,6 +17,7 @@ const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({ isOpen, onClose }
     topP: chatSettings.topP,
     topK: chatSettings.topK,
 	  stream: chatSettings.stream,
+    stream_options: chatSettings.stream_options,
     model: chatSettings.model
   });
   
@@ -30,6 +31,7 @@ const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({ isOpen, onClose }
         topP: chatSettings.topP,
         topK: chatSettings.topK,
 		    stream: chatSettings.stream,
+        stream_options: chatSettings.stream_options,
         model: chatSettings.model
       });
     }

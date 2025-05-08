@@ -36,6 +36,7 @@ export interface ChatSettings {
   topP: number;
   topK: number;
   stream: boolean;
+  stream_options: any;
   model: string;
 }
 

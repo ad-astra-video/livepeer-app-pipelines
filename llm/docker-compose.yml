@@ -19,12 +19,12 @@ services:
       - "ORCH_SECRET=orch-secret"
       - "CAPABILITY_NAME=llm-generate"
       - "CAPABILITY_DESCRIPTION=generate text with llm"
-      - "CAPABILITY_URL=http://172.17.0.1:9100"
+      - "CAPABILITY_URL=http://worker-vllm:8000"
       - "CAPABILITY_PRICE_PER_UNIT=100"
       - "CAPABILITY_PRICE_SCALING=1"
       - "CAPABILITY_CAPACITY=2"
   orchestrator:
-    image: adastravideo/go-livepeer:dynamic-capabilities
+    image: adastravideo/go-livepeer:dynamic-capabilities-2
     container_name: byoc-orchestrator
     volumes:
       - ./data/orchestrator:/data
@@ -40,6 +40,15 @@ services:
           "-dataDir=/data",
           "-ethOrchAddr=0x3b28a7d785356dc67c7970666747e042305bfb79",
           "-pricePerUnit=1"]
+  worker-vllm:
+    image: vllm/vllm-openai:latest
+    ipc: host
+    runtime: nvidia
+    volumes:
+      - ./data/models:/root/.cache/huggingface
+    ports:
+      - 8000:8000
+    command: ["--model", "Qwen/Qwen3-4B"]
 networks:
   default:
     name: byoc

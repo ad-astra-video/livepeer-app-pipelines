@@ -109,7 +109,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
               value={formData.apiBaseUrl}
               onChange={handleChange}
               className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="https://api.example.com"
+              placeholder="http://localhost:8088/orchestrator"
             />
           </div>
 

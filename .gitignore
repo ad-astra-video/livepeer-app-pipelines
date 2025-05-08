@@ -142,7 +142,7 @@ voice-cloning/data/checkpoints/
 voice-cloning/data/outputs/
 
 #llm chat sample app exclusions
-llm/data/orchestrator/
+llm/data/
 
 #gen video sample app exclusions
 gen-video/data/orchestrator*

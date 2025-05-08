@@ -219,11 +219,11 @@ const formatChatHistory = (chatHistory: Message[], systemPrompt: string) => {
     });
   });
 
-  //add a last message the LLM can put the response in
-  formattedMessages.push({
-    role: "assistant",
-    content: ""
-  });
+  // add a last message the LLM can put the response in
+  //formattedMessages.push({
+  //  role: "assistant",
+  //  content: ""
+  //});
   
   return formattedMessages;
 };
@@ -337,6 +337,8 @@ export const sendMessage = async (
     if (chatSettings?.stream !== undefined) {
       requestBody.stream = chatSettings.stream;
     }
+
+    requestBody.stream_options = chatSettings.stream_options;
     
     const response = await fetch(`${settings.apiBaseUrl}/process/request${settings.resourceUrlPath}`, {
       method: 'POST',

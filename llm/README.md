@@ -13,7 +13,7 @@ This is a sample web application that uses livepeer/ai-runner:llm runner contain
 
 1. Pull docker image of go-livepeer with generic pipeline
 
-     `docker pull adastravideo/go-livepeer:dynamic-capabilities`
+     `docker pull adastravideo/go-livepeer:dynamic-capabilities-2`
 
 2) Build the webapp for static file serving (need to have node/npm installed)
     ```
@@ -26,6 +26,7 @@ This is a sample web application that uses livepeer/ai-runner:llm runner contain
     ```
     mkdir -p data/models
     mkdir -p data/orchestrator
+    mkdir -p data/webui
     mkdir worker
     ```
 
