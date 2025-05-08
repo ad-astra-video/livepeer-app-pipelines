@@ -42,3 +42,5 @@ This is a sample web application that uses livepeer/ai-runner:llm runner contain
       - if want to test off chain, update the `CAPABILITY_PRICE_PER_UNIT` in with `worker` container section to `0` and change `-network` to `offchain` in `orchestrator` container section.
       - update the `CAPABILITY_URL` to be the accessible ip address/port or dns name of the worker that the Orchestrator will forward the work request to.
     
+6) Launch docker containers: `docker compose up`
+    - The `orchestrator` container needs to be up and running before `register-worker`. Start up time of `orchestrator` is usually low enough to enable `register-worker` container to wait.

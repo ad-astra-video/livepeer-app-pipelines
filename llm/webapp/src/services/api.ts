@@ -338,7 +338,9 @@ export const sendMessage = async (
       requestBody.stream = chatSettings.stream;
     }
 
-    requestBody.stream_options = chatSettings.stream_options;
+    if (requestBody.stream) {
+      requestBody.stream_options = chatSettings.stream_options;
+    }
     
     const response = await fetch(`${settings.apiBaseUrl}/process/request${settings.resourceUrlPath}`, {
       method: 'POST',

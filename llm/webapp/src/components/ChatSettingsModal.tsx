@@ -143,7 +143,7 @@ const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({ isOpen, onClose }
               id="maxTokens"
               name="maxTokens"
               min="1"
-              max="4096"
+              max="32768"
               step="1"
               value={formData.maxTokens}
               onChange={handleChange}
@@ -151,7 +151,7 @@ const ChatSettingsModal: React.FC<ChatSettingsModalProps> = ({ isOpen, onClose }
             />
             <div className="flex justify-between text-xs text-gray-500">
               <span>1</span>
-              <span>4096</span>
+              <span>32768</span>
             </div>
             <p className="text-sm text-gray-500 mt-1">
               Maximum number of tokens to generate

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Message } from '../types';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -18,20 +18,54 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
 
   // Extract reasoning content if it exists
   const extractReasoningAndContent = (text: string) => {
-    const thinkRegex = /<think>([\s\S]*?)<\/think>/;
-    const match = text.match(thinkRegex);
-    
-    if (match) {
-      const reasoning = match[1].trim();
-      // Remove the think tags and their content from the main content
-      const mainContent = text.replace(thinkRegex, '').trim();
-      return { reasoning, mainContent, hasReasoning: reasoning.length > 0 };
+    // Check if <think> exists in the text
+    if (text.includes('<think>')) {
+      const thinkStartIndex = text.indexOf('<think>');
+      
+      // Check if </think> exists after <think>
+      const thinkEndIndex = text.indexOf('</think>', thinkStartIndex);
+      
+      if (thinkEndIndex !== -1) {
+        // Complete <think></think> pair found
+        const reasoning = text.substring(thinkStartIndex + 7, thinkEndIndex).trim();
+        const mainContent = (
+          text.substring(0, thinkStartIndex) + 
+          text.substring(thinkEndIndex + 8)
+        ).trim();
+        
+        return { 
+          reasoning, 
+          mainContent, 
+          hasReasoning: reasoning.length > 0,
+          isComplete: true 
+        };
+      } else {
+        // Only opening <think> found, treat everything after it as reasoning
+        const reasoning = text.substring(thinkStartIndex + 7).trim();
+        const mainContent = text.substring(0, thinkStartIndex).trim();
+        
+        return { 
+          reasoning, 
+          mainContent, 
+          hasReasoning: reasoning.length > 0,
+          isComplete: false 
+        };
+      }
     }
     
-    return { reasoning: '', mainContent: text, hasReasoning: false };
+    // No <think> tag - return original text
+    return { 
+      reasoning: '', 
+      mainContent: text, 
+      hasReasoning: false,
+      isComplete: true 
+    };
   };
 
-  const { reasoning, mainContent, hasReasoning } = extractReasoningAndContent(message.content);
+  const { reasoning, mainContent, hasReasoning, isComplete } = useMemo(() => 
+    extractReasoningAndContent(message.content),
+    [message.content]
+  );
 
   return (
     <div className={`mb-4 ${message.isUser ? 'text-right' : 'text-left'}`}>
@@ -48,14 +82,14 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
             <div className="mb-2 border-b border-gray-300 pb-2">
               <button 
                 onClick={() => setIsReasoningExpanded(!isReasoningExpanded)}
-                className="flex items-center text-sm text-gray-600 hover:text-gray-900 transition-colors"
+                className="flex items-center text-sm bg-white px-3 py-1 rounded-md shadow-sm border border-gray-200 hover:bg-gray-50 transition-colors"
               >
                 {isReasoningExpanded ? (
                   <ChevronDown size={16} className="mr-1" />
                 ) : (
                   <ChevronRight size={16} className="mr-1" />
                 )}
-                Reasoning
+                <span className="font-bold">Reasoning</span>
               </button>
               
               {isReasoningExpanded && (
