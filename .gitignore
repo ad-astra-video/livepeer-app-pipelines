@@ -151,3 +151,8 @@ gen-video/data/orchestrator*
 image-gen/data/orchestrator/
 image-gen/data/gateway/
 image-gen/data/models/
+
+#create a tall tale sample app
+create-a-tall-tale/data/orchestrator/
+create-a-tall-tale/data/gateway/
+create-a-tall-tale/data/models/
