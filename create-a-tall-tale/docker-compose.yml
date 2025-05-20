@@ -1,0 +1,80 @@
+services:
+  webserver:
+    image: caddy:latest
+    container_name: byoc-webserver
+    ports:
+      - 8088:8088
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - ./webapp/dist:/var/www/html/app
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: byoc-worker
+    volumes:
+      - ./data/models:/models
+      - ./server/server.py:/app/server/server.py
+    runtime: nvidia
+    ports:
+      - 9876:9876
+    environment:
+      - "ORCH_URL=https://orchestrator:9995"
+      - "ORCH_SECRET=orch-secret"
+      - "CAPABILITY_NAME=gen-story"
+      - "CAPABILITY_DESCRIPTION=generate story from prompt"
+      - "CAPABILITY_URL=http://worker:9876"
+      - "CAPABILITY_PRICE_PER_UNIT=100"
+      - "CAPABILITY_PRICE_SCALING=1"
+      - "CAPABILITY_CAPACITY=2"
+      - "PYTHONUNBUFFERED=1"
+  worker-vllm:
+    image: vllm/vllm-openai:latest
+    container_name: worker-vllm
+    ipc: host
+    runtime: nvidia
+    environment:
+      - HF_TOKEN=[hf_token]
+    volumes:
+      - ./data/models:/root/.cache/huggingface
+    ports:
+      - 8000:8000
+    command: ["--model", "google/gemma-3-4b-it", "--dtype", "bfloat16"]
+  gateway:
+    image: adastravideo/go-livepeer:dynamic-capabilities-2
+    container_name: byoc-gateway
+    volumes:
+      - ./data/gateway:/data
+    ports:
+      - 9999:9999
+    command: ["-gateway",
+          "-orchAddr=https://orchestrator:9995",
+          "-httpAddr=gateway:9999",
+          "-httpIngest=true",
+          "-v=6",
+          "-network=arbitrum-one-mainnet",
+          "-ethUrl="https://arb1.arbitrum.io/rpc"",
+          "-ethPassword=testbroadcaster",
+          "-dataDir=/data"]
+  orchestrator:
+    image: adastravideo/go-livepeer:dynamic-capabilities-2
+    container_name: byoc-orchestrator
+    volumes:
+      - ./data/orchestrator:/data
+    ports:
+      - 9995:9995
+    command: ["-orchestrator",
+          "-orchSecret=orch-secret",
+          "-serviceAddr=orchestrator:9995",
+          "-v=6",
+          "-network=arbitrum-one-mainnet",
+          "-ethUrl="https://arb1.arbitrum.io/rpc"",
+          "-ethPassword=some-random-password",
+          "-dataDir=/data",
+          "-ethOrchAddr=0x3b28a7d785356dc67c7970666747e042305bfb79",
+          "-pricePerUnit=1",
+          "-ticketEV=1800"]
+networks:
+  default:
+    name: byoc
+    external: true

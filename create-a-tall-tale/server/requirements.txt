@@ -1,0 +1,8 @@
+setuptools
+wheel
+fastapi[standard]
+httpx
+requests
+python-multipart
+nvidia-ml-py
+huggingface_hub[cli,hf_transfer]
