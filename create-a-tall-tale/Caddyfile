@@ -1,0 +1,55 @@
+:8088 {
+
+	log {
+		output stdout
+		level debug
+	}
+
+	handle_path /worker/* {
+		header {
+			Access-Control-Allow-Origin *
+			Access-Control-Allow-Methods "GET, POST, OPTIONS"
+			Access-Control-Allow-Headers "Content-Type, Authorization"
+		}
+
+		@options method OPTIONS
+		respond @options 204
+
+		reverse_proxy http://worker:9876
+	}
+
+	handle_path /orchestrator/* {
+		header {
+			Access-Control-Allow-Origin *
+			Access-Control-Allow-Methods "GET, POST, OPTIONS"
+			Access-Control-Allow-Headers *
+		}
+
+		@options method OPTIONS
+		respond @options 204
+
+		reverse_proxy https://byoc-orchestrator:9995 {
+			transport http {
+				tls_insecure_skip_verify
+			}
+		}
+	}
+
+	handle_path /gateway/* {
+		header {
+			Access-Control-Allow-Origin *
+			Access-Control-Allow-Methods "GET, POST, OPTIONS"
+			Access-Control-Allow-Headers *
+		}
+
+		@options method OPTIONS
+		respond @options 204
+
+		reverse_proxy http://byoc-gateway:9999
+	}
+	handle {
+		root * /var/www/html/app
+		try_files {path} /index.html
+		file_server
+	}
+}

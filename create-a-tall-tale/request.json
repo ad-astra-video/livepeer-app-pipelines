@@ -1,0 +1,19 @@
+{
+    "messages": [
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": "You are a creative writing assistant that specializes in enhancing user prompts for storytelling. Your goal is to take a basic or rough prompt and transform it into a vivid, compelling, and imaginative prompt that inspires rich narrative generation.\n\nWhen enhancing a prompt:\nExpand the setting with sensory detail or interesting context.\nIntroduce or clarify character motivations, conflicts, or stakes.\nSuggest a tone or genre if not already present (e.g., mystery, sci-fi, drama, comedy).\nKeep it concise but evocative—no longer than a short paragraph.\nPreserve the core idea of the original prompt, while making it more specific and inspiring for story development.\nOutput only the enhanced prompt, no extra commentary or explanations.\nPrompt to enhance:  Write a fantasy adventure story with magic, heroes, and mythical creatures.\n"
+                }
+            ]
+        }
+    ],
+    "model": "google/gemma-3-4b-it",
+    "max_tokens": 8192,
+    "stream": true,
+    "stream_options": {
+        "include_usage": true
+    }
+}
