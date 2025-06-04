@@ -15,7 +15,7 @@ This is a sample web application that uses a custom built container as the worke
 
 1. Pull docker image of go-livepeer with generic pipeline
 
-     `docker pull adastravideo/go-livepeer:dynamic-capabilities-2`
+     `docker pull adastravideo/go-livepeer:dynamic-capabilities-3`
 
 2) Build the webapp for static file serving (need to have node/npm installed)
     ```
