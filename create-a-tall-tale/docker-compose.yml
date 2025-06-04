@@ -41,7 +41,7 @@ services:
       - 8000:8000
     command: ["--model", "google/gemma-3-4b-it", "--dtype", "bfloat16"]
   gateway:
-    image: adastravideo/go-livepeer:dynamic-capabilities-2
+    image: adastravideo/go-livepeer:dynamic-capabilities-3
     container_name: byoc-gateway
     volumes:
       - ./data/gateway:/data
@@ -53,11 +53,11 @@ services:
           "-httpIngest=true",
           "-v=6",
           "-network=arbitrum-one-mainnet",
-          "-ethUrl="https://arb1.arbitrum.io/rpc"",
+          "-ethUrl=https://arb1.arbitrum.io/rpc",
           "-ethPassword=testbroadcaster",
           "-dataDir=/data"]
   orchestrator:
-    image: adastravideo/go-livepeer:dynamic-capabilities-2
+    image: adastravideo/go-livepeer:dynamic-capabilities-3
     container_name: byoc-orchestrator
     volumes:
       - ./data/orchestrator:/data
@@ -68,7 +68,7 @@ services:
           "-serviceAddr=orchestrator:9995",
           "-v=6",
           "-network=arbitrum-one-mainnet",
-          "-ethUrl="https://arb1.arbitrum.io/rpc"",
+          "-ethUrl=https://arb1.arbitrum.io/rpc",
           "-ethPassword=some-random-password",
           "-dataDir=/data",
           "-ethOrchAddr=0x3b28a7d785356dc67c7970666747e042305bfb79",

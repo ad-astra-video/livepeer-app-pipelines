@@ -31,7 +31,7 @@ export const useSSE = (apiBaseUrl: string) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Livepeer-Job': btoa(JSON.stringify(job_req)),
+          'Livepeer': btoa(JSON.stringify(job_req)),
           'Accept': 'text/event-stream'  // Request SSE format
         },
         body: JSON.stringify({ "prompt": prompt }),
