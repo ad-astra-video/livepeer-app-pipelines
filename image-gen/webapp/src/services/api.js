@@ -82,7 +82,7 @@ export const generateImage = async (params, baseUrl = DEFAULT_API_BASE_URL, time
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Livepeer-Job': btoa(JSON.stringify({
+      'Livepeer': btoa(JSON.stringify({
         request: JSON.stringify({ run: "gen-image" }),
         parameters: JSON.stringify({}),
         capability: "gen-image",
@@ -132,7 +132,7 @@ export const enhancePrompt = async (prompt, baseUrl = DEFAULT_API_BASE_URL, time
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Livepeer-Job': btoa(JSON.stringify({
+      'Livepeer': btoa(JSON.stringify({
         request: JSON.stringify({ run: "enhance-prompt" }),
         parameters: JSON.stringify({}),
         capability: "gen-image",

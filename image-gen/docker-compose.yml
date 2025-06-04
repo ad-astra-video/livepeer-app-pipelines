@@ -34,7 +34,7 @@ services:
       - "TORCH_COMPILE_TRANSFORMER=true"
       - "QUANTIZE_MODEL=true"
   gateway:
-    image: adastravideo/go-livepeer:dynamic-capabilities-2
+    image: adastravideo/go-livepeer:dynamic-capabilities-3
     container_name: byoc-gateway
     volumes:
       - ./data/gateway:/data
@@ -50,7 +50,7 @@ services:
           "-ethPassword=testbroadcaster",
           "-dataDir=/data"]
   orchestrator:
-    image: adastravideo/go-livepeer:dynamic-capabilities-2
+    image: adastravideo/go-livepeer:dynamic-capabilities-3
     container_name: byoc-orchestrator
     volumes:
       - ./data/orchestrator:/data
