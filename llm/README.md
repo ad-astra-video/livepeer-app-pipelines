@@ -1,5 +1,6 @@
 
 # Instructions to run sample app with generic container pipeline
+NOTE: direct communication with Orchestrators from browser was postponed to a future release.
  
 This is a sample web application that uses livepeer/ai-runner:llm runner container to provide a LLM chat interface  
 
@@ -13,7 +14,7 @@ This is a sample web application that uses livepeer/ai-runner:llm runner contain
 
 1. Pull docker image of go-livepeer with generic pipeline
 
-     `docker pull adastravideo/go-livepeer:dynamic-capabilities-2`
+     `docker pull adastravideo/go-livepeer:dynamic-capabilities-3`
 
 2) Build the webapp for static file serving (need to have node/npm installed)
     ```
