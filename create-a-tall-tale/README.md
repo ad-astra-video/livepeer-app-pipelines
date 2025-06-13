@@ -1,7 +1,7 @@
 
 # Instructions to run sample app with generic container pipeline
  
-This is a sample web application that uses a custom built container as the worker.  The API is served by a Livepeer Gateway node that handles coordinating with Orchestrator s and managing payments for the compute completed.  
+This is a sample web application that uses a custom built container as the worker.  The API is served by a Livepeer Gateway node that handles coordinating with Orchestrators and managing payments for the compute completed.  
 
 ### Prerequisites
 
@@ -15,7 +15,7 @@ This is a sample web application that uses a custom built container as the worke
 
 1. Pull docker image of go-livepeer with generic pipeline
 
-     `docker pull adastravideo/go-livepeer:dynamic-capabilities-3`
+     `docker pull livepeer/go-livepeer:latest`
 
 2) Build the webapp for static file serving (need to have node/npm installed)
     ```
