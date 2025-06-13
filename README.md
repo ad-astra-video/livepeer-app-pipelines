@@ -4,13 +4,14 @@
 
 See the readmes in each folder to setup and run the sample applications.
 
-Some things you will need for both:
-- Docker image that contains the generic pipeline code: `docker pull adastravideo/go-livepeer:dynamic-capabilities-3`
-  - Link to the repo and branch used to build the docker image https://github.com/ad-astra-video/go-livepeer/tree/av-livepeer-external-capabilities
-- If want to run with payments need an eth address with a deposit and reserve available to sign messages in browser or run the gateway (see image-gen sample app docker compose).
-  - Will add a simple backend api to run the eth signer on a server soon
-  - See docs on funding a Gateway ethereum account https://docs.livepeer.org/gateways/guides/fund-gateway
+Payment for compute is based on time the request takes to complete.
 
+Some things you will need:
+- Docker image that contains the generic pipeline code: `docker pull livepeer/go-livepeer:latest`
+- If want to run with payments need an eth address with a deposit and reserve on chain (https://docs.livepeer.org/gateways/guides/fund-gateway)
+ 
+
+## Below is POSTPONED to future release in go-livepeer
 Notes on interacting with Orchestrator
 - Payment is based on time used in seconds including upload/download from the worker
 - The orchestrator needs to run behind a reverse proxy (like Caddy) to handle the cross-origin security concerns of the browser.
@@ -42,7 +43,7 @@ Notes on interacting with Orchestrator
     - The `resource sub path` will be passed through to the worker container.
       - For example, if the worker is a open ai compatible server `/process/request/v1/chat/completions` would call `/v1/chat/completions` route on the worker.
     - The request should include everything in the body of the request that is needed.  The Orchestrator passes the entire request body to the worker.
-    - `Livepeer-Payment-Balance` is returned as a header in the response to assist with payment balance tracking.  Requesting a new token from `/process/token` can also be used to track payment balance.
+    - `Livepeer-Balance` is returned as a header in the response to assist with payment balance tracking.  Requesting a new token from `/process/token` can also be used to track payment balance.
     - The request should include headers:
       - `Livepeer` that is base64 encoded json. See the services/api.ts example apps for how to format the request.
         - The json should be ([example](https://github.com/ad-astra-video/livepeer-app-pipelines/blob/2bcd845a17e9a28c700d4b2bb050ad2eb00f89a6/llm/webapp/src/services/api.ts#L248)):
@@ -56,9 +57,8 @@ Notes on interacting with Orchestrator
                "timeout_seconds": 300                    # timeout of request required in seconds
              }
              ```
-      - `Livepeer-Payment` this is base64 encoded payment ticket.
+      - `Livepeer-Payment` this is base64 encoded payment ticket. If no payment needed, do not include header.
         - See services/api.ts in example apps for how to format the ticket
-        - If no payment is needed only include `sender` and `expected_price`.  [See example here](https://github.com/ad-astra-video/livepeer-app-pipelines/blob/2bcd845a17e9a28c700d4b2bb050ad2eb00f89a6/llm/webapp/src/services/api.ts#L265)
       - Body of the request with everything needed to complete the work requested (can be json or multipart).  The entire body is passed through, headers from the request are not passed through to the worker.
       - The response is directly passed through from the Orchestrator in response
         - response can by synchronous http or Server Sent Events (SSE) streaming
