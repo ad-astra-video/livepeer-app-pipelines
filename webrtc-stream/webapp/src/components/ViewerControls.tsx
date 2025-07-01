@@ -6,13 +6,15 @@ interface ViewerControlsProps {
   setIsViewing: (viewing: boolean) => void
   setConnectionStatus: (status: 'disconnected' | 'connecting' | 'connected' | 'error') => void
   setStreamStats: (stats: any) => void
+  streamId: string | null
 }
 
 const ViewerControls: React.FC<ViewerControlsProps> = ({
   isViewing,
   setIsViewing,
   setConnectionStatus,
-  setStreamStats
+  setStreamStats,
+  streamId
 }) => {
   const [whepUrl, setWhepUrl] = useState('http://localhost:8088/gateway/process/request/stream/play')
   const [peerConnection, setPeerConnection] = useState<RTCPeerConnection | null>(null)
@@ -59,15 +61,19 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
       await pc.setLocalDescription(offer)
 
       // Send WHEP offer
-      const livepeerHeader = btoa(JSON.stringify(
-                                        { 
-                                          "request": JSON.stringify({"start_stream_output": true}),
-                                          "parameters": JSON.stringify({}),
-                                          "capability": 'webrtc-stream',
-                                          "timeout_seconds": 30
-                                        }
-                                      )
-                                    )
+      const requestData: any = { 
+        "request": JSON.stringify({"start_stream_output": true}),
+        "parameters": JSON.stringify({}),
+        "capability": 'webrtc-stream',
+        "timeout_seconds": 30
+      }
+      
+      // Add stream_id to the request if available
+      if (streamId) {
+        requestData.stream_id = streamId
+      }
+      
+      const livepeerHeader = btoa(JSON.stringify(requestData))
       const response = await fetch(whepUrl, {
         method: 'POST',
         headers: {

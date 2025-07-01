@@ -6,13 +6,15 @@ interface StreamControlsProps {
   setIsStreaming: (streaming: boolean) => void
   setConnectionStatus: (status: 'disconnected' | 'connecting' | 'connected' | 'error') => void
   setStreamStats: (stats: any) => void
+  setStreamId: (streamId: string | null) => void
 }
 
 const StreamControls: React.FC<StreamControlsProps> = ({
   isStreaming,
   setIsStreaming,
   setConnectionStatus,
-  setStreamStats
+  setStreamStats,
+  setStreamId
 }) => {
   const [whipUrl, setWhipUrl] = useState('http://localhost:8088/gateway/process/request/stream/start')
   const [videoEnabled, setVideoEnabled] = useState(true)
@@ -91,6 +93,8 @@ const StreamControls: React.FC<StreamControlsProps> = ({
 
       if (response.ok) {
         const answerSdp = await response.text()
+        const streamId = response.headers.get('X-Stream-Id')
+        
         await pc.setRemoteDescription(new RTCSessionDescription({
           type: 'answer',
           sdp: answerSdp
@@ -98,6 +102,7 @@ const StreamControls: React.FC<StreamControlsProps> = ({
 
         setIsStreaming(true)
         setConnectionStatus('connected')
+        setStreamId(streamId)
         
         // Update stats
         setStreamStats({
@@ -136,6 +141,7 @@ const StreamControls: React.FC<StreamControlsProps> = ({
 
     setIsStreaming(false)
     setConnectionStatus('disconnected')
+    setStreamId(null)
     setStreamStats({
       bitrate: 0,
       fps: 0,

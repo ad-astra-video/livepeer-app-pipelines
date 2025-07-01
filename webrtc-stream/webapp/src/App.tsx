@@ -10,6 +10,7 @@ function App() {
   const [isStreaming, setIsStreaming] = useState(false)
   const [isViewing, setIsViewing] = useState(false)
   const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected')
+  const [streamId, setStreamId] = useState<string | null>(null)
   const [streamStats, setStreamStats] = useState({
     bitrate: 0,
     fps: 0,
@@ -79,6 +80,7 @@ function App() {
                 setIsStreaming={setIsStreaming}
                 setConnectionStatus={setConnectionStatus}
                 setStreamStats={setStreamStats}
+                setStreamId={setStreamId}
               />
             ) : (
               <ViewerControls
@@ -86,6 +88,7 @@ function App() {
                 setIsViewing={setIsViewing}
                 setConnectionStatus={setConnectionStatus}
                 setStreamStats={setStreamStats}
+                streamId={streamId}
               />
             )}
           </div>
