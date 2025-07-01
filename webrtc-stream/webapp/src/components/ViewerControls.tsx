@@ -27,6 +27,14 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
       }
     }
   }, [peerConnection])
+  
+  // Update UI when streamId changes
+  useEffect(() => {
+    // Force rerender to update the UI with the new streamId
+    if (streamId) {
+      console.log(`Stream ID updated: ${streamId}`)
+    }
+  }, [streamId])
 
   const startViewing = async () => {
     if (!whepUrl) {
@@ -60,18 +68,50 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
       })
       await pc.setLocalDescription(offer)
 
-      // Send WHEP offer
+      // Wait for ICE candidates with a timeout
+      let iceCandidates: RTCIceCandidate[] = [];
+      
+      await new Promise<void>((resolve) => {
+        // Set a timeout to avoid waiting forever - 2 seconds max wait time
+        const timeoutId = setTimeout(() => {
+          console.log('ICE gathering timeout reached, continuing with available candidates');
+          resolve();
+        }, 2000);
+        
+        // Listen for ICE candidates
+        pc.addEventListener('icecandidate', (event) => {
+          if (event.candidate) {
+            iceCandidates.push(event.candidate);
+          } else {
+            // Null candidate means we've gathered all we can
+            console.log('ICE gathering complete, all candidates received');
+            clearTimeout(timeoutId);
+            resolve();
+          }
+        });
+      });
+      
+      console.log(`Gathered ${iceCandidates.length} ICE candidates, sending WHEP offer`);
+      
+      // Get the current SDP with all gathered candidates
+      const currentSdp = pc.localDescription?.sdp;
+      if (!currentSdp) {
+        throw new Error('No local description available');
+      }
+      
+      // Log SDP length to verify it contains candidates
+      console.log(`Original offer SDP length: ${offer.sdp.length}`);
+      console.log(`Updated SDP length with candidates: ${currentSdp.length}`);
+      // The updated SDP should be longer as it contains the ICE candidates
+
+      // Send WHEP offer with all candidates included in the SDP
       const requestData: any = { 
-        "request": JSON.stringify({"start_stream_output": true}),
+        "request": JSON.stringify({"start_stream_output": true, "stream_id": streamId || null}),
         "parameters": JSON.stringify({}),
         "capability": 'webrtc-stream',
         "timeout_seconds": 30
       }
       
-      // Add stream_id to the request if available
-      if (streamId) {
-        requestData.stream_id = streamId
-      }
       
       const livepeerHeader = btoa(JSON.stringify(requestData))
       const response = await fetch(whepUrl, {
@@ -80,7 +120,7 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
           'Content-Type': 'application/sdp',
           'Livepeer': livepeerHeader
         },
-        body: offer.sdp
+        body: currentSdp // Use the updated SDP with all gathered candidates
       })
 
       if (response.ok) {
@@ -149,6 +189,9 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
               <div className="text-center">
                 <Monitor className="w-16 h-16 text-gray-500 mx-auto mb-4" />
                 <p className="text-gray-400">Stream will appear here</p>
+                {streamId && (
+                  <p className="text-sm text-emerald-400 mt-2">Stream ID available: {streamId.substring(0, 10)}...</p>
+                )}
               </div>
             </div>
           )}

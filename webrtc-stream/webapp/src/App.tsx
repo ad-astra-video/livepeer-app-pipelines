@@ -6,10 +6,10 @@ import ConnectionStatus from './components/ConnectionStatus'
 import StreamStats from './components/StreamStats'
 
 function App() {
-  const [activeTab, setActiveTab] = useState<'publish' | 'view'>('publish')
   const [isStreaming, setIsStreaming] = useState(false)
   const [isViewing, setIsViewing] = useState(false)
-  const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected')
+  const [streamConnectionStatus, setStreamConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected')
+  const [viewerConnectionStatus, setViewerConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected')
   const [streamId, setStreamId] = useState<string | null>(null)
   const [streamStats, setStreamStats] = useState({
     bitrate: 0,
@@ -36,7 +36,14 @@ function App() {
             </div>
             
             <div className="flex items-center space-x-4">
-              <ConnectionStatus status={connectionStatus} />
+              <div className="flex items-center space-x-3">
+                <span className="text-sm text-gray-300">Stream:</span>
+                <ConnectionStatus status={streamConnectionStatus} />
+              </div>
+              <div className="flex items-center space-x-3">
+                <span className="text-sm text-gray-300">Viewer:</span>
+                <ConnectionStatus status={viewerConnectionStatus} />
+              </div>
               <button className="p-2 text-gray-300 hover:text-white transition-colors">
                 <Settings className="w-5 h-5" />
               </button>
@@ -46,59 +53,50 @@ function App() {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Tab Navigation */}
-        <div className="flex space-x-1 bg-black/20 backdrop-blur-sm rounded-lg p-1 mb-8 max-w-md mx-auto">
-          <button
-            onClick={() => setActiveTab('publish')}
-            className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-md transition-all ${
-              activeTab === 'publish'
-                ? 'bg-emerald-600 text-white shadow-lg'
-                : 'text-gray-300 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <Video className="w-4 h-4" />
-            <span className="font-medium">Publish Stream</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('view')}
-            className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-md transition-all ${
-              activeTab === 'view'
-                ? 'bg-emerald-600 text-white shadow-lg'
-                : 'text-gray-300 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <Monitor className="w-4 h-4" />
-            <span className="font-medium">View Stream</span>
-          </button>
+        <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
+          {/* Publisher Section */}
+          <div className="xl:col-span-2">
+            <div className="bg-black/20 backdrop-blur-sm rounded-xl p-4 border border-white/10 mb-4">
+              <h3 className="text-lg font-semibold text-white mb-3 flex items-center">
+                <Video className="w-5 h-5 mr-2 text-emerald-400" />
+                Publish Stream
+              </h3>
+            </div>
+            <StreamControls
+              isStreaming={isStreaming}
+              setIsStreaming={setIsStreaming}
+              setConnectionStatus={setStreamConnectionStatus}
+              setStreamStats={setStreamStats}
+              setStreamId={setStreamId}
+            />
+          </div>
+          
+          {/* Viewer Section */}
+          <div className="xl:col-span-2">
+            <div className="bg-black/20 backdrop-blur-sm rounded-xl p-4 border border-white/10 mb-4">
+              <h3 className="text-lg font-semibold text-white mb-3 flex items-center">
+                <Monitor className="w-5 h-5 mr-2 text-emerald-400" />
+                View Stream
+              </h3>
+            </div>
+            <ViewerControls
+              isViewing={isViewing}
+              setIsViewing={setIsViewing}
+              setConnectionStatus={setViewerConnectionStatus}
+              setStreamStats={setStreamStats}
+              streamId={streamId}
+            />
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Content */}
-          <div className="lg:col-span-2">
-            {activeTab === 'publish' ? (
-              <StreamControls
-                isStreaming={isStreaming}
-                setIsStreaming={setIsStreaming}
-                setConnectionStatus={setConnectionStatus}
-                setStreamStats={setStreamStats}
-                setStreamId={setStreamId}
-              />
-            ) : (
-              <ViewerControls
-                isViewing={isViewing}
-                setIsViewing={setIsViewing}
-                setConnectionStatus={setConnectionStatus}
-                setStreamStats={setStreamStats}
-                streamId={streamId}
-              />
-            )}
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-6">
+        {/* Stats and Info Section */}
+        <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-1">
             <StreamStats stats={{...streamStats, streamId}} />
-            
-            {/* Quick Actions */}
+          </div>
+          
+          {/* Quick Actions */}
+          <div className="lg:col-span-1">
             <div className="bg-black/20 backdrop-blur-sm rounded-xl p-6 border border-white/10">
               <h3 className="text-lg font-semibold text-white mb-4">Quick Actions</h3>
               <div className="space-y-3">
@@ -112,8 +110,10 @@ function App() {
                 </button>
               </div>
             </div>
+          </div>
 
-            {/* Protocol Info */}
+          {/* Protocol Info */}
+          <div className="lg:col-span-1">
             <div className="bg-black/20 backdrop-blur-sm rounded-xl p-6 border border-white/10">
               <h3 className="text-lg font-semibold text-white mb-4">Protocol Info</h3>
               <div className="space-y-3 text-sm">

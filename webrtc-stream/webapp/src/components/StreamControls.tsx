@@ -72,7 +72,43 @@ const StreamControls: React.FC<StreamControlsProps> = ({
       const offer = await pc.createOffer()
       await pc.setLocalDescription(offer)
 
-      // Send WHIP offer
+      // Wait for ICE candidates with a timeout
+      let iceCandidates: RTCIceCandidate[] = [];
+      
+      await new Promise<void>((resolve) => {
+        // Set a timeout to avoid waiting forever - 2 seconds max wait time
+        const timeoutId = setTimeout(() => {
+          console.log('ICE gathering timeout reached, continuing with available candidates');
+          resolve();
+        }, 2000);
+        
+        // Listen for ICE candidates
+        pc.addEventListener('icecandidate', (event) => {
+          if (event.candidate) {
+            iceCandidates.push(event.candidate);
+          } else {
+            // Null candidate means we've gathered all we can
+            console.log('ICE gathering complete, all candidates received');
+            clearTimeout(timeoutId);
+            resolve();
+          }
+        });
+      });
+      
+      console.log(`Gathered ${iceCandidates.length} ICE candidates, sending WHIP offer`);
+      
+      // Get the current SDP with all gathered candidates
+      const currentSdp = pc.localDescription?.sdp;
+      if (!currentSdp) {
+        throw new Error('No local description available');
+      }
+      
+      // Log SDP length to verify it contains candidates
+      console.log(`Original offer SDP length: ${offer.sdp.length}`);
+      console.log(`Updated SDP length with candidates: ${currentSdp.length}`);
+      // The updated SDP should be longer as it contains the ICE candidates
+      
+      // Send WHIP offer with all candidates included in the SDP
       const livepeerHeader = btoa(JSON.stringify(
                                         { 
                                           "request": JSON.stringify({"start_stream": true}),
@@ -88,10 +124,10 @@ const StreamControls: React.FC<StreamControlsProps> = ({
           'Content-Type': 'application/sdp',
           'Livepeer': livepeerHeader
         },
-        body: offer.sdp
+        body: currentSdp // Use the updated SDP with all gathered candidates
       })
 
-      if (response.ok) {
+      if (response.status == 201) {
         const answerSdp = await response.text()
         const streamId = response.headers.get('X-Stream-Id')
         

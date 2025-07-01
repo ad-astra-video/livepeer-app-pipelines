@@ -136,13 +136,13 @@ dist
 .pnp.*
 
 #voice cloning sample app exclusions
-voice-cloning/worker/
-voice-cloning/data/orchestrator/
-voice-cloning/data/checkpoints/
-voice-cloning/data/outputs/
+not-updated/voice-cloning/worker/
+not-updated/voice-cloning/data/orchestrator/
+not-updated/voice-cloning/data/checkpoints/
+not-updated/voice-cloning/data/outputs/
 
 #llm chat sample app exclusions
-llm/data/
+not-updated/llm/data/
 
 #gen video sample app exclusions
 gen-video/data/orchestrator*
@@ -156,3 +156,8 @@ image-gen/data/models/
 create-a-tall-tale/data/orchestrator/
 create-a-tall-tale/data/gateway/
 create-a-tall-tale/data/models/
+
+#create a tall tale sample app
+webrtc-stream/data/orchestrator/
+webrtc-stream/data/gateway/
+webrtc-stream/data/models/

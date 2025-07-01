@@ -24,8 +24,8 @@ formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(filename)s:%(line
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
-class ColorFlippedVideoTrack(MediaStreamTrack):
-    """Video track that flips colors (BGR to RGB)"""
+class UpsideDownVideoTrack(MediaStreamTrack):
+    """Video track that flips video upside down"""
     
     def __init__(self, source_track):
         super().__init__()
@@ -36,7 +36,7 @@ class ColorFlippedVideoTrack(MediaStreamTrack):
     async def recv(self):
         if not self._started:
             self._started = True
-            logger.info("ColorFlippedVideoTrack started receiving frames")
+            logger.info("UpsideDownVideoTrack started receiving frames")
             
         try:
             frame = await self.source_track.recv()
@@ -44,11 +44,11 @@ class ColorFlippedVideoTrack(MediaStreamTrack):
             # Convert frame to numpy array
             img = frame.to_ndarray(format="bgr24")
             
-            # Flip colors (BGR to RGB)
-            img_flipped = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            # Flip image upside down (vertical flip)
+            img_flipped = cv2.flip(img, 0)  # 0 means flip around x-axis (upside down)
             
             # Convert back to VideoFrame
-            new_frame = av.VideoFrame.from_ndarray(img_flipped, format="rgb24")
+            new_frame = av.VideoFrame.from_ndarray(img_flipped, format="bgr24")
             new_frame.pts = frame.pts
             new_frame.time_base = frame.time_base
             
@@ -127,7 +127,17 @@ class WebRTCServer:
         self.transformed_video_track = None
         self.transformed_audio_track = None
         self.processing_active = False
+        self.track_event = asyncio.Event()  # Event to signal when tracks are ready
     
+    async def wait_for_ice(self, pc, timeout=10):
+        async def ice_complete():
+            while pc.iceGatheringState != "complete":
+                await asyncio.sleep(0.1)
+        try:
+            await asyncio.wait_for(ice_complete(), timeout)
+        except asyncio.TimeoutError:
+            logger.warning("ICE gathering timed out")
+            
     async def start_processing(self, caller_ip: str, stream_id: str):
         """Start the WebRTC processing pipeline"""
         try:
@@ -150,12 +160,35 @@ class WebRTCServer:
             self.processing_active = True
             logger.info("WebRTC processing pipeline established successfully")
             
+            # Start frame forwarding task
+            asyncio.create_task(self.forward_frames())
+            
             return {"status": "started", "caller_ip": self.caller_ip}
         
         except Exception as e:
             logger.error(f"Error in start processing: {e}")
             await self.cleanup()
             raise HTTPException(status_code=500, detail=str(e))
+    
+    async def forward_frames(self):
+        """Continuously forward frames from source to transformed tracks"""
+        logger.info("Starting frame forwarding task")
+        try:
+            while self.processing_active:
+                # The transformed tracks will automatically receive frames when they're available
+                # because they're connected to the source tracks via their recv() methods
+                await asyncio.sleep(0.1)  # Small delay to prevent busy waiting
+                
+                # Check if connections are still active
+                if (self.whep_pc and self.whep_pc.connectionState != "connected") or \
+                   (self.whip_pc and self.whip_pc.connectionState != "connected"):
+                    logger.warning("One or more connections lost, stopping forwarding")
+                    break
+                    
+        except Exception as e:
+            logger.error(f"Error in frame forwarding: {e}")
+        finally:
+            logger.info("Frame forwarding task ended")
     
     async def init_whep_connection(self, stream_id: str):
         """Initialize WHEP connection to receive source frames"""
@@ -185,20 +218,31 @@ class WebRTCServer:
             elif track.kind == "audio":
                 self.audio_track = track
                 logger.info("Audio track received and stored")
+            
+            # Signal that we have tracks if we have both
+            if self.video_track and self.audio_track:
+                self.track_event.set()
         
         # Connection state handlers
         @self.whep_pc.on("connectionstatechange")
         def on_whep_connectionstatechange():
-            logger.info(f"WHEP connection state: {self.whep_pc.connectionState}")
-            
+            state = self.whep_pc.connectionState
+            logger.info(f"WHEP connection state: {state}")
+            if state == "failed" or state == "disconnected" or state == "closed":
+                self.processing_active = False
+        
         @self.whep_pc.on("iceconnectionstatechange")
         def on_whep_iceconnectionstatechange():
-            logger.info(f"WHEP ICE connection state: {self.whep_pc.iceConnectionState}")
+            state = self.whep_pc.iceConnectionState
+            logger.info(f"WHEP ICE connection state: {state}")
+            if state == "failed" or state == "disconnected" or state == "closed":
+                self.processing_active = False
         
         # Create offer for WHEP
         offer = await self.whep_pc.createOffer()
         await self.whep_pc.setLocalDescription(offer)
         logger.info("WHEP offer created and set as local description")
+        await self.wait_for_ice(self.whep_pc)
         
         # Send offer to WHEP endpoint
         whep_url = f"https://{ORCH_URL}/process/worker/whep"
@@ -229,18 +273,15 @@ class WebRTCServer:
     async def wait_for_tracks(self):
         """Wait for both audio and video tracks to be received"""
         logger.info("Waiting for media tracks...")
-        max_wait = 30  # 30 seconds timeout
-        wait_count = 0
         
-        while (not self.video_track or not self.audio_track) and wait_count < max_wait * 10:
-            await asyncio.sleep(0.1)
-            wait_count += 1
-            
-            if wait_count % 50 == 0:  # Log every 5 seconds
-                logger.info(f"Still waiting for tracks... Video: {self.video_track is not None}, Audio: {self.audio_track is not None}")
+        # Wait for either tracks to be received or timeout
+        try:
+            await asyncio.wait_for(self.track_event.wait(), timeout=30)
+        except asyncio.TimeoutError:
+            raise Exception(f"Timeout waiting for media tracks. Video: {self.video_track is not None}, Audio: {self.audio_track is not None}")
         
         if not self.video_track or not self.audio_track:
-            raise Exception(f"Timeout waiting for media tracks. Video: {self.video_track is not None}, Audio: {self.audio_track is not None}")
+            raise Exception(f"Didn't receive both tracks. Video: {self.video_track is not None}, Audio: {self.audio_track is not None}")
         
         logger.info("All media tracks received successfully")
     
@@ -249,8 +290,8 @@ class WebRTCServer:
         logger.info("Creating transformed tracks...")
         
         if self.video_track:
-            self.transformed_video_track = ColorFlippedVideoTrack(self.video_track)
-            logger.info("Color-flipped video track created")
+            self.transformed_video_track = UpsideDownVideoTrack(self.video_track)
+            logger.info("Upside-down video track created")
         
         if self.audio_track:
             self.transformed_audio_track = PitchShiftedAudioTrack(self.audio_track)
@@ -264,11 +305,17 @@ class WebRTCServer:
         # Connection state handlers
         @self.whip_pc.on("connectionstatechange")
         def on_whip_connectionstatechange():
-            logger.info(f"WHIP connection state: {self.whip_pc.connectionState}")
+            state = self.whip_pc.connectionState
+            logger.info(f"WHIP connection state: {state}")
+            if state == "failed" or state == "disconnected" or state == "closed":
+                self.processing_active = False
             
         @self.whip_pc.on("iceconnectionstatechange")
         def on_whip_iceconnectionstatechange():
-            logger.info(f"WHIP ICE connection state: {self.whip_pc.iceConnectionState}")
+            state = self.whip_pc.iceConnectionState
+            logger.info(f"WHIP ICE connection state: {state}")
+            if state == "failed" or state == "disconnected" or state == "closed":
+                self.processing_active = False
         
         # Add transformed tracks
         if self.transformed_video_track:
@@ -283,6 +330,7 @@ class WebRTCServer:
         offer = await self.whip_pc.createOffer()
         await self.whip_pc.setLocalDescription(offer)
         logger.info("WHIP offer created and set as local description")
+        await self.wait_for_ice(self.whip_pc)
         
         # Send offer to WHIP endpoint
         whip_url = f"https://{ORCH_URL}/process/worker/whip"
@@ -314,6 +362,7 @@ class WebRTCServer:
         """Clean up all connections and resources"""
         logger.info("Cleaning up WebRTC connections...")
         self.processing_active = False
+        self.track_event.clear()
         
         try:
             if self.whep_pc:
