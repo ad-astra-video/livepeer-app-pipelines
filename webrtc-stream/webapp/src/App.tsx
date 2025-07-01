@@ -15,7 +15,8 @@ function App() {
     bitrate: 0,
     fps: 0,
     resolution: '',
-    latency: 0
+    latency: 0,
+    streamId: null
   })
 
   return (
@@ -95,7 +96,7 @@ function App() {
 
           {/* Sidebar */}
           <div className="space-y-6">
-            <StreamStats stats={streamStats} />
+            <StreamStats stats={{...streamStats, streamId}} />
             
             {/* Quick Actions */}
             <div className="bg-black/20 backdrop-blur-sm rounded-xl p-6 border border-white/10">

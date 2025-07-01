@@ -7,6 +7,7 @@ interface StreamStatsProps {
     fps: number
     resolution: string
     latency: number
+    streamId?: string | null
   }
 }
 
@@ -57,6 +58,18 @@ const StreamStats: React.FC<StreamStatsProps> = ({ stats }) => {
       </div>
       
       {/* Quality Indicator */}
+      {/* Stream ID display */}
+      {stats.streamId && (
+        <div className="mt-4 pt-4 border-t border-white/10">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-300">Stream ID</span>
+            <span className="text-sm font-medium text-white truncate max-w-[150px]" title={stats.streamId}>
+              {stats.streamId}
+            </span>
+          </div>
+        </div>
+      )}
+      
       <div className="mt-6 pt-4 border-t border-white/10">
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm text-gray-300">Stream Quality</span>

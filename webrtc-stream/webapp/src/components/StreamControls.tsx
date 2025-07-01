@@ -109,7 +109,8 @@ const StreamControls: React.FC<StreamControlsProps> = ({
           bitrate: 2500,
           fps: 30,
           resolution: '1920x1080',
-          latency: 150
+          latency: 150,
+          streamId
         })
       } else {
         throw new Error('Failed to send WHIP offer')
@@ -146,7 +147,8 @@ const StreamControls: React.FC<StreamControlsProps> = ({
       bitrate: 0,
       fps: 0,
       resolution: '',
-      latency: 0
+      latency: 0,
+      streamId: null
     })
   }
 

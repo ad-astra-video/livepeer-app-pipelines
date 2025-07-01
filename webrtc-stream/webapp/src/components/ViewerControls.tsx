@@ -98,7 +98,8 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
           bitrate: 2500,
           fps: 30,
           resolution: '1920x1080',
-          latency: 120
+          latency: 120,
+          streamId
         })
       } else {
         throw new Error('Failed to send WHEP offer')
@@ -126,7 +127,8 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
       bitrate: 0,
       fps: 0,
       resolution: '',
-      latency: 0
+      latency: 0,
+      streamId: null
     })
   }
 
