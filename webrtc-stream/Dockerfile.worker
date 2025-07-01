@@ -1,0 +1,19 @@
+FROM python:3.11-slim
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+WORKDIR /app
+COPY . ./server/.
+
+RUN pip install --no-cache-dir -r server/requirements.txt
+
+RUN mkdir /models
+
+ENV HUGGINGFACE_HUB_CACHE=/models
+ENV DIFFUSERS_CACHE=/models
+ENV MODEL_DIR=/models
+
+ARG SERVER_PORT=9876
+ENV SERVER_PORT=${SERVER_PORT}
+
+CMD ["uvicorn", "server.server:app", "--host", "", "--port", "9876"]
