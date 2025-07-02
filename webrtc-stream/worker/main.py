@@ -381,13 +381,6 @@ class WebRTCServer:
         self.track_event.clear()
         
         try:
-            if self.pipeline:
-                await self.pipeline.cleanup()
-                logger.info("ComfyStream pipeline cleaned up")
-        except Exception as e:
-            logger.error(f"Error cleaning up pipeline: {e}")
-        
-        try:
             if self.whep_pc:
                 await self.whep_pc.close()
                 logger.info("WHEP connection closed")
@@ -400,6 +393,13 @@ class WebRTCServer:
                 logger.info("WHIP connection closed")
         except Exception as e:
             logger.error(f"Error closing WHIP connection: {e}")
+        
+        try:
+            if self.pipeline:
+                await self.pipeline.cleanup()
+                logger.info("ComfyStream pipeline cleaned up")
+        except Exception as e:
+            logger.error(f"Error cleaning up pipeline: {e}")
         
         # Reset state
         self.whep_pc = None
