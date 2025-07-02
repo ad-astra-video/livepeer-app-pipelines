@@ -127,7 +127,7 @@ class WebRTCServer:
             import json
             # default_prompt_dict = json.loads(DEFAULT_PROMPT)
             # default_prompts = [convert_prompt(DEFAULT_PROMPT)]
-            await self.pipeline.set_prompts(json.loads(DEFAULT_PROMPT))
+            await self.pipeline.set_prompts(json.loads(DEFAULT_SD_PROMPT))
             
             logger.info("ComfyStream pipeline initialized successfully")
             
