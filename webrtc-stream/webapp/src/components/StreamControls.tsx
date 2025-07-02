@@ -21,6 +21,7 @@ const StreamControls: React.FC<StreamControlsProps> = ({
   const [audioEnabled, setAudioEnabled] = useState(true)
   const [localStream, setLocalStream] = useState<MediaStream | null>(null)
   const [peerConnection, setPeerConnection] = useState<RTCPeerConnection | null>(null)
+  const [currentStreamId, setCurrentStreamId] = useState<string | null>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
 
   useEffect(() => {
@@ -139,6 +140,7 @@ const StreamControls: React.FC<StreamControlsProps> = ({
         setIsStreaming(true)
         setConnectionStatus('connected')
         setStreamId(streamId)
+        setCurrentStreamId(streamId)
         
         // Update stats
         setStreamStats({
@@ -161,7 +163,42 @@ const StreamControls: React.FC<StreamControlsProps> = ({
     }
   }
 
-  const stopStream = () => {
+  const stopStream = async () => {
+    try {
+      // Send stop request to server if we have a stream ID
+      if (currentStreamId) {
+        console.log(`Stopping stream with ID: ${currentStreamId}`);
+        
+        const stopUrl = whipUrl.replace('/stream/start', '/stream/stop');
+        const requestData = {
+          "request": JSON.stringify({"stop_stream": true, "stream_id": currentStreamId}),
+          "parameters": JSON.stringify({}),
+          "capability": 'webrtc-stream',
+          "timeout_seconds": 30
+        };
+        
+        const livepeerHeader = btoa(JSON.stringify(requestData));
+        
+        const response = await fetch(stopUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Livepeer': livepeerHeader
+          },
+          body: JSON.stringify({ stream_id: currentStreamId })
+        });
+        
+        if (response.ok) {
+          console.log('Stream stop request sent successfully');
+        } else {
+          console.warn('Failed to send stream stop request:', response.status);
+        }
+      }
+    } catch (error) {
+      console.error('Error sending stop request:', error);
+    }
+    
+    // Clean up local resources regardless of stop request success
     if (localStream) {
       localStream.getTracks().forEach(track => track.stop())
       setLocalStream(null)
@@ -179,6 +216,7 @@ const StreamControls: React.FC<StreamControlsProps> = ({
     setIsStreaming(false)
     setConnectionStatus('disconnected')
     setStreamId(null)
+    setCurrentStreamId(null)
     setStreamStats({
       bitrate: 0,
       fps: 0,

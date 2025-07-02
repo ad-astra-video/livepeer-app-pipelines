@@ -30,7 +30,7 @@ services:
       - "CAPABILITY_URL=http://worker:9876"
       - "CAPABILITY_PRICE_PER_UNIT=0"
       - "CAPABILITY_PRICE_SCALING=1"
-      - "CAPABILITY_CAPACITY=2"
+      - "CAPABILITY_CAPACITY=10"
   gateway:
     image: adastravideo/go-livepeer:byoc-whip-whep
     container_name: byoc-webrtc-stream-gateway
