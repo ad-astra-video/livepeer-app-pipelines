@@ -6,7 +6,12 @@ import sys
 import os
 # import av
 # import numpy as np
-# import torch
+import torch
+# Initialize CUDA before any other imports to prevent core dump.
+if torch.cuda.is_available():
+    torch.cuda.init()
+
+
 from fastapi import FastAPI, Request, HTTPException, Body
 from fastapi.responses import PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -74,12 +79,12 @@ class ComfyStreamAudioTrack(MediaStreamTrack):
             frame = await self.source_track.recv()
             
             # Put frame into pipeline for processing
-            await self.pipeline.put_audio_frame(frame)
+#            await self.pipeline.put_audio_frame(frame)
             
             # Get processed frame from pipeline
-            processed_frame = await self.pipeline.get_processed_audio_frame()
+ #           processed_frame = await self.pipeline.get_processed_audio_frame()
             
-            return processed_frame
+            return frame
             
         except Exception as e:
             logger.error(f"Error processing audio frame: {e}")
@@ -103,22 +108,17 @@ class WebRTCServer:
     async def init_pipeline(self):
         """Initialize the ComfyStream pipeline"""
         
-        kwargs = {
-            "cwd": "/workspace/ComfyUI",
-            "disable_cuda_malloc": True,
-            "gpu_only": True,
-            "preview_method": "none"
-        }
-        
         try:
             logger.info("Initializing ComfyStream pipeline...")
             self.pipeline = Pipeline(
                 width=512,
                 height=512,
-                comfyui_inference_log_level=logging.INFO,
-                **kwargs
+                comfyui_inference_log_level="DEBUG",
+                cwd="/workspace/ComfyUI",
+                disable_cuda_malloc=True, 
+                gpu_only=True,
+                preview_method="none"
             )
-            
             
             logging.info(f"Pipeline initialized with width: {self.pipeline.width}, height: {self.pipeline.height}")
             
