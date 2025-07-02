@@ -13,7 +13,8 @@ services:
       dockerfile: Dockerfile.worker
     container_name: byoc-webrtc-stream-worker
     volumes:
-      - ./data/models:/models
+      - ~/models/ComfyUI--models:/workspace/ComfyUI/models
+      - ~/models/ComfyUI--output:/workspace/ComfyUI/output
     runtime: nvidia
     ports:
       - 9876:9876
