@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import httpx
 from aiortc import RTCPeerConnection, RTCSessionDescription, MediaStreamTrack
 from aiortc.contrib.media import MediaPlayer
-from comfystream.utils import DEFAULT_PROMPT, convert_prompt
+from comfystream.utils import DEFAULT_PROMPT, DEFAULT_SD_PROMPT
 from comfystream.pipeline import Pipeline
 
 ORCH_URL = os.getenv("ORCHESTRATOR_URL", "orchestrator:9995")
@@ -122,14 +122,14 @@ class WebRTCServer:
             
             logging.info(f"Pipeline initialized with width: {self.pipeline.width}, height: {self.pipeline.height}")
             
-            logging.info(f"Setting Default prompts: {DEFAULT_PROMPT}")
+            logging.info(f"Setting Default prompts: {DEFAULT_SD_PROMPT}")
             
             # Set default prompts for the pipeline
             # Parse the JSON string to get the dictionary
             import json
             # default_prompt_dict = json.loads(DEFAULT_PROMPT)
             # default_prompts = [convert_prompt(DEFAULT_PROMPT)]
-            await self.pipeline.set_prompts(json.loads(DEFAULT_PROMPT))
+            await self.pipeline.set_prompts(json.loads(DEFAULT_SD_PROMPT))
             
             logger.info("ComfyStream pipeline initialized successfully")
             
@@ -440,8 +440,8 @@ async def startup_event():
         logger.info("Warming up video pipeline...")
         await webrtc_server.pipeline.warm_video()
         
-        logger.info("Warming up audio pipeline...")
-        await webrtc_server.pipeline.warm_audio()
+        #logger.info("Warming up audio pipeline...")
+        # await webrtc_server.pipeline.warm_audio()
         
         logger.info("ComfyStream pipeline warmed up successfully on startup")
         
