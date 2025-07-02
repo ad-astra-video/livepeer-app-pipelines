@@ -1,24 +1,4 @@
-FROM python:3.11-slim
-
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    pkg-config \
-    libavformat-dev \
-    libavcodec-dev \
-    libavdevice-dev \
-    libavutil-dev \
-    libswscale-dev \
-    libswresample-dev \
-    libavfilter-dev \
-    libopus-dev \
-    libvpx-dev \
-    libsrtp2-dev \
-    libssl-dev \
-    libffi-dev \
-    libasound2-dev \
-    portaudio19-dev \
-    && rm -rf /var/lib/apt/lists/*
+FROM livepeer/comfystream:latest
 
 # Set working directory
 WORKDIR /app
@@ -26,14 +6,27 @@ WORKDIR /app
 # Copy requirements first for better caching
 COPY requirements.txt .
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# RUN /workspace/miniconda3/bin/conda run -n comfystream --no-capture-output pip install uvicorn
+
+# Activate the conda environment and install additional dependencies
+RUN /workspace/miniconda3/bin/conda run -n comfystream --no-capture-output pip install --no-cache-dir -r requirements.txt
+
+# Refresh comfystream for testing
+RUN /workspace/miniconda3/bin/conda run -n comfystream --no-capture-output --cwd /workspace/comfystream pip install -e .
+
 
 # Copy application code
 COPY . .
 
-# Create non-root user
-RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+# Create non-root user and group if they don't exist
+RUN groupadd -g 1000 appuser 2>/dev/null || true
+RUN useradd -m -u 1000 -g 1000 appuser 2>/dev/null || true
+RUN chown -R appuser:appuser /app
+
+#TODO: Experiencing issue with "SaveTensor" node not found. Might be permission issue, these operations are very slow, so not ideal
+#RUN chown -R appuser:appuser /workspace/ComfyUI
+#RUN chown -R appuser:appuser /workspace/comfystream
+
 USER appuser
 
 # Expose port
@@ -43,5 +36,10 @@ EXPOSE 9876
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:9876/health || exit 1
 
-# Run with uvicorn
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "9876", "--workers", "1"]
+# Run with uvicorn using the conda environment
+# CMD ["/workspace/miniconda3/bin/conda", "run", "-n", "comfystream", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "9876", "--workers", "1"]
+
+# CMD ["/workspace/miniconda3/bin/conda", "run", "-n", "comfystream", "--no-capture-output", "--cwd", "/workspace/comfystream", "python", "server/", "--host", "0.0.0.0", "--port", "9876", "--workers", "1"]
+
+
+CMD ["/workspace/miniconda3/bin/conda", "run", "-n", "comfystream", "--no-capture-output", "--cwd", "/app", "python", "main.py", "--host", "0.0.0.0", "--port", "9876"]
