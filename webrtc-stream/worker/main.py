@@ -122,14 +122,12 @@ class WebRTCServer:
             
             logging.info(f"Pipeline initialized with width: {self.pipeline.width}, height: {self.pipeline.height}")
             
-            logging.info(f"Setting Default prompts: {DEFAULT_SD_PROMPT}")
-            
             # Set default prompts for the pipeline
             # Parse the JSON string to get the dictionary
             import json
             # default_prompt_dict = json.loads(DEFAULT_PROMPT)
             # default_prompts = [convert_prompt(DEFAULT_PROMPT)]
-            await self.pipeline.set_prompts(json.loads(DEFAULT_SD_PROMPT))
+            await self.pipeline.set_prompts(json.loads(DEFAULT_PROMPT))
             
             logger.info("ComfyStream pipeline initialized successfully")
             
