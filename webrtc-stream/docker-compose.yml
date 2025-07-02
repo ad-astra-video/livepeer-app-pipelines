@@ -26,11 +26,11 @@ services:
       - "ORCH_URL=https://orchestrator:9995"
       - "ORCH_SECRET=orch-secret"
       - "CAPABILITY_NAME=webrtc-stream"
-      - "CAPABILITY_DESCRIPTION=generate text with llm"
+      - "CAPABILITY_DESCRIPTION=create a webrtc stream with WHIP/WHEP"
       - "CAPABILITY_URL=http://worker:9876"
       - "CAPABILITY_PRICE_PER_UNIT=0"
       - "CAPABILITY_PRICE_SCALING=1"
-      - "CAPABILITY_CAPACITY=10"
+      - "CAPABILITY_CAPACITY=1"
   gateway:
     image: adastravideo/go-livepeer:byoc-whip-whep
     container_name: byoc-webrtc-stream-gateway
