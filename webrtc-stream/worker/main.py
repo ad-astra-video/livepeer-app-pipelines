@@ -132,6 +132,7 @@ class WebRTCServer:
         self.transformed_audio_track = None
         self.processing_active = False
         self.track_event = asyncio.Event()  # Event to signal when tracks are ready
+        self.frame_forwarding_task = None  # Task for frame forwarding
     
     async def wait_for_ice(self, pc, timeout=10):
         async def ice_complete():
@@ -165,7 +166,7 @@ class WebRTCServer:
             logger.info("WebRTC processing pipeline established successfully")
             
             # Start frame forwarding task
-            asyncio.create_task(self.forward_frames())
+            self.frame_forwarding_task = asyncio.create_task(self.forward_frames())
             
             return {"status": "started", "caller_ip": self.caller_ip}
         
@@ -189,10 +190,13 @@ class WebRTCServer:
                     logger.warning("One or more connections lost, stopping forwarding")
                     break
                     
+        except asyncio.CancelledError:
+            logger.info("Frame forwarding task cancelled")
         except Exception as e:
             logger.error(f"Error in frame forwarding: {e}")
         finally:
             logger.info("Frame forwarding task ended")
+            self.processing_active = False
     
     async def init_whep_connection(self, stream_id: str):
         """Initialize WHEP connection to receive source frames"""
@@ -233,14 +237,20 @@ class WebRTCServer:
             state = self.whep_pc.connectionState
             logger.info(f"WHEP connection state: {state}")
             if state == "failed" or state == "disconnected" or state == "closed":
+                logger.warning("WHEP connection lost, stopping processing")
                 self.processing_active = False
+                # Schedule cleanup
+                asyncio.create_task(self.cleanup())
         
         @self.whep_pc.on("iceconnectionstatechange")
         def on_whep_iceconnectionstatechange():
             state = self.whep_pc.iceConnectionState
             logger.info(f"WHEP ICE connection state: {state}")
             if state == "failed" or state == "disconnected" or state == "closed":
+                logger.warning("WHEP ICE connection lost, stopping processing")
                 self.processing_active = False
+                # Schedule cleanup
+                asyncio.create_task(self.cleanup())
         
         # Create offer for WHEP
         offer = await self.whep_pc.createOffer()
@@ -312,14 +322,20 @@ class WebRTCServer:
             state = self.whip_pc.connectionState
             logger.info(f"WHIP connection state: {state}")
             if state == "failed" or state == "disconnected" or state == "closed":
+                logger.warning("WHIP connection lost, stopping processing")
                 self.processing_active = False
+                # Schedule cleanup
+                asyncio.create_task(self.cleanup())
             
         @self.whip_pc.on("iceconnectionstatechange")
         def on_whip_iceconnectionstatechange():
             state = self.whip_pc.iceConnectionState
             logger.info(f"WHIP ICE connection state: {state}")
             if state == "failed" or state == "disconnected" or state == "closed":
+                logger.warning("WHIP ICE connection lost, stopping processing")
                 self.processing_active = False
+                # Schedule cleanup
+                asyncio.create_task(self.cleanup())
         
         # Add transformed tracks
         if self.transformed_video_track:
@@ -368,6 +384,28 @@ class WebRTCServer:
         self.processing_active = False
         self.track_event.clear()
         
+        # Cancel any running frame processing tasks
+        try:
+            # Cancel frame forwarding task if it exists
+            if self.frame_forwarding_task and not self.frame_forwarding_task.done():
+                self.frame_forwarding_task.cancel()
+                try:
+                    await self.frame_forwarding_task
+                except asyncio.CancelledError:
+                    pass
+                logger.info("Frame forwarding task cancelled")
+            
+            # Stop the transformed tracks if they exist
+            if self.transformed_video_track:
+                self.transformed_video_track._started = False
+                logger.info("Video track processing stopped")
+            
+            if self.transformed_audio_track:
+                self.transformed_audio_track._started = False
+                logger.info("Audio track processing stopped")
+        except Exception as e:
+            logger.error(f"Error stopping track processing: {e}")
+        
         try:
             if self.whep_pc:
                 await self.whep_pc.close()
@@ -382,6 +420,15 @@ class WebRTCServer:
         except Exception as e:
             logger.error(f"Error closing WHIP connection: {e}")
         
+        # Clear any pending frame processing
+        try:
+            # Force garbage collection to release any held frames
+            import gc
+            gc.collect()
+            logger.info("Memory cleanup completed")
+        except Exception as e:
+            logger.error(f"Error during memory cleanup: {e}")
+        
         # Reset state
         self.whep_pc = None
         self.whip_pc = None
@@ -390,6 +437,10 @@ class WebRTCServer:
         self.transformed_video_track = None
         self.transformed_audio_track = None
         self.caller_ip = None
+        self.stream_id = ""
+        self.frame_forwarding_task = None
+        
+        logger.info("WebRTC cleanup completed successfully")
     
     def get_status(self):
         """Get current processing status"""
@@ -478,8 +529,13 @@ async def root():
 @app.on_event("shutdown")
 async def shutdown_event():
     """Cleanup resources on shutdown"""
-    await webrtc_server.cleanup()
-    logger.info("Application shutdown complete")
+    logger.info("Application shutdown initiated, cleaning up resources...")
+    try:
+        await webrtc_server.cleanup()
+        logger.info("Application shutdown complete")
+    except Exception as e:
+        logger.error(f"Error during shutdown cleanup: {e}")
+        # Continue with shutdown even if cleanup fails
 
 if __name__ == "__main__":
     import uvicorn
