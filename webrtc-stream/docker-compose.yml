@@ -7,17 +7,31 @@ services:
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - ./webapp/dist:/var/www/html/app
+  # Generic webrtc worker
+  # worker:
+  #   build:
+  #     # context: ./worker/.
+  #     dockerfile: Dockerfile.worker
+  #   container_name: byoc-webrtc-stream-worker
+  #   volumes:
+  #     - ./data/models:/models
+  #   runtime: nvidia
+  #   ports:
+  #     - 9876:9876
+  # ComfyStream WebRTC worker
   worker:
     build:
       context: ./worker/.
-      dockerfile: Dockerfile.worker
+      dockerfile: Dockerfile.comfystream.worker
     container_name: byoc-webrtc-stream-worker
     volumes:
       - ~/models/ComfyUI--models:/workspace/ComfyUI/models
       - ~/models/ComfyUI--output:/workspace/ComfyUI/output
+      - ~/repos/comfystream:/workspace/comfystream
     runtime: nvidia
     ports:
       - 9876:9876
+
   register-worker:
     build:
       context: ./register/.

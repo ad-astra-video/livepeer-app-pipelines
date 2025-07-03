@@ -15,6 +15,4 @@ WORKDIR /app
 
 COPY register_worker.py /app
 
-COPY register_worker.py /app
-
 CMD ["python", "-u", "register_worker.py"]
