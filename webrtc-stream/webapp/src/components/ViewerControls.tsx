@@ -56,17 +56,23 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
     // Force rerender to update the UI with the new streamId
     if (streamId) {
       console.log(`Stream ID updated: ${streamId}`)
-      // Auto-populate the input if it's empty
-      if (!inputStreamId) {
-        setInputStreamId(streamId)
-      }
+      // Always update the input to the latest stream ID when it changes
+      setInputStreamId(streamId)
     }
-  }, [streamId, inputStreamId])
+  }, [streamId])
 
   const startViewing = async () => {
     if (!whepUrl) {
       alert('Please enter a WHEP URL')
       return
+    }
+
+    // Always override the input stream ID with the latest publisher stream ID when starting
+    let streamIdToUse = inputStreamId
+    if (streamId) {
+      console.log(`Overriding viewer stream ID input with latest publisher stream ID: ${streamId}`)
+      setInputStreamId(streamId)
+      streamIdToUse = streamId
     }
 
     try {
@@ -136,7 +142,7 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
 
       // Send WHEP offer with all candidates included in the SDP
       const requestData: any = { 
-        "request": JSON.stringify({"start_stream_output": true, "stream_id": inputStreamId || streamId || null}),
+        "request": JSON.stringify({"start_stream_output": true, "stream_id": streamIdToUse || null}),
         "parameters": JSON.stringify({}),
         "capability": 'webrtc-stream',
         "timeout_seconds": 30
