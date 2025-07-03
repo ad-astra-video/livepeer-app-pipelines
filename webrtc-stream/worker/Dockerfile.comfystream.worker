@@ -1,0 +1,29 @@
+FROM livepeer/comfystream:pr-282
+
+# Set working directory
+WORKDIR /app
+
+# Copy requirements first for better caching
+COPY requirements.txt .
+
+# Activate the conda environment and install additional dependencies
+RUN /workspace/miniconda3/bin/conda run -n comfystream --no-capture-output pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY . .
+
+# Create non-root user and group if they don't exist
+RUN groupadd -g 1000 appuser 2>/dev/null || true
+RUN useradd -m -u 1000 -g 1000 appuser 2>/dev/null || true
+RUN chown -R appuser:appuser /app
+
+USER appuser
+
+# Expose port
+EXPOSE 9876
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:9876/health || exit 1
+
+CMD ["/workspace/miniconda3/bin/conda", "run", "-n", "comfystream", "--no-capture-output", "--cwd", "/workspace/comfystream/", "python", "/workspace/comfystream/server/main.py", "--host", "0.0.0.0", "--port", "9876"]
