@@ -89,49 +89,9 @@ function App() {
           </div>
         </div>
 
-        {/* Stats and Info Section */}
-        <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-1">
-            <StreamStats stats={{...streamStats, streamId}} />
-          </div>
-          
-          {/* Quick Actions */}
-          <div className="lg:col-span-1">
-            <div className="bg-black/20 backdrop-blur-sm rounded-xl p-6 border border-white/10">
-              <h3 className="text-lg font-semibold text-white mb-4">Quick Actions</h3>
-              <div className="space-y-3">
-                <button className="w-full flex items-center space-x-3 p-3 bg-white/5 hover:bg-emerald-500/10 hover:border-emerald-500/20 border border-transparent rounded-lg transition-colors text-left">
-                  <Settings className="w-5 h-5 text-gray-300" />
-                  <span className="text-gray-300">Stream Settings</span>
-                </button>
-                <button className="w-full flex items-center space-x-3 p-3 bg-white/5 hover:bg-emerald-500/10 hover:border-emerald-500/20 border border-transparent rounded-lg transition-colors text-left">
-                  <Monitor className="w-5 h-5 text-gray-300" />
-                  <span className="text-gray-300">Display Settings</span>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Protocol Info */}
-          <div className="lg:col-span-1">
-            <div className="bg-black/20 backdrop-blur-sm rounded-xl p-6 border border-white/10">
-              <h3 className="text-lg font-semibold text-white mb-4">Protocol Info</h3>
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-300">WHIP Version:</span>
-                  <span className="text-white">1.0</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-300">WHEP Version:</span>
-                  <span className="text-white">1.0</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-300">WebRTC:</span>
-                  <span className="text-emerald-400">Enabled</span>
-                </div>
-              </div>
-            </div>
-          </div>
+        {/* Stream Statistics Section */}
+        <div className="mt-8">
+          <StreamStats stats={{...streamStats, streamId}} />
         </div>
       </div>
     </div>

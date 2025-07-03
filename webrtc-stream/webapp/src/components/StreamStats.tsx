@@ -1,5 +1,5 @@
 import React from 'react'
-import { Activity, Zap, Monitor, Clock } from 'lucide-react'
+import { Activity, Zap, Monitor, Clock, Timer } from 'lucide-react'
 
 interface StreamStatsProps {
   stats: {
@@ -7,6 +7,7 @@ interface StreamStatsProps {
     fps: number
     resolution: string
     latency: number
+    startupTime?: number
     streamId?: string | null
   }
 }
@@ -14,78 +15,73 @@ interface StreamStatsProps {
 const StreamStats: React.FC<StreamStatsProps> = ({ stats }) => {
   return (
     <div className="bg-black/20 backdrop-blur-sm rounded-xl p-6 border border-white/10">
-      <h3 className="text-lg font-semibold text-white mb-4">Stream Statistics</h3>
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
+      <h3 className="text-lg font-semibold text-white mb-6">Stream Statistics</h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
+        <div className="flex items-center justify-between lg:justify-start lg:flex-col lg:items-start">
+          <div className="flex items-center space-x-2 lg:mb-2">
             <Zap className="w-4 h-4 text-emerald-400" />
             <span className="text-gray-300 text-sm">Bitrate</span>
           </div>
-          <span className="text-white font-medium">
+          <span className="text-white font-medium text-lg">
             {stats.bitrate > 0 ? `${stats.bitrate} kbps` : '--'}
           </span>
         </div>
         
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
+        <div className="flex items-center justify-between lg:justify-start lg:flex-col lg:items-start">
+          <div className="flex items-center space-x-2 lg:mb-2">
             <Activity className="w-4 h-4 text-emerald-400" />
             <span className="text-gray-300 text-sm">Frame Rate</span>
           </div>
-          <span className="text-white font-medium">
+          <span className="text-white font-medium text-lg">
             {stats.fps > 0 ? `${stats.fps} fps` : '--'}
           </span>
         </div>
         
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
+        <div className="flex items-center justify-between lg:justify-start lg:flex-col lg:items-start">
+          <div className="flex items-center space-x-2 lg:mb-2">
             <Monitor className="w-4 h-4 text-emerald-400" />
             <span className="text-gray-300 text-sm">Resolution</span>
           </div>
-          <span className="text-white font-medium">
+          <span className="text-white font-medium text-lg">
             {stats.resolution || '--'}
           </span>
         </div>
         
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
+        <div className="flex items-center justify-between lg:justify-start lg:flex-col lg:items-start">
+          <div className="flex items-center space-x-2 lg:mb-2">
             <Clock className="w-4 h-4 text-emerald-400" />
             <span className="text-gray-300 text-sm">Latency</span>
           </div>
-          <span className="text-white font-medium">
+          <span className="text-white font-medium text-lg">
             {stats.latency > 0 ? `${stats.latency}ms` : '--'}
           </span>
         </div>
+        
+        {/* Startup Time - only show for viewer stats */}
+        {stats.startupTime !== undefined && (
+          <div className="flex items-center justify-between lg:justify-start lg:flex-col lg:items-start">
+            <div className="flex items-center space-x-2 lg:mb-2">
+              <Timer className="w-4 h-4 text-emerald-400" />
+              <span className="text-gray-300 text-sm">Startup Time</span>
+            </div>
+            <span className="text-white font-medium text-lg">
+              {stats.startupTime > 0 ? `${stats.startupTime}ms` : '--'}
+            </span>
+          </div>
+        )}
       </div>
       
-      {/* Quality Indicator */}
       {/* Stream ID display */}
       {stats.streamId && (
-        <div className="mt-4 pt-4 border-t border-white/10">
+        <div className="mt-6 pt-4 border-t border-white/10">
           <div className="flex items-center justify-between">
             <span className="text-sm text-gray-300">Stream ID</span>
-            <span className="text-sm font-medium text-white truncate max-w-[150px]" title={stats.streamId}>
+            <span className="text-sm font-medium text-white truncate max-w-[300px]" title={stats.streamId}>
               {stats.streamId}
             </span>
           </div>
         </div>
       )}
-      
-      <div className="mt-6 pt-4 border-t border-white/10">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm text-gray-300">Stream Quality</span>
-          <span className="text-sm font-medium text-emerald-400">
-            {stats.bitrate > 2000 ? 'Excellent' : stats.bitrate > 1000 ? 'Good' : stats.bitrate > 0 ? 'Fair' : 'No Signal'}
-          </span>
-        </div>
-        <div className="w-full bg-gray-700 rounded-full h-2">
-          <div 
-            className="bg-gradient-to-r from-emerald-500 to-green-400 h-2 rounded-full transition-all duration-300"
-            style={{ 
-              width: `${Math.min((stats.bitrate / 3000) * 100, 100)}%` 
-            }}
-          ></div>
-        </div>
-      </div>
     </div>
   )
 }

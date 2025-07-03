@@ -17,11 +17,34 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
   streamId
 }) => {
   const [whepUrl, setWhepUrl] = useState('http://localhost:8088/gateway/process/request/stream/play')
+  const [inputStreamId, setInputStreamId] = useState('')
+  const [latestOffer, setLatestOffer] = useState<string>('')
+  const [latestAnswer, setLatestAnswer] = useState<string>('')
   const [peerConnection, setPeerConnection] = useState<RTCPeerConnection | null>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
+  const [currentStats, setCurrentStats] = useState({
+    bitrate: 0,
+    fps: 0,
+    resolution: '',
+    latency: 0,
+    startupTime: 0
+  })
+  const statsIntervalRef = useRef<number | null>(null)
+  const answerReceivedTimeRef = useRef<number | null>(null)
+  const firstFrameReceivedRef = useRef<boolean>(false)
+  const lastStatsRef = useRef({
+    time: 0,
+    bytes: 0,
+    frameTime: 0,
+    frameCount: 0
+  })
 
   useEffect(() => {
     return () => {
+      if (statsIntervalRef.current) {
+        clearInterval(statsIntervalRef.current)
+        statsIntervalRef.current = null
+      }
       if (peerConnection) {
         peerConnection.close()
       }
@@ -33,8 +56,12 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
     // Force rerender to update the UI with the new streamId
     if (streamId) {
       console.log(`Stream ID updated: ${streamId}`)
+      // Auto-populate the input if it's empty
+      if (!inputStreamId) {
+        setInputStreamId(streamId)
+      }
     }
-  }, [streamId])
+  }, [streamId, inputStreamId])
 
   const startViewing = async () => {
     if (!whepUrl) {
@@ -67,6 +94,9 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
         offerToReceiveVideo: true
       })
       await pc.setLocalDescription(offer)
+      
+      // Store the offer SDP
+      setLatestOffer(offer.sdp)
 
       // Wait for ICE candidates with a timeout
       let iceCandidates: RTCIceCandidate[] = [];
@@ -106,7 +136,7 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
 
       // Send WHEP offer with all candidates included in the SDP
       const requestData: any = { 
-        "request": JSON.stringify({"start_stream_output": true, "stream_id": streamId || null}),
+        "request": JSON.stringify({"start_stream_output": true, "stream_id": inputStreamId || streamId || null}),
         "parameters": JSON.stringify({}),
         "capability": 'webrtc-stream',
         "timeout_seconds": 30
@@ -125,6 +155,14 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
 
       if (response.ok) {
         const answerSdp = await response.text()
+        
+        // Record when answer is received
+        answerReceivedTimeRef.current = Date.now()
+        firstFrameReceivedRef.current = false
+        
+        // Store the answer SDP
+        setLatestAnswer(answerSdp)
+        
         await pc.setRemoteDescription(new RTCSessionDescription({
           type: 'answer',
           sdp: answerSdp
@@ -133,14 +171,13 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
         setIsViewing(true)
         setConnectionStatus('connected')
         
-        // Update stats
-        setStreamStats({
-          bitrate: 2500,
-          fps: 30,
-          resolution: '1920x1080',
-          latency: 120,
-          streamId
-        })
+        // Start collecting real-time stats
+        statsIntervalRef.current = window.setInterval(() => {
+          collectViewerStats(pc)
+        }, 1000) // Update stats every second
+        
+        // Initial stats update
+        setTimeout(() => collectViewerStats(pc), 1000)
       } else {
         throw new Error('Failed to send WHEP offer')
       }
@@ -152,6 +189,22 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
   }
 
   const stopViewing = () => {
+    // Clear stats collection interval
+    if (statsIntervalRef.current) {
+      clearInterval(statsIntervalRef.current)
+      statsIntervalRef.current = null
+    }
+    
+    // Reset stats tracking
+    lastStatsRef.current = {
+      time: 0,
+      bytes: 0,
+      frameTime: 0,
+      frameCount: 0
+    }
+    answerReceivedTimeRef.current = null
+    firstFrameReceivedRef.current = false
+    
     if (peerConnection) {
       peerConnection.close()
       setPeerConnection(null)
@@ -163,6 +216,15 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
 
     setIsViewing(false)
     setConnectionStatus('disconnected')
+    setLatestOffer('')
+    setLatestAnswer('')
+    setCurrentStats({
+      bitrate: 0,
+      fps: 0,
+      resolution: '',
+      latency: 0,
+      startupTime: 0
+    })
     setStreamStats({
       bitrate: 0,
       fps: 0,
@@ -170,6 +232,128 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
       latency: 0,
       streamId: null
     })
+  }
+
+  // Function to collect real-time stats from the peer connection
+  const collectViewerStats = async (pc: RTCPeerConnection) => {
+    try {
+      const stats = await pc.getStats()
+      let bitrate = 0
+      let fps = 0
+      let resolution = ''
+      let latency = 0
+      let startupTime = currentStats.startupTime
+
+      stats.forEach((report) => {
+        if (report.type === 'inbound-rtp' && report.mediaType === 'video') {
+          // Calculate startup time on first frame received
+          if (!firstFrameReceivedRef.current && report.framesReceived && report.framesReceived > 0 && answerReceivedTimeRef.current) {
+            startupTime = Date.now() - answerReceivedTimeRef.current
+            firstFrameReceivedRef.current = true
+            console.log(`First frame received! Startup time: ${startupTime}ms`)
+          }
+
+          // Calculate bitrate from bytes received
+          if (report.bytesReceived !== undefined) {
+            const now = Date.now()
+            const currentBytes = report.bytesReceived
+            
+            // Store previous values for calculation
+            if (!lastStatsRef.current.time || !lastStatsRef.current.bytes) {
+              lastStatsRef.current.time = now
+              lastStatsRef.current.bytes = currentBytes
+              return
+            }
+            
+            const timeDiff = (now - lastStatsRef.current.time) / 1000 // seconds
+            const bytesDiff = currentBytes - lastStatsRef.current.bytes
+            
+            if (timeDiff > 0) {
+              bitrate = Math.round((bytesDiff * 8) / timeDiff / 1000) // kbps
+            }
+            
+            lastStatsRef.current.time = now
+            lastStatsRef.current.bytes = currentBytes
+          }
+
+          // Get FPS
+          if (report.framesPerSecond !== undefined) {
+            fps = Math.round(report.framesPerSecond)
+          } else if (report.framesReceived !== undefined) {
+            // Alternative FPS calculation
+            const now = Date.now()
+            const currentFrames = report.framesReceived
+            
+            if (lastStatsRef.current.frameTime && lastStatsRef.current.frameCount !== undefined) {
+              const timeDiff = (now - lastStatsRef.current.frameTime) / 1000
+              const framesDiff = currentFrames - lastStatsRef.current.frameCount
+              
+              if (timeDiff > 0) {
+                fps = Math.round(framesDiff / timeDiff)
+              }
+            }
+            
+            lastStatsRef.current.frameTime = now
+            lastStatsRef.current.frameCount = currentFrames
+          }
+        }
+
+        // Get track stats for resolution
+        if (report.type === 'track' && report.kind === 'video') {
+          if (report.frameWidth && report.frameHeight) {
+            resolution = `${report.frameWidth}x${report.frameHeight}`
+          }
+        }
+
+        // Get candidate pair stats for latency
+        if (report.type === 'candidate-pair' && report.state === 'succeeded') {
+          if (report.currentRoundTripTime !== undefined) {
+            latency = Math.round(report.currentRoundTripTime * 1000) // convert to ms
+          }
+        }
+      })
+
+      // Get resolution from video element if not available from stats
+      if (!resolution && videoRef.current) {
+        const video = videoRef.current
+        if (video.videoWidth && video.videoHeight) {
+          resolution = `${video.videoWidth}x${video.videoHeight}`
+        }
+      }
+
+      const newStats = {
+        bitrate,
+        fps,
+        resolution,
+        latency,
+        startupTime,
+        streamId: inputStreamId || streamId
+      }
+
+      setCurrentStats({ bitrate, fps, resolution, latency, startupTime })
+      setStreamStats(newStats)
+
+    } catch (error) {
+      console.error('Error collecting viewer stats:', error)
+    }
+  }
+
+  // Function to copy text to clipboard
+  const copyToClipboard = async (text: string, type: string) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      console.log(`${type} copied to clipboard`)
+      // You could add a toast notification here
+    } catch (error) {
+      console.error(`Failed to copy ${type}:`, error)
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea')
+      textArea.value = text
+      document.body.appendChild(textArea)
+      textArea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textArea)
+    }
   }
 
   return (
@@ -257,6 +441,54 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
                 <Download className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
               </div>
             </div>
+
+            {/* Stream ID Input */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Stream ID (Optional)
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={inputStreamId}
+                  onChange={(e) => setInputStreamId(e.target.value)}
+                  placeholder={streamId ? `Auto: ${streamId.substring(0, 20)}...` : "Enter specific stream ID"}
+                  className="w-full px-4 py-3 bg-black/20 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  disabled={isViewing}
+                />
+                <Monitor className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+              </div>
+              <p className="text-xs text-gray-400 mt-1">
+                {inputStreamId ? 'Using custom stream ID' : streamId ? 'Will use auto-detected stream ID if left empty' : 'No stream ID available'}
+              </p>
+            </div>
+
+            {/* SDP Copy Buttons */}
+            {(latestOffer || latestAnswer) && (
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Copy SDP Data
+                </label>
+                <div className="flex space-x-2">
+                  {latestOffer && (
+                    <button
+                      onClick={() => copyToClipboard(latestOffer, 'Offer SDP')}
+                      className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors"
+                    >
+                      Copy Offer
+                    </button>
+                  )}
+                  {latestAnswer && (
+                    <button
+                      onClick={() => copyToClipboard(latestAnswer, 'Answer SDP')}
+                      className="flex-1 px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition-colors"
+                    >
+                      Copy Answer
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
 
             {!whepUrl && (
               <div className="flex items-center space-x-2 text-amber-400 text-sm">
