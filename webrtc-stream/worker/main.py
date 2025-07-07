@@ -16,6 +16,7 @@ import os
 
 
 ORCH_URL = os.getenv("ORCHESTRATOR_URL", "orchestrator:9995")
+SKIP_AUDIO = os.getenv("SKIP_AUDIO_TRANSFORM", "true")
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -45,10 +46,13 @@ class UpsideDownVideoTrack(MediaStreamTrack):
             img = frame.to_ndarray(format="bgr24")
             
             # Flip image upside down (vertical flip)
-            img_flipped = cv2.flip(img, 0)  # 0 means flip around x-axis (upside down)
+            #img_transformed = cv2.flip(img, 0)  # 0 means flip around x-axis (upside down)
+            # Convert image to greyscale
+            img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            img_transformed = cv2.cvtColor(img_gray, cv2.COLOR_GRAY2BGR)
             
             # Convert back to VideoFrame
-            new_frame = av.VideoFrame.from_ndarray(img_flipped, format="bgr24")
+            new_frame = av.VideoFrame.from_ndarray(img_transformed, format="bgr24")
             new_frame.pts = frame.pts
             new_frame.time_base = frame.time_base
             
@@ -75,6 +79,8 @@ class PitchShiftedAudioTrack(MediaStreamTrack):
             
         try:
             frame = await self.source_track.recv()
+            if SKIP_AUDIO_TRANSFORM == "true":
+                return frame
             
             # Convert frame to numpy array
             audio_data = frame.to_ndarray()
