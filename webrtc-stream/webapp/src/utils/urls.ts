@@ -30,3 +30,8 @@ export const getDefaultWhepUrl = (): string => {
 export const getStreamStatusUrl = (streamId: string): string => {
   return `${getBaseUrl()}/gateway/process/stream/status/${streamId}`
 }
+
+// Get ICE restart endpoint URL base (whip/whep and stream ID will be appended)
+export const getIceRestartEndpointBase = (): string => {
+  return `${getBaseUrl()}/gateway/process/stream`
+}

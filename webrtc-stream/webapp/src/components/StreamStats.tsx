@@ -1,5 +1,5 @@
 import React from 'react'
-import { Activity, Zap, Monitor, Clock, Timer } from 'lucide-react'
+import { Activity, Zap, Monitor, Clock } from 'lucide-react'
 
 interface StreamStatsProps {
   stats: {
@@ -7,7 +7,6 @@ interface StreamStatsProps {
     fps: number
     resolution: string
     latency: number
-    startupTime?: number
     streamId?: string | null
   }
 }
@@ -56,19 +55,6 @@ const StreamStats: React.FC<StreamStatsProps> = ({ stats }) => {
             {stats.latency > 0 ? `${stats.latency}ms` : '--'}
           </span>
         </div>
-        
-        {/* Startup Time - only show for viewer stats */}
-        {stats.startupTime !== undefined && (
-          <div className="flex items-center justify-between lg:justify-start lg:flex-col lg:items-start">
-            <div className="flex items-center space-x-2 lg:mb-2">
-              <Timer className="w-4 h-4 text-emerald-400" />
-              <span className="text-gray-300 text-sm">Startup Time</span>
-            </div>
-            <span className="text-white font-medium text-lg">
-              {stats.startupTime > 0 ? `${stats.startupTime}ms` : '--'}
-            </span>
-          </div>
-        )}
       </div>
       
       {/* Stream ID display */}

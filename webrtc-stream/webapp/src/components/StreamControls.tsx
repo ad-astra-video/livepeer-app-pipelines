@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { Video, Mic, MicOff, VideoOff, Play, Square, Upload, AlertCircle } from 'lucide-react'
-import { getDefaultWhipUrl } from '../utils/urls'
+import { Video, Mic, MicOff, VideoOff, Play, Square, Upload, AlertCircle, Download, X, Wifi, WifiOff, RefreshCw } from 'lucide-react'
+import { getDefaultWhipUrl, getIceRestartEndpointBase } from '../utils/urls'
+import { ConnectionResilient, DEFAULT_RESILIENCE_CONFIG } from '../utils/resilience'
 
 interface StreamControlsProps {
   isStreaming: boolean
@@ -26,7 +27,13 @@ const StreamControls: React.FC<StreamControlsProps> = ({
   const [currentStreamId, setCurrentStreamId] = useState<string | null>(null)
   const [latestOffer, setLatestOffer] = useState<string>('')
   const [latestAnswer, setLatestAnswer] = useState<string>('')
+  const [resilience, setResilience] = useState<ConnectionResilient | null>(null)
+  const [qualityIssues, setQualityIssues] = useState<string[]>([])
+  const [isRecovering, setIsRecovering] = useState(false)
+  const [reconnectAttempts, setReconnectAttempts] = useState(0)
   const videoRef = useRef<HTMLVideoElement>(null)
+  const [sdpModalOpen, setSdpModalOpen] = useState(false)
+  const [sdpModalContent, setSdpModalContent] = useState<{type: 'offer' | 'answer', content: string} | null>(null)
   const statsIntervalRef = useRef<number | null>(null)
   const keyframeIntervalRef = useRef<number | null>(null)
   const lastStatsRef = useRef({
@@ -46,6 +53,9 @@ const StreamControls: React.FC<StreamControlsProps> = ({
         clearInterval(keyframeIntervalRef.current)
         keyframeIntervalRef.current = null
       }
+      if (resilience) {
+        resilience.cleanup()
+      }
       if (localStream) {
         localStream.getTracks().forEach(track => track.stop())
       }
@@ -53,7 +63,7 @@ const StreamControls: React.FC<StreamControlsProps> = ({
         peerConnection.close()
       }
     }
-  }, [localStream, peerConnection])
+  }, [localStream, peerConnection, resilience])
 
   const startStream = async () => {
     if (!whipUrl) {
@@ -63,6 +73,47 @@ const StreamControls: React.FC<StreamControlsProps> = ({
 
     try {
       setConnectionStatus('connecting')
+      
+      // Create resilience manager
+      const resilienceManager = new ConnectionResilient({
+        ...DEFAULT_RESILIENCE_CONFIG,
+        connectionType: 'whip',
+        qualityThresholds: {
+          minBitrate: 200, // Higher threshold for publisher
+          maxLatency: 300,
+          maxPacketLoss: 3
+        }
+      })
+      
+      resilienceManager.setCallbacks({
+        onReconnecting: () => {
+          console.log('Publisher connection recovering...')
+          setIsRecovering(true)
+          setConnectionStatus('connecting')
+        },
+        onReconnected: () => {
+          console.log('Publisher connection recovered!')
+          setIsRecovering(false)
+          setReconnectAttempts(0)
+          setConnectionStatus('connected')
+        },
+        onReconnectFailed: () => {
+          console.error('Publisher reconnection failed permanently')
+          setIsRecovering(false)
+          setConnectionStatus('error')
+          stopStream()
+        },
+        onQualityIssue: (issue) => {
+          console.warn(`Publisher quality issue: ${issue}`)
+          setQualityIssues(prev => [...prev.filter(i => i !== issue), issue])
+        },
+        onQualityRecovered: () => {
+          console.log('Publisher quality recovered')
+          setQualityIssues([])
+        }
+      })
+      
+      setResilience(resilienceManager)
       
       // Get user media
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -77,14 +128,37 @@ const StreamControls: React.FC<StreamControlsProps> = ({
         videoRef.current.srcObject = stream
       }
 
-      // Create peer connection
+      // Create peer connection with enhanced configuration
       const pc = new RTCPeerConnection({
         iceServers: [
-          { urls: 'stun:stun.l.google.com:19302' }
-        ]
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:stun1.l.google.com:19302' }
+        ],
+        iceTransportPolicy: 'all',
+        bundlePolicy: 'max-bundle',
+        rtcpMuxPolicy: 'require'
       })
 
       setPeerConnection(pc)
+
+      // Set up resilience monitoring
+      resilienceManager.monitorConnection(pc)
+
+      // Enhanced connection state monitoring
+      pc.addEventListener('connectionstatechange', () => {
+        console.log(`Publisher connection state: ${pc.connectionState}`)
+        if (pc.connectionState === 'connected') {
+          setConnectionStatus('connected')
+          setIsRecovering(false)
+        } else if (pc.connectionState === 'failed') {
+          setConnectionStatus('error')
+        }
+      })
+
+      // Monitor ICE gathering state
+      pc.addEventListener('icegatheringstatechange', () => {
+        console.log(`ICE gathering state: ${pc.iceGatheringState}`)
+      })
 
       // Add tracks to peer connection
       stream.getTracks().forEach(track => {
@@ -102,11 +176,11 @@ const StreamControls: React.FC<StreamControlsProps> = ({
       let iceCandidates: RTCIceCandidate[] = [];
       
       await new Promise<void>((resolve) => {
-        // Set a timeout to avoid waiting forever - 2 seconds max wait time
+        // Set a timeout to avoid waiting forever - 3 seconds for better reliability
         const timeoutId = setTimeout(() => {
           console.log('ICE gathering timeout reached, continuing with available candidates');
           resolve();
-        }, 2000);
+        }, 3000);
         
         // Listen for ICE candidates
         pc.addEventListener('icecandidate', (event) => {
@@ -132,26 +206,9 @@ const StreamControls: React.FC<StreamControlsProps> = ({
       // Log SDP length to verify it contains candidates
       console.log(`Original offer SDP length: ${offer.sdp.length}`);
       console.log(`Updated SDP length with candidates: ${currentSdp.length}`);
-      // The updated SDP should be longer as it contains the ICE candidates
       
-      // Send WHIP offer with all candidates included in the SDP
-      const livepeerHeader = btoa(JSON.stringify(
-                                        { 
-                                          "request": JSON.stringify({"start_stream": true}),
-                                          "parameters": JSON.stringify({}),
-                                          "capability": 'webrtc-stream',
-                                          "timeout_seconds": 30
-                                        }
-                                      )
-                                    )
-      const response = await fetch(whipUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/sdp',
-          'Livepeer': livepeerHeader
-        },
-        body: currentSdp // Use the updated SDP with all gathered candidates
-      })
+      // Send WHIP offer with retry logic
+      const response = await sendWhipOfferWithRetry(whipUrl, currentSdp)
 
       if (response.status == 201) {
         const answerSdp = await response.text()
@@ -170,6 +227,12 @@ const StreamControls: React.FC<StreamControlsProps> = ({
         setStreamId(streamId)
         setCurrentStreamId(streamId)
         
+        // Configure resilience manager with ICE restart endpoint and stream ID
+        if (resilienceManager && streamId) {
+          const iceRestartEndpoint = getIceRestartEndpointBase()
+          resilienceManager.updateIceRestartConfig(iceRestartEndpoint, streamId)
+        }
+        
         // Start collecting real-time stats
         statsIntervalRef.current = window.setInterval(() => {
           collectPublisherStats(pc)
@@ -183,16 +246,70 @@ const StreamControls: React.FC<StreamControlsProps> = ({
         // Initial stats update
         setTimeout(() => collectPublisherStats(pc), 1000)
       } else {
-        throw new Error('Failed to send WHIP offer')
+        throw new Error(`Failed to send WHIP offer: ${response.status}`)
       }
 
     } catch (error) {
       console.error('Error starting stream:', error)
       setConnectionStatus('error')
+      if (resilience) {
+        resilience.cleanup()
+        setResilience(null)
+      }
       if (localStream) {
         localStream.getTracks().forEach(track => track.stop())
       }
     }
+  }
+
+  // Helper method for WHIP offer with retry logic
+  const sendWhipOfferWithRetry = async (url: string, sdp: string, maxRetries = 3): Promise<Response> => {
+    const livepeerHeader = btoa(JSON.stringify(
+      { 
+        "request": JSON.stringify({"start_stream": true}),
+        "parameters": JSON.stringify({}),
+        "capability": 'webrtc-stream',
+        "timeout_seconds": 30
+      }
+    ))
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`WHIP offer attempt ${attempt}/${maxRetries}`)
+        
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/sdp',
+            'Livepeer': livepeerHeader
+          },
+          body: sdp
+        })
+
+        if (response.status === 201) {
+          return response
+        }
+
+        if (attempt === maxRetries) {
+          throw new Error(`All ${maxRetries} attempts failed. Last status: ${response.status}`)
+        }
+
+        // Wait before retry with exponential backoff
+        const waitTime = Math.min(1000 * Math.pow(2, attempt - 1), 5000)
+        console.log(`Attempt ${attempt} failed (${response.status}), retrying in ${waitTime}ms...`)
+        await new Promise(resolve => setTimeout(resolve, waitTime))
+        
+      } catch (error) {
+        if (attempt === maxRetries) {
+          throw error
+        }
+        console.warn(`Attempt ${attempt} failed:`, error)
+        const waitTime = Math.min(1000 * Math.pow(2, attempt - 1), 5000)
+        await new Promise(resolve => setTimeout(resolve, waitTime))
+      }
+    }
+    
+    throw new Error('All retry attempts failed')
   }
 
   const stopStream = async () => {
@@ -241,6 +358,17 @@ const StreamControls: React.FC<StreamControlsProps> = ({
       clearInterval(keyframeIntervalRef.current)
       keyframeIntervalRef.current = null
     }
+    
+    // Clean up resilience manager
+    if (resilience) {
+      resilience.cleanup()
+      setResilience(null)
+    }
+    
+    // Reset resilience state
+    setQualityIssues([])
+    setIsRecovering(false)
+    setReconnectAttempts(0)
     
     // Reset stats tracking
     lastStatsRef.current = {
@@ -454,8 +582,93 @@ const StreamControls: React.FC<StreamControlsProps> = ({
     }
   }
 
+  // Function to show SDP in modal
+  const showSdpModal = (type: 'offer' | 'answer', content: string) => {
+    setSdpModalContent({ type, content })
+    setSdpModalOpen(true)
+  }
+
+  // Manual recovery functions
+  const forceReconnect = async () => {
+    console.log('Forcing publisher reconnection...')
+    setReconnectAttempts(prev => prev + 1)
+    
+    if (isStreaming) {
+      stopStream()
+      // Wait a moment before reconnecting
+      setTimeout(() => {
+        startStream()
+      }, 1000)
+    }
+  }
+
+  const forceIceRestart = () => {
+    if (peerConnection && resilience) {
+      console.log('Forcing ICE restart for publisher...')
+      resilience.forceIceRestart(peerConnection)
+    }
+  }
+
   return (
-    <div className="space-y-6">
+    <>
+      {/* SDP Modal */}
+      {sdpModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm"
+            onClick={() => setSdpModalOpen(false)}
+          />
+          
+          {/* Modal */}
+          <div className="relative bg-slate-900 border border-white/10 rounded-xl w-[95vw] h-[90vh] max-w-7xl shadow-2xl flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-white/10 shrink-0">
+              <div>
+                <h2 className="text-2xl font-semibold text-white">
+                  {sdpModalContent?.type === 'offer' ? 'Stream Offer SDP' : 'Stream Answer SDP'}
+                </h2>
+                <p className="text-sm text-gray-400 mt-1">
+                  {sdpModalContent?.type === 'offer' ? 'WebRTC Offer from Stream' : 'WebRTC Answer to Stream'}
+                </p>
+              </div>
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={() => sdpModalContent && copyToClipboard(sdpModalContent.content, `${sdpModalContent.type} SDP`)}
+                  className="flex items-center space-x-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm rounded-lg transition-colors"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Copy</span>
+                </button>
+                <button
+                  onClick={() => setSdpModalOpen(false)}
+                  className="p-2 text-gray-400 hover:text-white transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-auto p-6">
+              {sdpModalContent && (
+                <div className="bg-black/40 rounded-lg border border-white/10 h-full flex flex-col">
+                  <div className="p-4 border-b border-white/10 shrink-0">
+                    <h3 className="text-lg font-medium text-white">SDP Content</h3>
+                  </div>
+                  <div className="flex-1 overflow-auto p-4">
+                    <pre className="text-sm text-gray-300 whitespace-pre font-mono min-w-max">
+                      {sdpModalContent.content}
+                    </pre>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-6">
       {/* Video Preview */}
       <div className="bg-black/40 backdrop-blur-sm rounded-xl overflow-hidden border border-white/10">
         <div className="aspect-video bg-gray-900 relative">
@@ -510,30 +723,105 @@ const StreamControls: React.FC<StreamControlsProps> = ({
               >
                 {audioEnabled ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
               </button>
+              
+              {/* Resilience Status Indicators */}
+              {isStreaming && (
+                <div className="flex items-center space-x-2">
+                  {isRecovering && (
+                    <div className="flex items-center space-x-1 text-amber-400">
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span className="text-xs">Recovering</span>
+                    </div>
+                  )}
+                  
+                  {qualityIssues.length > 0 && !isRecovering && (
+                    <div className="flex items-center space-x-1 text-red-400">
+                      <WifiOff className="w-4 h-4" />
+                      <span className="text-xs">{qualityIssues.length} issue{qualityIssues.length > 1 ? 's' : ''}</span>
+                    </div>
+                  )}
+                  
+                  {qualityIssues.length === 0 && !isRecovering && (
+                    <div className="flex items-center space-x-1 text-emerald-400">
+                      <Wifi className="w-4 h-4" />
+                      <span className="text-xs">Good</span>
+                    </div>
+                  )}
+                  
+                  {reconnectAttempts > 0 && (
+                    <div className="text-xs text-gray-400">
+                      Attempts: {reconnectAttempts}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
-            <button
-              onClick={isStreaming ? stopStream : startStream}
-              disabled={!whipUrl && !isStreaming}
-              className={`flex items-center space-x-2 px-6 py-3 rounded-lg font-medium transition-colors ${
-                isStreaming
-                  ? 'bg-red-600 hover:bg-red-700 text-white'
-                  : 'bg-emerald-600 hover:bg-emerald-700 text-white disabled:bg-gray-600 disabled:cursor-not-allowed'
-              }`}
-            >
-              {isStreaming ? (
-                <>
-                  <Square className="w-5 h-5" />
-                  <span>Stop Stream</span>
-                </>
-              ) : (
-                <>
-                  <Play className="w-5 h-5" />
-                  <span>Start Stream</span>
-                </>
+            <div className="flex items-center space-x-2">
+              {/* Manual Recovery Controls */}
+              {isStreaming && (
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={forceIceRestart}
+                    disabled={!peerConnection}
+                    className="px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white text-sm rounded-lg transition-colors"
+                    title="Force ICE restart to recover connection"
+                  >
+                    ICE Restart
+                  </button>
+                  
+                  <button
+                    onClick={forceReconnect}
+                    disabled={isRecovering}
+                    className="px-3 py-2 bg-amber-600 hover:bg-amber-700 disabled:bg-gray-600 text-white text-sm rounded-lg transition-colors"
+                    title="Force full reconnection"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${isRecovering ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
               )}
-            </button>
+              
+              <button
+                onClick={isStreaming ? stopStream : startStream}
+                disabled={!whipUrl && !isStreaming}
+                className={`flex items-center space-x-2 px-6 py-3 rounded-lg font-medium transition-colors ${
+                  isStreaming
+                    ? 'bg-red-600 hover:bg-red-700 text-white'
+                    : 'bg-emerald-600 hover:bg-emerald-700 text-white disabled:bg-gray-600 disabled:cursor-not-allowed'
+                }`}
+              >
+                {isStreaming ? (
+                  <>
+                    <Square className="w-5 h-5" />
+                    <span>Stop Stream</span>
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-5 h-5" />
+                    <span>Start Stream</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
+
+          {/* Quality Issues Display */}
+          {qualityIssues.length > 0 && (
+            <div className="mb-4 p-3 bg-red-900/30 border border-red-500/30 rounded-lg">
+              <div className="flex items-center space-x-2 mb-2">
+                <AlertCircle className="w-4 h-4 text-red-400" />
+                <span className="text-sm font-medium text-red-400">Connection Quality Issues</span>
+              </div>
+              <ul className="text-xs text-red-300 space-y-1">
+                {qualityIssues.map((issue, index) => (
+                  <li key={index}>• {issue}</li>
+                ))}
+              </ul>
+              <p className="text-xs text-gray-400 mt-2">
+                Automatic recovery is active. Use manual controls if issues persist.
+              </p>
+            </div>
+          )}
 
           {/* WHIP URL Input */}
           <div className="space-y-4">
@@ -576,26 +864,27 @@ const StreamControls: React.FC<StreamControlsProps> = ({
             </div>
 
             {/* SDP Copy Buttons */}
+            {/* SDP Buttons */}
             {(latestOffer || latestAnswer) && (
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Copy SDP Data
+                  View SDP Data
                 </label>
                 <div className="flex space-x-2">
                   {latestOffer && (
                     <button
-                      onClick={() => copyToClipboard(latestOffer, 'Offer SDP')}
+                      onClick={() => showSdpModal('offer', latestOffer)}
                       className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors"
                     >
-                      Copy Offer
+                      Offer
                     </button>
                   )}
                   {latestAnswer && (
                     <button
-                      onClick={() => copyToClipboard(latestAnswer, 'Answer SDP')}
+                      onClick={() => showSdpModal('answer', latestAnswer)}
                       className="flex-1 px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition-colors"
                     >
-                      Copy Answer
+                      Answer
                     </button>
                   )}
                 </div>
@@ -611,7 +900,8 @@ const StreamControls: React.FC<StreamControlsProps> = ({
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   )
 }
 
