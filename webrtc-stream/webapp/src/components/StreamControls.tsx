@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Video, Mic, MicOff, VideoOff, Play, Square, Upload, AlertCircle } from 'lucide-react'
+import { getDefaultWhipUrl } from '../utils/urls'
 
 interface StreamControlsProps {
   isStreaming: boolean
@@ -16,7 +17,7 @@ const StreamControls: React.FC<StreamControlsProps> = ({
   setStreamStats,
   setStreamId
 }) => {
-  const [whipUrl, setWhipUrl] = useState('http://localhost:8088/gateway/process/request/stream/start')
+  const [whipUrl, setWhipUrl] = useState(getDefaultWhipUrl())
   const [videoEnabled, setVideoEnabled] = useState(true)
   const [audioEnabled, setAudioEnabled] = useState(true)
   const [fpsLimit, setFpsLimit] = useState(30)
@@ -545,7 +546,7 @@ const StreamControls: React.FC<StreamControlsProps> = ({
                   type="url"
                   value={whipUrl}
                   onChange={(e) => setWhipUrl(e.target.value)}
-                  placeholder="http://localhost:8088/gateway/process/request/stream/start"
+                  placeholder={getDefaultWhipUrl()}
                   className="w-full px-4 py-3 bg-black/20 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                   disabled={isStreaming}
                 />

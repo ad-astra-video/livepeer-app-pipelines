@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Play, Square, Monitor, AlertCircle, Download } from 'lucide-react'
+import { getDefaultWhepUrl } from '../utils/urls'
 
 interface ViewerControlsProps {
   isViewing: boolean
@@ -16,7 +17,7 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
   setStreamStats,
   streamId
 }) => {
-  const [whepUrl, setWhepUrl] = useState('http://localhost:8088/gateway/process/request/stream/play')
+  const [whepUrl, setWhepUrl] = useState(getDefaultWhepUrl())
   const [inputStreamId, setInputStreamId] = useState('')
   const [latestOffer, setLatestOffer] = useState<string>('')
   const [latestAnswer, setLatestAnswer] = useState<string>('')
@@ -440,7 +441,7 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
                   type="url"
                   value={whepUrl}
                   onChange={(e) => setWhepUrl(e.target.value)}
-                  placeholder="http://localhost:8088/gateway/process/request/stream/play"
+                  placeholder={getDefaultWhepUrl()}
                   className="w-full px-4 py-3 bg-black/20 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                   disabled={isViewing}
                 />
