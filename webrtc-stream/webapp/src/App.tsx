@@ -4,6 +4,7 @@ import StreamControls from './components/StreamControls'
 import ViewerControls from './components/ViewerControls'
 import ConnectionStatus from './components/ConnectionStatus'
 import StreamStats from './components/StreamStats'
+import StreamStatusSidebar from './components/StreamStatusSidebar'
 
 function App() {
   const [isStreaming, setIsStreaming] = useState(false)
@@ -18,6 +19,7 @@ function App() {
     latency: 0,
     streamId: null
   })
+  const [isStatusSidebarOpen, setIsStatusSidebarOpen] = useState(false)
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-emerald-900 to-slate-900">
@@ -44,7 +46,11 @@ function App() {
                 <span className="text-sm text-gray-300">Viewer:</span>
                 <ConnectionStatus status={viewerConnectionStatus} />
               </div>
-              <button className="p-2 text-gray-300 hover:text-white transition-colors">
+              <button 
+                onClick={() => setIsStatusSidebarOpen(true)}
+                className="p-2 text-gray-300 hover:text-white transition-colors"
+                title="Stream Status"
+              >
                 <Settings className="w-5 h-5" />
               </button>
             </div>
@@ -94,6 +100,13 @@ function App() {
           <StreamStats stats={{...streamStats, streamId}} />
         </div>
       </div>
+
+      {/* Stream Status Sidebar */}
+      <StreamStatusSidebar
+        isOpen={isStatusSidebarOpen}
+        onClose={() => setIsStatusSidebarOpen(false)}
+        streamId={streamId}
+      />
     </div>
   )
 }
