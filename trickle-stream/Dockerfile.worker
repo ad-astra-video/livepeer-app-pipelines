@@ -1,0 +1,30 @@
+FROM livepeer/comfystream:feat-trickle-api-poc
+
+# Set working directory
+WORKDIR /app
+
+# Copy requirements first for better caching
+COPY requirements.txt .
+
+# Activate the conda environment and install additional dependencies
+RUN /workspace/miniconda3/bin/conda run -n comfystream --no-capture-output pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+# COPY . .
+
+# Create non-root user and group if they don't exist
+RUN groupadd -g 1000 appuser 2>/dev/null || true
+RUN useradd -m -u 1000 -g 1000 appuser 2>/dev/null || true
+RUN chown -R appuser:appuser /app
+
+USER appuser
+
+# Expose port for trickle communication
+EXPOSE 9876
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8889/health || exit 1
+    
+# Run comfystream app.py with trickle-optimized settings
+CMD ["/workspace/miniconda3/bin/conda", "run", "-n", "comfystream", "--no-capture-output", "--cwd", "/workspace/comfystream/", "python", "server/app.py", "--host", "0.0.0.0", "--port", "9876", "--workspace", "/workspace/comfystream/", "--warm-pipeline", "--log-level", "INFO"]

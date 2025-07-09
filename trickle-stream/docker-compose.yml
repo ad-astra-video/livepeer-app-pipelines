@@ -1,0 +1,72 @@
+services:
+  webserver:
+    image: caddy:latest
+    container_name: byoc-trickle-stream-webserver
+    ports:
+      - 8088:8088
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - ./webapp/dist:/var/www/html/app
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: byoc-trickle-stream-worker
+    volumes:
+      - ~/models/ComfyUI--models:/workspace/ComfyUI/models
+      - ~/models/ComfyUI--output:/workspace/ComfyUI/output
+      - ~/repos/comfystream:/workspace/comfystream
+    runtime: nvidia
+    ports:
+      - 9876:9876
+  register-worker:
+    build:
+      context: ./register/.
+      dockerfile: Dockerfile.register_worker
+    container_name: byoc-trickle-stream-register-worker
+    environment:
+      - "ORCH_URL=https://orchestrator:9995"
+      - "ORCH_SECRET=orch-secret"
+      - "CAPABILITY_NAME=trickle-stream"
+      - "CAPABILITY_DESCRIPTION=generate live AI video with ComfyUI"
+      - "CAPABILITY_URL=http://worker:9876"
+      - "CAPABILITY_PRICE_PER_UNIT=0"
+      - "CAPABILITY_PRICE_SCALING=1"
+      - "CAPABILITY_CAPACITY=10"
+  gateway:
+    image: adastravideo/go-livepeer:byoc-whip-whep
+    container_name: byoc-trickle-stream-gateway
+    volumes:
+      - ./data/gateway:/data
+    ports:
+      - 9999:9999
+    command: ["-gateway",
+          "-orchAddr=https://orchestrator:9995",
+          "-httpAddr=gateway:9999",
+          "-httpIngest=true",
+          "-v=6",
+          "-network=arbitrum-one-mainnet",
+          "-ethUrl=http://nc.eliteencoder.net:8547",
+          "-ethPassword=testbroadcaster",
+          "-dataDir=/data"]
+  orchestrator:
+    image: adastravideo/go-livepeer:byoc-whip-whep
+    container_name: byoc-trickle-stream-orchestrator
+    volumes:
+      - ./data/orchestrator:/data
+    ports:
+      - 9995:9995
+    command: ["-orchestrator",
+          "-orchSecret=orch-secret",
+          "-serviceAddr=orchestrator:9995",
+          "-v=6",
+          "-network=arbitrum-one-mainnet",
+          "-ethUrl=http://nc.eliteencoder.net:8547",
+          "-ethPassword=some-random-password",
+          "-dataDir=/data",
+          "-ethOrchAddr=0x3b28a7d785356dc67c7970666747e042305bfb79",
+          "-pricePerUnit=0",
+          "-ticketEV=1800"]
+networks:
+  default:
+    name: byoc-trickle-stream

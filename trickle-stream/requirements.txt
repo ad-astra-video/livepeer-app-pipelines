@@ -1,0 +1,22 @@
+# Core web framework dependencies
+aiohttp==3.8.6
+aiohttp-cors==0.7.0
+
+# WebRTC and media processing
+aiortc==1.6.0
+av==10.0.0
+
+# HTTP client for communication
+httpx==0.25.2
+
+# Trickle API dependencies (should be included in the base image)
+# trickle-api
+
+# Additional utilities
+# twilio (for TURN servers - should be included in base image)
+
+# Frame buffer dependencies  
+# frame_buffer (should be included in base image)
+
+# JSON handling and async support
+asyncio-throttle==1.0.2 
