@@ -15,8 +15,6 @@ services:
     container_name: byoc-comfystream-ai-runner
     command: "--api"
     runtime: nvidia
-    volumes:
-      - C:\dev\comfystream\server\app.py:/workspace/comfystream/server/app.py
     ports:
       - 8037:8889
   gateway:
