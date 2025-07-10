@@ -33,7 +33,7 @@ services:
 #      input LIVE_AI_MIN_SEG_DUR as duration string (e.g. 1s)
       - LIVE_AI_MIN_SEG_DUR=1s
       - LIVE_AI_NAT_IP=127.0.0.1
-      - LIVE_AI_PLAYBACK_HOST=rtmp://mediamtx:1935/
+      - LIVE_AI_PLAYBACK_HOST=rtmp://mediamtx/
 #      should match to the mediamtx webrtcAddress in mediamtx.yml
       - LIVE_AI_WHEP_URL=http://mediamtx:8890/
     command: ["-gateway",

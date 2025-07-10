@@ -23,7 +23,7 @@ export const getDefaultWhipUrl = (): string => {
 
 // Get default WHEP endpoint URL  
 export const getDefaultWhepUrl = (): string => {
-  return `http://localhost:8900`
+  return `http://localhost:8890`
 }
 
 // Get stream status URL
