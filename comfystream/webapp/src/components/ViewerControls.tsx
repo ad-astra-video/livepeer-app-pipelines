@@ -70,6 +70,11 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
       return
     }
 
+    if (!playbackUrl) {
+      alert('No playback URL available. Please start publishing first.')
+      return
+    }
+
     try {
       setConnectionStatus('connecting')
       
@@ -199,8 +204,18 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
       console.log(`Updated SDP length with candidates: ${currentSdp.length}`);
 
       // Send WHEP offer with retry logic
-      // Use the playback URL from the WHIP response directly
-      const whepEndpoint = `${whepUrl}${playbackUrl}`
+      // Extract the path from the playback URL and append it to the WHEP endpoint
+      let whepEndpoint = whepUrl
+      if (playbackUrl) {
+        try {
+          const playbackUrlObj = new URL(playbackUrl)
+          const pathFromPlayback = playbackUrlObj.pathname
+          // Remove trailing slash from whepUrl if present and append the path
+          whepEndpoint = whepUrl.replace(/\/$/, '') + pathFromPlayback
+        } catch (error) {
+          console.warn('Failed to parse playback URL, using WHEP URL as-is:', error)
+        }
+      }
       console.log(`Constructed WHEP URL: ${whepEndpoint}`)
       const response = await sendWhepOfferWithRetry(whepEndpoint, currentSdp)
 
@@ -728,8 +743,11 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
-                WHEP Endpoint URL
+                WHEP Endpoint Base URL
               </label>
+              <p className="text-xs text-gray-400 mb-2">
+                The playback URL path from the WHIP response will be appended to this base URL
+              </p>
               <div className="relative">
                 <input
                   type="url"
@@ -741,6 +759,24 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
                 />
                 <Download className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
               </div>
+              
+              {/* Show constructed WHEP URL preview */}
+              {playbackUrl && whepUrl && (
+                <div className="mt-2 p-2 bg-emerald-900/20 border border-emerald-500/30 rounded-lg">
+                  <div className="text-xs text-emerald-400 font-medium mb-1">Final WHEP URL:</div>
+                  <div className="text-xs text-gray-300 font-mono break-all">
+                    {(() => {
+                      try {
+                        const playbackUrlObj = new URL(playbackUrl)
+                        const pathFromPlayback = playbackUrlObj.pathname
+                        return whepUrl.replace(/\/$/, '') + pathFromPlayback
+                      } catch (error) {
+                        return whepUrl
+                      }
+                    })()}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* SDP Buttons */}

@@ -11,7 +11,7 @@ services:
   ai-runner:
 #    image: livepeer/ai-runner:live-app-noop
 #    image: adastravideo/ai-runner:live-app-byoc
-    image: livepeer/comfystream:feat-trickle-api-poc-2
+    image: adastravideo/comfystream:feat-trickle-api-poc-2
     container_name: byoc-comfystream-ai-runner
     command: "--api"
     runtime: nvidia
