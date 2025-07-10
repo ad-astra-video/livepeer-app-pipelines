@@ -157,7 +157,12 @@ create-a-tall-tale/data/orchestrator/
 create-a-tall-tale/data/gateway/
 create-a-tall-tale/data/models/
 
-#create a tall tale sample app
+#webrtc stream sample app
 webrtc-stream/data/orchestrator/
 webrtc-stream/data/gateway/
 webrtc-stream/data/models/
+
+#comfystream stream sample app
+comfystream/data/orchestrator/
+comfystream/data/gateway/
+comfystream/data/models/

@@ -1,0 +1,86 @@
+services:
+  mediamtx:
+    image: livepeerci/mediamtx
+    container_name: byoc-comfystream-mediamtx
+    volumes:
+      - ./mediamtx/mediamtx.yml:/mediamtx.yml
+    ports:
+      - 8890:8890
+      - 9997:9997
+      - 1935:1935
+  ai-runner:
+#    image: livepeer/ai-runner:live-app-noop
+#    image: adastravideo/ai-runner:live-app-byoc
+    image: livepeer/comfystream:feat-trickle-api-poc-2
+    container_name: byoc-comfystream-ai-runner
+    command: "--api"
+    runtime: nvidia
+    volumes:
+      - C:\dev\comfystream\server\app.py:/workspace/comfystream/server/app.py
+    ports:
+      - 8037:8889
+  gateway:
+    image: adastravideo/go-livepeer:byoc-add-streaming
+    container_name: byoc-comfystream-gateway
+    volumes:
+      - ./data/gateway:/data
+    ports:
+      - 5937:5937
+      - 7280:7280
+    environment:
+      - LIVE_AI_ALLOW_CORS=1
+      - LIVE_AI_WHIP_ADDR=gateway:7280
+#       input LIVE_AI_GATHER_TIMEOUT as integer (parses to seconds)
+      - LIVE_AI_GATHER_TIMEOUT=5
+#      input LIVE_AI_MIN_SEG_DUR as duration string (e.g. 1s)
+      - LIVE_AI_MIN_SEG_DUR=1s
+      - LIVE_AI_NAT_IP=127.0.0.1
+      - LIVE_AI_PLAYBACK_HOST=rtmp://mediamtx:1935/
+#      should match to the mediamtx webrtcAddress in mediamtx.yml
+      - LIVE_AI_WHEP_URL=http://mediamtx:8890/
+    command: ["-gateway",
+          "-orchAddr=https://orchestrator:9995",
+          "-rtmpAddr=gateway:1937",
+          "-httpAddr=gateway:5937",
+          "-httpIngest=true",
+          "-v=9",
+          "-network=arbitrum-one-mainnet",
+          "-blockPollingInterval=10",
+          "-ethUrl=https://lb.drpc.org/arbitrum/Ank9MMB42ULZjeGLuPWiKwwJs3I_MbsR8JKCzoXPVSjK",
+          "-ethPassword=testbroadcaster",
+          "-dataDir=/data"]
+  orchestrator:
+    image: adastravideo/go-livepeer:byoc-add-streaming
+    container_name: byoc-comfystream-orchestrator
+    volumes:
+      - /mnt/c/dev/livepeer-job-poc/comfystream/data/orchestrator/models:/mnt/c/dev/livepeer-job-poc/comfystream/data/orchestrator
+      - ./worker/aimodels.json:/data/aimodels.json
+      - /var/run/docker.sock:/var/run/docker.sock
+    runtime: nvidia
+    ports:
+      - 9995:9995
+    command: ["-orchestrator",
+          "-aiWorker",
+          "-transcoder",
+          "-nvidia=0",
+          "-orchSecret=orch-secret",
+          "-serviceAddr=orchestrator:9995",
+          "-v=9",
+          "-network=arbitrum-one-mainnet",
+          "-ethUrl=https://arb1.arbitrum.io/rpc",
+          "-ethPassword=some-random-password",
+          "-dataDir=/data",
+          "-ethOrchAddr=0x3b28a7d785356dc67c7970666747e042305bfb79",
+          "-pricePerUnit=0",
+          "-ticketEV=1800",
+          "-monitor",
+          "-aiVerboseLogs",
+          "-liveAITrickleHostForRunner=172.17.0.1:9995",
+          "-aiModels=/data/aimodels.json",
+          "-aiModelsDir=/mnt/c/dev/livepeer-job-poc/comfystream/data/orchestrator/models",
+          "-aiRunnerImageOverrides={\"live\":{\"byoc\":\"adastravideo/ai-runner:live-app-byoc\"}}"]
+
+networks:
+  default:
+    name: byoc-comfystream
+    
