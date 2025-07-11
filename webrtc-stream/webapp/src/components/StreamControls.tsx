@@ -22,6 +22,8 @@ const StreamControls: React.FC<StreamControlsProps> = ({
   const [videoEnabled, setVideoEnabled] = useState(true)
   const [audioEnabled, setAudioEnabled] = useState(true)
   const [fpsLimit, setFpsLimit] = useState(30)
+  const [resolution, setResolution] = useState('720p') // Add resolution control
+  const [maxBitrate, setMaxBitrate] = useState(2000) // Add bitrate control (kbps)
   const [localStream, setLocalStream] = useState<MediaStream | null>(null)
   const [peerConnection, setPeerConnection] = useState<RTCPeerConnection | null>(null)
   const [currentStreamId, setCurrentStreamId] = useState<string | null>(null)
@@ -64,6 +66,20 @@ const StreamControls: React.FC<StreamControlsProps> = ({
       }
     }
   }, [localStream, peerConnection, resilience])
+
+  // Helper function to get resolution constraints
+  const getResolutionConstraints = (resolution: string) => {
+    switch (resolution) {
+      case '720p':
+        return { width: { exact: 1280 }, height: { exact: 720 } }
+      case '1080p':
+        return { width: { exact: 1920 }, height: { exact: 1080 } }
+      case '4k':
+        return { width: { exact: 3840 }, height: { exact: 2160 } }
+      default:
+        return { width: { exact: 1280 }, height: { exact: 720 } }
+    }
+  }
 
   const startStream = async () => {
     if (!whipUrl) {
@@ -118,7 +134,8 @@ const StreamControls: React.FC<StreamControlsProps> = ({
       // Get user media
       const stream = await navigator.mediaDevices.getUserMedia({
         video: videoEnabled ? {
-          frameRate: { ideal: fpsLimit, max: fpsLimit }
+          ...getResolutionConstraints(resolution),
+          frameRate: { exact: fpsLimit }
         } : false,
         audio: audioEnabled
       })
@@ -164,6 +181,31 @@ const StreamControls: React.FC<StreamControlsProps> = ({
       stream.getTracks().forEach(track => {
         pc.addTrack(track, stream)
       })
+
+      // Configure encoder parameters to lock resolution and disable adaptive bitrate
+      const senders = pc.getSenders()
+      for (const sender of senders) {
+        if (sender.track && sender.track.kind === 'video') {
+          const params = sender.getParameters()
+          
+          // Set encoding parameters to lock resolution
+          if (!params.encodings || params.encodings.length === 0) {
+            params.encodings = [{}]
+          }
+          
+          // Lock the resolution and disable adaptive bitrate
+          const resolutionConstraints = getResolutionConstraints(resolution)
+          params.encodings[0] = {
+            ...params.encodings[0],
+            maxBitrate: maxBitrate * 1000, // Convert kbps to bps
+            scaleResolutionDownBy: 1, // Don't scale down resolution
+            active: true
+          }
+          
+          await sender.setParameters(params)
+          console.log('Video encoder parameters configured:', params)
+        }
+      }
 
       // Create offer
       const offer = await pc.createOffer()
@@ -861,6 +903,44 @@ const StreamControls: React.FC<StreamControlsProps> = ({
                 <span>10 FPS</span>
                 <span>60 FPS</span>
               </div>
+            </div>
+
+            {/* Max Bitrate Slider */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Max Bitrate: {maxBitrate} kbps
+              </label>
+              <input
+                type="range"
+                min="500"
+                max="10000"
+                step="100"
+                value={maxBitrate}
+                onChange={(e) => setMaxBitrate(parseInt(e.target.value))}
+                className="w-full h-2 bg-black/20 rounded-lg appearance-none cursor-pointer slider"
+                disabled={isStreaming}
+              />
+              <div className="flex justify-between text-xs text-gray-400 mt-1">
+                <span>500 kbps</span>
+                <span>10 Mbps</span>
+              </div>
+            </div>
+
+            {/* Resolution Selector */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Resolution: {resolution}
+              </label>
+              <select
+                value={resolution}
+                onChange={(e) => setResolution(e.target.value)}
+                className="w-full px-4 py-3 bg-black/20 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                disabled={isStreaming}
+              >
+                <option value="720p">720p (1280x720)</option>
+                <option value="1080p">1080p (1920x1080)</option>
+                <option value="4k">4K (3840x2160)</option>
+              </select>
             </div>
 
             {/* SDP Copy Buttons */}
