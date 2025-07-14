@@ -286,13 +286,20 @@ export class ConnectionResilient {
       throw new Error('ICE restart endpoint or stream ID not configured')
     }
 
-    // Determine the endpoint path based on connection type
-    const endpointPath = this.config.connectionType === 'whep' ? 'whep' : 'whip'
+    let url: string
     
-    // Construct the full URL: /process/stream/{whip|whep}/{streamId}
-    const url = `${this.config.iceRestartEndpoint}/${endpointPath}/${this.config.streamId}`
+    // Check if the iceRestartEndpoint is already a complete URL (from Location header)
+    // If it starts with http, use it directly, otherwise construct the URL
+    if (this.config.iceRestartEndpoint.startsWith('http')) {
+      // Use the Location header URL directly for ICE restart
+      url = this.config.iceRestartEndpoint
+    } else {
+      // Fallback to the old method for backward compatibility
+      const endpointPath = this.config.connectionType === 'whep' ? 'whep' : 'whip'
+      url = `${this.config.iceRestartEndpoint}/${endpointPath}/${this.config.streamId}`
+    }
     
-    console.log(`Sending ICE restart request to ${endpointPath.toUpperCase()} endpoint: ${url}`)
+    console.log(`Sending ICE restart request to endpoint: ${url}`)
     
     const response = await fetch(url, {
       method: 'POST',
@@ -309,7 +316,8 @@ export class ConnectionResilient {
     // Process the answer SDP if provided
     const answerSdp = await response.text()
     if (answerSdp) {
-      console.log(`Received ICE restart answer from ${endpointPath.toUpperCase()} server`)
+      const connectionType = this.config.connectionType === 'whep' ? 'WHEP' : 'WHIP'
+      console.log(`Received ICE restart answer from ${connectionType} server`)
       // Note: In a complete implementation, you would apply this answer to the peer connection
       // This would require access to the peer connection from the calling context
     }

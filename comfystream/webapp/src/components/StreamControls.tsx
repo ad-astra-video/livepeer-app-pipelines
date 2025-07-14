@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Video, Mic, MicOff, VideoOff, Play, Square, Upload, AlertCircle, Download, X, Wifi, WifiOff, RefreshCw } from 'lucide-react'
-import { getDefaultWhipUrl, getIceRestartEndpointBase } from '../utils/urls'
+import { getDefaultWhipUrl } from '../utils/urls'
 import { ConnectionResilient, DEFAULT_RESILIENCE_CONFIG } from '../utils/resilience'
 
 interface StreamControlsProps {
@@ -23,7 +23,9 @@ const StreamControls: React.FC<StreamControlsProps> = ({
   const [whipUrl, setWhipUrl] = useState(getDefaultWhipUrl())
   const [streamName, setStreamName] = useState(() => `stream-${Math.random().toString(36).substring(2, 8)}`)
   const [pipeline, setPipeline] = useState('comfystream')
-  const [params, setParams] = useState('')
+  const [prompt1, setPrompt1] = useState('')
+  const [prompt2, setPrompt2] = useState('')
+  const [prompt3, setPrompt3] = useState('')
   const [videoEnabled, setVideoEnabled] = useState(true)
   const [audioEnabled, setAudioEnabled] = useState(true)
   const [fpsLimit, setFpsLimit] = useState(30)
@@ -237,9 +239,11 @@ const StreamControls: React.FC<StreamControlsProps> = ({
         const answerSdp = await response.text()
         const streamId = response.headers.get('X-Stream-Id')
         const playbackUrl = response.headers.get('Livepeer-Playback-Url')
+        const locationHeader = response.headers.get('Location')
         
         console.log(`Stream ID: ${streamId}`)
         console.log(`Playback URL: ${playbackUrl}`)
+        console.log(`Location Header: ${locationHeader}`)
         
         // Store the answer SDP
         setLatestAnswer(answerSdp)
@@ -255,10 +259,10 @@ const StreamControls: React.FC<StreamControlsProps> = ({
         setCurrentStreamId(streamId)
         setPlaybackUrl(playbackUrl)
         
-        // Configure resilience manager with ICE restart endpoint and stream ID
-        if (resilienceManager && streamId) {
-          const iceRestartEndpoint = getIceRestartEndpointBase()
-          resilienceManager.updateIceRestartConfig(iceRestartEndpoint, streamId)
+        // Configure resilience manager with ICE restart endpoint from Location header and stream ID
+        if (resilienceManager && streamId && locationHeader) {
+          // Use the Location header as the ICE restart endpoint
+          resilienceManager.updateIceRestartConfig(locationHeader, streamId)
         }
         
         // Start collecting real-time stats
@@ -310,17 +314,13 @@ const StreamControls: React.FC<StreamControlsProps> = ({
       queryParams.push(`height=${height}`)
     }
     
-    // Add parameters from the params field if valid JSON
-    if (params && params.trim()) {
-      try {
-        const parsedParams = JSON.parse(params.trim())
-        for (const [key, value] of Object.entries(parsedParams)) {
-          if (key && value !== null && value !== undefined) {
-            queryParams.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`)
-          }
-        }
-      } catch (e) {
-        console.warn('Parameters are not valid JSON, skipping query params:', e)
+    // Add prompts from the prompt fields
+    const prompts = [prompt1, prompt2, prompt3].filter(p => p.trim() !== '')
+    if (prompts.length > 0) {
+      if (prompts.length === 1) {
+        queryParams.push(`prompts=${encodeURIComponent(prompts[0])}`)
+      } else {
+        queryParams.push(`prompts=${encodeURIComponent(JSON.stringify(prompts))}`)
       }
     }
     
@@ -466,6 +466,59 @@ const StreamControls: React.FC<StreamControlsProps> = ({
       resolution: '',
       streamId: null
     })
+  }
+
+  // Update function to send prompts and resolution changes
+  const sendUpdate = async () => {
+    if (!currentStreamId) {
+      alert('No active stream to update')
+      return
+    }
+
+    try {
+      // Prepare prompts data
+      const prompts = [prompt1, prompt2, prompt3].filter(p => p.trim() !== '')
+      let promptsData
+      
+      if (prompts.length === 0) {
+        promptsData = ""
+      } else if (prompts.length === 1) {
+        promptsData = prompts[0]
+      } else {
+        promptsData = prompts
+      }
+
+      // Get current resolution
+      const [resWidth, resHeight] = resolution.split('x').map(Number)
+      
+      const updateData = {
+        height: resHeight,
+        width: resWidth,
+        prompts: promptsData
+      }
+
+      console.log('Sending update:', updateData)
+
+      // Send update request (you may need to adjust the endpoint URL)
+      const updateUrl = whipUrl.replace('/live/video-to-video', '/update')
+      const response = await fetch(updateUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updateData)
+      })
+
+      if (response.ok) {
+        console.log('Update sent successfully')
+        // You could show a success message here
+      } else {
+        throw new Error(`Update failed: ${response.status} ${response.statusText}`)
+      }
+    } catch (error) {
+      console.error('Error sending update:', error)
+      alert('Failed to send update')
+    }
   }
 
   const toggleVideo = () => {
@@ -988,21 +1041,46 @@ const StreamControls: React.FC<StreamControlsProps> = ({
               />
             </div>
 
-            {/* Parameters Input */}
+            {/* Prompts Input */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
-                Parameters
+                Prompts
               </label>
-              <textarea
-                value={params}
-                onChange={(e) => setParams(e.target.value)}
-                placeholder="Enter additional parameters (JSON format, optional)"
-                rows={4}
-                className="w-full px-4 py-3 bg-black/20 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-none"
-                disabled={isStreaming}
-              />
+              <div className="space-y-2">
+                <input
+                  type="text"
+                  value={prompt1}
+                  onChange={(e) => setPrompt1(e.target.value)}
+                  placeholder="Enter first prompt"
+                  className="w-full px-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  disabled={isStreaming}
+                />
+                <input
+                  type="text"
+                  value={prompt2}
+                  onChange={(e) => setPrompt2(e.target.value)}
+                  placeholder="Enter second prompt (optional)"
+                  className="w-full px-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  disabled={isStreaming}
+                />
+                <input
+                  type="text"
+                  value={prompt3}
+                  onChange={(e) => setPrompt3(e.target.value)}
+                  placeholder="Enter third prompt (optional)"
+                  className="w-full px-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  disabled={isStreaming}
+                />
+              </div>
+              <button
+                onClick={sendUpdate}
+                disabled={!currentStreamId}
+                className="mt-3 w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+              >
+                Update
+              </button>
               <p className="text-xs text-gray-400 mt-1">
-                Enter parameters in JSON format (e.g., {`{"quality": "high", "bitrate": 2000}`})
+                Enter prompts and click Update to send changes with current resolution
               </p>
             </div>
 

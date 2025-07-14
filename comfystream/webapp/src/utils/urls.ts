@@ -28,10 +28,5 @@ export const getDefaultWhepUrl = (): string => {
 
 // Get stream status URL
 export const getStreamStatusUrl = (streamId: string): string => {
-  return `${getBaseUrl()}/gateway/process/stream/status/${streamId}`
-}
-
-// Get ICE restart endpoint URL base (whip/whep and stream ID will be appended)
-export const getIceRestartEndpointBase = (): string => {
-  return `${getBaseUrl()}/gateway/process/stream`
+  return `http://localhost:5937/live/video-to-video/${streamId}/status`
 }

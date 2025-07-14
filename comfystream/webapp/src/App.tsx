@@ -3,7 +3,6 @@ import { Video, Mic, MicOff, VideoOff, Play, Square, Settings, Radio, Monitor } 
 import StreamControls from './components/StreamControls'
 import ViewerControls from './components/ViewerControls'
 import ConnectionStatus from './components/ConnectionStatus'
-import StreamStats from './components/StreamStats'
 import StreamStatusSidebar from './components/StreamStatusSidebar'
 
 function App() {
@@ -95,11 +94,6 @@ function App() {
               playbackUrl={playbackUrl}
             />
           </div>
-        </div>
-
-        {/* Stream Statistics Section */}
-        <div className="mt-8">
-          <StreamStats stats={{...streamStats, streamId}} />
         </div>
       </div>
 

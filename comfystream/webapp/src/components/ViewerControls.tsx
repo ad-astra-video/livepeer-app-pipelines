@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Play, Square, Monitor, AlertCircle, Download, X, Wifi, WifiOff, RefreshCw } from 'lucide-react'
-import { getDefaultWhepUrl, getIceRestartEndpointBase } from '../utils/urls'
+import { getDefaultWhepUrl } from '../utils/urls'
 import { ConnectionResilient, DEFAULT_RESILIENCE_CONFIG } from '../utils/resilience'
 
 interface ViewerControlsProps {
@@ -221,6 +221,9 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
 
       if (response.ok) {
         const answerSdp = await response.text()
+        const locationHeader = response.headers.get('Location')
+        
+        console.log(`WHEP Location Header: ${locationHeader}`)
         
         // Record when answer is received
         answerReceivedTimeRef.current = Date.now()
@@ -237,14 +240,21 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
         setIsViewing(true)
         setConnectionStatus('connected')
         
-        // Configure resilience manager with ICE restart endpoint
-        // Extract stream ID from playback URL if possible, or use a fallback
+        // Configure resilience manager with ICE restart endpoint from Location header
         if (resilienceManager && playbackUrl) {
-          const iceRestartEndpoint = getIceRestartEndpointBase()
-          // Extract stream ID from the playback URL path
-          const streamIdMatch = playbackUrl.match(/\/([^\/]+)\/whep$/)
-          const extractedStreamId = streamIdMatch ? streamIdMatch[1] : 'viewer-session'
-          resilienceManager.updateIceRestartConfig(iceRestartEndpoint, extractedStreamId)
+          if (locationHeader) {
+            // Use the Location header as the ICE restart endpoint
+            // Extract stream ID from playback URL for identification
+            const streamIdMatch = playbackUrl.match(/\/([^\/]+)\/whep$/)
+            const extractedStreamId = streamIdMatch ? streamIdMatch[1] : 'viewer-session'
+            resilienceManager.updateIceRestartConfig(locationHeader, extractedStreamId)
+          } else {
+            // Fallback to using the WHEP endpoint base URL for ICE restart
+            const iceRestartEndpoint = getDefaultWhepUrl()
+            const streamIdMatch = playbackUrl.match(/\/([^\/]+)\/whep$/)
+            const extractedStreamId = streamIdMatch ? streamIdMatch[1] : 'viewer-session'
+            resilienceManager.updateIceRestartConfig(iceRestartEndpoint, extractedStreamId)
+          }
         }
         
         // Start collecting real-time stats
