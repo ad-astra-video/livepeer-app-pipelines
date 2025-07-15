@@ -287,50 +287,56 @@ const StreamControls: React.FC<StreamControlsProps> = ({
         localStream.getTracks().forEach(track => track.stop())
       }
     }
+  }  
+  interface PipelineParams {
+    width?: number;
+    height?: number;
+    prompts?: any; // JSON string
+    // other possible params...
   }
 
   // Helper function to construct WHIP URL with parameters
   const constructWhipUrl = (baseUrl: string, streamName: string, pipeline: string, width: number, height: number): string => {
-    let url = baseUrl
+    let url = new URL(baseUrl)
     
     // Add stream name to the path if provided
     if (streamName && streamName.trim()) {
-      // Remove trailing slash from base URL if present
-      url = url.replace(/\/$/, '')
       // Ensure stream name is URL-safe
-      const safeName = encodeURIComponent(streamName.trim())
-      url += `/${safeName}/whip`
+      const safeName = streamName.trim()
+      url.pathname += `/${safeName}/whip`
     }
     
     // Build query parameters
     const queryParams: string[] = []
     
     if (pipeline && pipeline.trim()) {
-      queryParams.push(`pipeline=${encodeURIComponent(pipeline.trim())}`)
+      url.searchParams.set('pipeline', pipeline.trim())
     }
-    
+    var params: PipelineParams = {};
     if (width && height && width > 0 && height > 0) {
-      queryParams.push(`width=${width}`)
-      queryParams.push(`height=${height}`)
+      params.width = width
+      params.height = height
     }
-    
     // Add prompts from the prompt fields
-    const prompts = [prompt1, prompt2, prompt3].filter(p => p.trim() !== '')
-    if (prompts.length > 0) {
-      if (prompts.length === 1) {
-        queryParams.push(`prompts=${encodeURIComponent(prompts[0])}`)
-      } else {
-        queryParams.push(`prompts=${encodeURIComponent(JSON.stringify(prompts))}`)
-      }
+    let prompts = [prompt1, prompt2, prompt3].filter(p => p.trim() !== '')
+    console.log(prompts)
+    if (prompts.length === 0) {
+      params.prompts = ""
+    } else if (prompts.length === 1) {
+      params.prompts = prompts[0]
+    } else {
+      params.prompts = prompts
     }
+
+    // Convert the params object to a JSON string
+    const paramsString = JSON.stringify(params);
     
-    // Append query parameters if any
-    if (queryParams.length > 0) {
-      url += `?${queryParams.join('&')}`
-    }
-    
-    return url
+    // URL encode the JSON string and add it to the query params
+    url.searchParams.set('params', paramsString);
+
+    return url.toString();
   }
+
 
   // Helper method for WHIP offer with retry logic
   const sendWhipOfferWithRetry = async (url: string, sdp: string, maxRetries = 3): Promise<Response> => {
@@ -470,7 +476,7 @@ const StreamControls: React.FC<StreamControlsProps> = ({
 
   // Update function to send prompts and resolution changes
   const sendUpdate = async () => {
-    if (!currentStreamId) {
+    if (!isStreaming) {
       alert('No active stream to update')
       return
     }
@@ -1053,7 +1059,6 @@ const StreamControls: React.FC<StreamControlsProps> = ({
                   onChange={(e) => setPrompt1(e.target.value)}
                   placeholder="Enter first prompt"
                   className="w-full px-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                  disabled={isStreaming}
                 />
                 <input
                   type="text"
@@ -1061,7 +1066,6 @@ const StreamControls: React.FC<StreamControlsProps> = ({
                   onChange={(e) => setPrompt2(e.target.value)}
                   placeholder="Enter second prompt (optional)"
                   className="w-full px-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                  disabled={isStreaming}
                 />
                 <input
                   type="text"
@@ -1069,12 +1073,11 @@ const StreamControls: React.FC<StreamControlsProps> = ({
                   onChange={(e) => setPrompt3(e.target.value)}
                   placeholder="Enter third prompt (optional)"
                   className="w-full px-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                  disabled={isStreaming}
                 />
               </div>
               <button
                 onClick={sendUpdate}
-                disabled={!currentStreamId}
+                disabled={!isStreaming}
                 className="mt-3 w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
               >
                 Update
