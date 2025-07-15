@@ -505,8 +505,8 @@ const StreamControls: React.FC<StreamControlsProps> = ({
 
       console.log('Sending update:', updateData)
 
-      // Send update request (you may need to adjust the endpoint URL)
-      const updateUrl = whipUrl.replace('/live/video-to-video', '/update')
+      // Send update request - construct URL with stream name
+      const updateUrl = `${whipUrl}/${streamName}/update`
       const response = await fetch(updateUrl, {
         method: 'POST',
         headers: {
@@ -515,7 +515,7 @@ const StreamControls: React.FC<StreamControlsProps> = ({
         body: JSON.stringify(updateData)
       })
 
-      if (response.ok) {
+      if (response.status == 200) {
         console.log('Update sent successfully')
         // You could show a success message here
       } else {
