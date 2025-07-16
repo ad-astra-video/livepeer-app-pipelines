@@ -4,7 +4,7 @@ import StreamControls from './components/StreamControls'
 import ViewerControls from './components/ViewerControls'
 import ConnectionStatus from './components/ConnectionStatus'
 import StreamStatusSidebar from './components/StreamStatusSidebar'
-import KafkaLogs from './components/KafkaLogs'
+import KafkaLogs from './components/EventLogs'
 
 function App() {
   const [isStreaming, setIsStreaming] = useState(false)
