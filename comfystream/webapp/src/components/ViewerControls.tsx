@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { Play, Square, Monitor, AlertCircle, Download, X, Wifi, WifiOff, RefreshCw } from 'lucide-react'
 import { getDefaultWhepUrl } from '../utils/urls'
 import { ConnectionResilient, DEFAULT_RESILIENCE_CONFIG } from '../utils/resilience'
+import { constructWhepUrl, sendWhepOffer } from '../api'
 
 interface ViewerControlsProps {
   isViewing: boolean
@@ -205,23 +206,13 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
 
       // Send WHEP offer with retry logic
       // Extract the path from the playback URL and append it to the WHEP endpoint
-      let whepEndpoint = whepUrl
-      if (playbackUrl) {
-        try {
-          const playbackUrlObj = new URL(playbackUrl)
-          const pathFromPlayback = playbackUrlObj.pathname
-          // Remove trailing slash from whepUrl if present and append the path
-          whepEndpoint = whepUrl.replace(/\/$/, '') + pathFromPlayback
-        } catch (error) {
-          console.warn('Failed to parse playback URL, using WHEP URL as-is:', error)
-        }
-      }
+      const whepEndpoint = constructWhepUrl(whepUrl, playbackUrl)
       console.log(`Constructed WHEP URL: ${whepEndpoint}`)
-      const response = await sendWhepOfferWithRetry(whepEndpoint, currentSdp)
+      const response = await sendWhepOffer(whepEndpoint, currentSdp)
 
-      if (response.ok) {
-        const answerSdp = await response.text()
-        const locationHeader = response.headers.get('Location')
+      if (response.status === 200 || response.status === 201) {
+        const answerSdp = response.answerSdp
+        const locationHeader = response.locationHeader
         
         console.log(`WHEP Location Header: ${locationHeader}`)
         
@@ -276,55 +267,6 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
         setResilience(null)
       }
     }
-  }
-
-  // Helper method for WHEP offer with retry logic
-  const sendWhepOfferWithRetry = async (url: string, sdp: string, maxRetries = 3): Promise<Response> => {
-    /*const requestData: any = { 
-      "request": JSON.stringify({"start_stream_output": true, "stream_id": streamIdToUse || null}),
-      "parameters": JSON.stringify({}),
-      "capability": 'webrtc-stream',
-      "timeout_seconds": 30
-    }*/
-    
-    //const livepeerHeader = btoa(JSON.stringify(requestData))
-    
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        console.log(`WHEP offer attempt ${attempt}/${maxRetries}`)
-        
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/sdp',
-          },
-          body: sdp
-        })
-
-        if (response.ok) {
-          return response
-        }
-
-        if (attempt === maxRetries) {
-          throw new Error(`All ${maxRetries} attempts failed. Last status: ${response.status}`)
-        }
-
-        // Wait before retry with exponential backoff
-        const waitTime = Math.min(1000 * Math.pow(2, attempt - 1), 5000)
-        console.log(`Attempt ${attempt} failed (${response.status}), retrying in ${waitTime}ms...`)
-        await new Promise(resolve => setTimeout(resolve, waitTime))
-        
-      } catch (error) {
-        if (attempt === maxRetries) {
-          throw error
-        }
-        console.warn(`Attempt ${attempt} failed:`, error)
-        const waitTime = Math.min(1000 * Math.pow(2, attempt - 1), 5000)
-        await new Promise(resolve => setTimeout(resolve, waitTime))
-      }
-    }
-    
-    throw new Error('All retry attempts failed')
   }
 
   const stopViewing = () => {
@@ -775,15 +717,7 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
                 <div className="mt-2 p-2 bg-emerald-900/20 border border-emerald-500/30 rounded-lg">
                   <div className="text-xs text-emerald-400 font-medium mb-1">Final WHEP URL:</div>
                   <div className="text-xs text-gray-300 font-mono break-all">
-                    {(() => {
-                      try {
-                        const playbackUrlObj = new URL(playbackUrl)
-                        const pathFromPlayback = playbackUrlObj.pathname
-                        return whepUrl.replace(/\/$/, '') + pathFromPlayback
-                      } catch (error) {
-                        return whepUrl
-                      }
-                    })()}
+                    {constructWhepUrl(whepUrl, playbackUrl)}
                   </div>
                 </div>
               )}

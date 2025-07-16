@@ -167,3 +167,6 @@ webrtc-stream/data/models/
 comfystream/data/orchestrator/
 comfystream/data/gateway/
 comfystream/data/models/
+comfystream/data/zilla/hostname
+comfystream/data/zilla/hosts
+comfystream/data/zilla/resolv.conf

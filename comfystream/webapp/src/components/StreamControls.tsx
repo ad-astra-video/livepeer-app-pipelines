@@ -2,6 +2,13 @@ import React, { useState, useRef, useEffect } from 'react'
 import { Video, Mic, MicOff, VideoOff, Play, Square, Upload, AlertCircle, Download, X, Wifi, WifiOff, RefreshCw } from 'lucide-react'
 import { getDefaultWhipUrl } from '../utils/urls'
 import { ConnectionResilient, DEFAULT_RESILIENCE_CONFIG } from '../utils/resilience'
+import { 
+  constructWhipUrl, 
+  sendWhipOffer, 
+  stopStream as stopStreamApi,
+  sendStreamUpdate,
+  StreamUpdateData
+} from '../api'
 
 interface StreamControlsProps {
   isStreaming: boolean
@@ -229,17 +236,18 @@ const StreamControls: React.FC<StreamControlsProps> = ({
       
       // Construct the WHIP URL with parameters
       const [resWidth, resHeight] = resolution.split('x').map(Number)
-      const constructedUrl = constructWhipUrl(whipUrl, streamName, pipeline, resWidth, resHeight)
+      const prompts = [prompt1, prompt2, prompt3].filter(p => p.trim() !== '')
+      const constructedUrl = constructWhipUrl(whipUrl, streamName, pipeline, resWidth, resHeight, prompts)
       console.log(`Constructed WHIP URL: ${constructedUrl}`)
       
       // Send WHIP offer with retry logic
-      const response = await sendWhipOfferWithRetry(constructedUrl, currentSdp)
+      const response = await sendWhipOffer(constructedUrl, currentSdp)
 
       if (response.status == 201) {
-        const answerSdp = await response.text()
-        const streamId = response.headers.get('X-Stream-Id')
-        const playbackUrl = response.headers.get('Livepeer-Playback-Url')
-        const locationHeader = response.headers.get('Location')
+        const answerSdp = response.answerSdp
+        const streamId = response.streamId
+        const playbackUrl = response.playbackUrl
+        const locationHeader = response.locationHeader
         
         console.log(`Stream ID: ${streamId}`)
         console.log(`Playback URL: ${playbackUrl}`)
@@ -287,130 +295,16 @@ const StreamControls: React.FC<StreamControlsProps> = ({
         localStream.getTracks().forEach(track => track.stop())
       }
     }
-  }  
-  interface PipelineParams {
-    width?: number;
-    height?: number;
-    prompts?: any; // JSON string
-    // other possible params...
   }
-
-  // Helper function to construct WHIP URL with parameters
-  const constructWhipUrl = (baseUrl: string, streamName: string, pipeline: string, width: number, height: number): string => {
-    let url = new URL(baseUrl)
-    
-    // Add stream name to the path if provided
-    if (streamName && streamName.trim()) {
-      // Ensure stream name is URL-safe
-      const safeName = streamName.trim()
-      url.pathname += `/${safeName}/whip`
-    }
-    
-    // Build query parameters
-    const queryParams: string[] = []
-    
-    if (pipeline && pipeline.trim()) {
-      url.searchParams.set('pipeline', pipeline.trim())
-    }
-    var params: PipelineParams = {};
-    if (width && height && width > 0 && height > 0) {
-      params.width = width
-      params.height = height
-    }
-    // Add prompts from the prompt fields
-    let prompts = [prompt1, prompt2, prompt3].filter(p => p.trim() !== '')
-    console.log(prompts)
-    if (prompts.length === 0) {
-      params.prompts = ""
-    } else if (prompts.length === 1) {
-      params.prompts = prompts[0]
-    } else {
-      params.prompts = prompts
-    }
-
-    // Convert the params object to a JSON string
-    const paramsString = JSON.stringify(params);
-    
-    // URL encode the JSON string and add it to the query params
-    url.searchParams.set('params', paramsString);
-
-    return url.toString();
-  }
-
-
-  // Helper method for WHIP offer with retry logic
-  const sendWhipOfferWithRetry = async (url: string, sdp: string, maxRetries = 3): Promise<Response> => {
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        console.log(`WHIP offer attempt ${attempt}/${maxRetries} to URL: ${url}`)
-        
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/sdp',
-          },
-          body: sdp
-        })
-
-        if (response.status === 201) {
-          return response
-        }
-
-        if (attempt === maxRetries) {
-          throw new Error(`All ${maxRetries} attempts failed. Last status: ${response.status}`)
-        }
-
-        // Wait before retry with exponential backoff
-        const waitTime = Math.min(1000 * Math.pow(2, attempt - 1), 5000)
-        console.log(`Attempt ${attempt} failed (${response.status}), retrying in ${waitTime}ms...`)
-        await new Promise(resolve => setTimeout(resolve, waitTime))
-        
-      } catch (error) {
-        if (attempt === maxRetries) {
-          throw error
-        }
-        console.warn(`Attempt ${attempt} failed:`, error)
-        const waitTime = Math.min(1000 * Math.pow(2, attempt - 1), 5000)
-        await new Promise(resolve => setTimeout(resolve, waitTime))
-      }
-    }
-    
-    throw new Error('All retry attempts failed')
-  }
-
+  
   const stopStream = async () => {
     try {
       // Send stop request to server if we have a stream ID
       if (currentStreamId) {
-        console.log(`Stopping stream with ID: ${currentStreamId}`);
-        
-        const stopUrl = whipUrl.replace('/stream/start', '/stream/stop');
-        const requestData = {
-          "request": JSON.stringify({"stop_stream": true, "stream_id": currentStreamId}),
-          "parameters": JSON.stringify({}),
-          "capability": 'webrtc-stream',
-          "timeout_seconds": 30
-        };
-        
-        const livepeerHeader = btoa(JSON.stringify(requestData));
-        
-        const response = await fetch(stopUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Livepeer': livepeerHeader
-          },
-          body: JSON.stringify({ stream_id: currentStreamId })
-        });
-        
-        if (response.ok) {
-          console.log('Stream stop request sent successfully');
-        } else {
-          console.warn('Failed to send stream stop request:', response.status);
-        }
+        await stopStreamApi({ streamId: currentStreamId, whipUrl })
       }
     } catch (error) {
-      console.error('Error sending stop request:', error);
+      console.error('Error sending stop request:', error)
     }
     
     // Clear stats collection interval
@@ -473,7 +367,7 @@ const StreamControls: React.FC<StreamControlsProps> = ({
       streamId: null
     })
   }
-
+  
   // Update function to send prompts and resolution changes
   const sendUpdate = async () => {
     if (!isStreaming) {
@@ -497,30 +391,19 @@ const StreamControls: React.FC<StreamControlsProps> = ({
       // Get current resolution
       const [resWidth, resHeight] = resolution.split('x').map(Number)
       
-      const updateData = {
+      const updateData: StreamUpdateData = {
         height: resHeight,
         width: resWidth,
         prompts: promptsData
       }
 
-      console.log('Sending update:', updateData)
-
-      // Send update request - construct URL with stream name
-      const updateUrl = `${whipUrl}/${streamName}/update`
-      const response = await fetch(updateUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updateData)
+      await sendStreamUpdate({
+        whipUrl,
+        streamName,
+        updateData
       })
-
-      if (response.status == 200) {
-        console.log('Update sent successfully')
-        // You could show a success message here
-      } else {
-        throw new Error(`Update failed: ${response.status} ${response.statusText}`)
-      }
+      
+      // You could show a success message here
     } catch (error) {
       console.error('Error sending update:', error)
       alert('Failed to send update')

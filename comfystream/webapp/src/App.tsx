@@ -4,6 +4,7 @@ import StreamControls from './components/StreamControls'
 import ViewerControls from './components/ViewerControls'
 import ConnectionStatus from './components/ConnectionStatus'
 import StreamStatusSidebar from './components/StreamStatusSidebar'
+import KafkaLogs from './components/KafkaLogs'
 
 function App() {
   const [isStreaming, setIsStreaming] = useState(false)
@@ -93,6 +94,11 @@ function App() {
               setStreamStats={setStreamStats}
               playbackUrl={playbackUrl}
             />
+            
+            {/* Kafka Logs Section */}
+            <div className="mt-8">
+              <KafkaLogs autoStart={false} maxLogs={500} />
+            </div>
           </div>
         </div>
       </div>

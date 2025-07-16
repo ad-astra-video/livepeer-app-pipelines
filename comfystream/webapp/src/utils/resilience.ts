@@ -3,6 +3,8 @@
  * Provides functionality for making WHIP/WHEP connections more resilient to disconnects and quality loss
  */
 
+import { sendIceRestartRequest } from '../api'
+
 export interface ResilienceConfig {
   maxReconnectAttempts: number
   reconnectBackoffMs: number
@@ -286,40 +288,18 @@ export class ConnectionResilient {
       throw new Error('ICE restart endpoint or stream ID not configured')
     }
 
-    let url: string
-    
-    // Check if the iceRestartEndpoint is already a complete URL (from Location header)
-    // If it starts with http, use it directly, otherwise construct the URL
-    if (this.config.iceRestartEndpoint.startsWith('http')) {
-      // Use the Location header URL directly for ICE restart
-      url = this.config.iceRestartEndpoint
-    } else {
-      // Fallback to the old method for backward compatibility
-      const endpointPath = this.config.connectionType === 'whep' ? 'whep' : 'whip'
-      url = `${this.config.iceRestartEndpoint}/${endpointPath}/${this.config.streamId}`
-    }
-    
-    console.log(`Sending ICE restart request to endpoint: ${url}`)
-    
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/sdp',
-      },
-      body: offerSdp
-    })
-
-    if (!response.ok) {
-      throw new Error(`ICE restart request failed: ${response.status} ${response.statusText}`)
-    }
-
-    // Process the answer SDP if provided
-    const answerSdp = await response.text()
-    if (answerSdp) {
-      const connectionType = this.config.connectionType === 'whep' ? 'WHEP' : 'WHIP'
-      console.log(`Received ICE restart answer from ${connectionType} server`)
+    try {
+      const answerSdp = await sendIceRestartRequest({
+        endpoint: this.config.iceRestartEndpoint,
+        streamId: this.config.streamId,
+        connectionType: this.config.connectionType,
+        offerSdp
+      })
+      
       // Note: In a complete implementation, you would apply this answer to the peer connection
       // This would require access to the peer connection from the calling context
+    } catch (error) {
+      throw error
     }
   }
 
