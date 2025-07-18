@@ -643,6 +643,33 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
             </div>
           </div>
 
+          {/* SDP Data Buttons - Moved here */}
+          {(latestOffer || latestAnswer) && (
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                View SDP Data
+              </label>
+              <div className="flex space-x-2">
+                {latestOffer && (
+                  <button
+                    onClick={() => showSdpModal('offer', latestOffer)}
+                    className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors"
+                  >
+                    Offer
+                  </button>
+                )}
+                {latestAnswer && (
+                  <button
+                    onClick={() => showSdpModal('answer', latestAnswer)}
+                    className="flex-1 px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition-colors"
+                  >
+                    Answer
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Quality Issues Display */}
           {qualityIssues.length > 0 && (
             <div className="mb-4 p-3 bg-red-900/30 border border-red-500/30 rounded-lg">
@@ -722,33 +749,6 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
                 </div>
               )}
             </div>
-
-            {/* SDP Buttons */}
-            {(latestOffer || latestAnswer) && (
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  View SDP Data
-                </label>
-                <div className="flex space-x-2">
-                  {latestOffer && (
-                    <button
-                      onClick={() => showSdpModal('offer', latestOffer)}
-                      className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors"
-                    >
-                      Offer
-                    </button>
-                  )}
-                  {latestAnswer && (
-                    <button
-                      onClick={() => showSdpModal('answer', latestAnswer)}
-                      className="flex-1 px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition-colors"
-                    >
-                      Answer
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
 
             {!whepUrl && (
               <div className="flex items-center space-x-2 text-amber-400 text-sm">
