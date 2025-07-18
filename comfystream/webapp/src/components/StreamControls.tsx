@@ -16,6 +16,7 @@ interface StreamControlsProps {
   setConnectionStatus: (status: 'disconnected' | 'connecting' | 'connected' | 'error') => void
   setStreamStats: (stats: any) => void
   setStreamId: (streamId: string | null) => void
+  setStreamName: (streamName: string | null) => void
   setPlaybackUrl: (playbackUrl: string | null) => void
 }
 
@@ -25,10 +26,22 @@ const StreamControls: React.FC<StreamControlsProps> = ({
   setConnectionStatus,
   setStreamStats,
   setStreamId,
+  setStreamName: setParentStreamName,
   setPlaybackUrl
 }) => {
   const [whipUrl, setWhipUrl] = useState(getDefaultWhipUrl())
-  const [streamName, setStreamName] = useState(() => `stream-${Math.random().toString(36).substring(2, 8)}`)
+  const [streamName, setLocalStreamName] = useState(() => `stream-${Math.random().toString(36).substring(2, 8)}`)
+  
+  // Wrapper function to update both local and parent state
+  const setStreamName = (name: string) => {
+    setLocalStreamName(name)
+    setParentStreamName(name)
+  }
+
+  // Initialize parent stream name on mount
+  useEffect(() => {
+    setParentStreamName(streamName)
+  }, [])
   const [pipeline, setPipeline] = useState('comfystream')
   const [prompt1, setPrompt1] = useState('')
   const [prompt2, setPrompt2] = useState('')

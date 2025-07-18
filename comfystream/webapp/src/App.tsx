@@ -4,7 +4,7 @@ import StreamControls from './components/StreamControls'
 import ViewerControls from './components/ViewerControls'
 import ConnectionStatus from './components/ConnectionStatus'
 import StreamStatusSidebar from './components/StreamStatusSidebar'
-import KafkaLogs from './components/EventLogs'
+import TabbedDataView from './components/TabbedDataView'
 
 function App() {
   const [isStreaming, setIsStreaming] = useState(false)
@@ -12,6 +12,7 @@ function App() {
   const [streamConnectionStatus, setStreamConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected')
   const [viewerConnectionStatus, setViewerConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected')
   const [streamId, setStreamId] = useState<string | null>(null)
+  const [streamName, setStreamName] = useState<string | null>(null)
   const [playbackUrl, setPlaybackUrl] = useState<string | null>(null)
   const [streamStats, setStreamStats] = useState({
     bitrate: 0,
@@ -75,6 +76,7 @@ function App() {
               setConnectionStatus={setStreamConnectionStatus}
               setStreamStats={setStreamStats}
               setStreamId={setStreamId}
+              setStreamName={setStreamName}
               setPlaybackUrl={setPlaybackUrl}
             />
           </div>
@@ -95,9 +97,12 @@ function App() {
               playbackUrl={playbackUrl}
             />
             
-            {/* Kafka Logs Section */}
+            {/* Tabbed Data View Section */}
             <div className="mt-8">
-              <KafkaLogs autoStart={false} maxLogs={500} />
+              <TabbedDataView 
+                streamName={streamName}
+                isStreaming={isStreaming}
+              />
             </div>
           </div>
         </div>

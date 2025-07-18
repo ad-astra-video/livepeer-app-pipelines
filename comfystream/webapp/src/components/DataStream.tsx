@@ -1,52 +1,60 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { Activity, Play, Square, Server, MessageSquare, X, Download, RefreshCw, ChevronRight } from 'lucide-react'
+import { Database, Play, Square, Server, MessageSquare, X, Download, RefreshCw, ChevronRight } from 'lucide-react'
 
-interface KafkaLog {
+interface DataLog {
   id: string
   timestamp: number
   type: string
-  topic: string
-  partition: number
-  offset: number
-  key: string | null
-  value: any
-  headers?: Record<string, string>
+  data: any
   expanded?: boolean
 }
 
-interface EventLogsProps {
-  // Optional props for external control
+interface DataStreamProps {
+  streamName?: string | null
+  isStreaming?: boolean
   autoStart?: boolean
   maxLogs?: number
 }
 
-const EventLogs: React.FC<EventLogsProps> = ({
-  autoStart = true,
+const DataStream: React.FC<DataStreamProps> = ({
+  streamName,
+  isStreaming = false,
+  autoStart = false,
   maxLogs = 1000
 }) => {
-  const [kafkaUrl, setKafkaUrl] = useState('http://localhost:7114')
-  const [topic, setTopic] = useState('streaming-events')
+  const [dataUrl, setDataUrl] = useState('http://localhost:5937')
   const [isConnected, setIsConnected] = useState(false)
-  const [logs, setLogs] = useState<KafkaLog[]>([])
+  const [logs, setLogs] = useState<DataLog[]>([])
   const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected')
   const [autoScroll, setAutoScroll] = useState(true)
   const [filterText, setFilterText] = useState('')
+  const [manuallyDisconnected, setManuallyDisconnected] = useState(false)
   
   const logsContainerRef = useRef<HTMLDivElement>(null)
   const eventSourceRef = useRef<EventSource | null>(null)
   const logCounterRef = useRef(0)
 
+  // Auto-connect when streaming starts (but not if manually disconnected)
   useEffect(() => {
-    // Auto-connect when component mounts
-    connectToKafka()
-    
+    console.log('DataStream useEffect:', { isStreaming, streamName, isConnected, manuallyDisconnected })
+    if (isStreaming && streamName && !isConnected && !manuallyDisconnected) {
+      console.log('Auto-connecting to data stream...')
+      connectToDataStream()
+    } else if (!isStreaming && isConnected) {
+      console.log('Auto-disconnecting from data stream...')
+      disconnectFromDataStream()
+    }
+  }, [isStreaming, streamName, isConnected, manuallyDisconnected])
+
+  // Cleanup on unmount
+  useEffect(() => {
     return () => {
       if (eventSourceRef.current) {
         eventSourceRef.current.close()
         eventSourceRef.current = null
       }
     }
-  }, []) // Remove autoStart dependency since we always want to connect
+  }, [])
 
   useEffect(() => {
     if (autoScroll && logsContainerRef.current) {
@@ -58,26 +66,45 @@ const EventLogs: React.FC<EventLogsProps> = ({
     }
   }, [logs, autoScroll])
 
-  const connectToKafka = async () => {
+  const connectToDataStream = async () => {
     if (isConnected || connectionStatus === 'connecting') return
+
+    if (!streamName) {
+      console.warn('No stream name available for data connection')
+      return
+    }
 
     try {
       setConnectionStatus('connecting')
+      setManuallyDisconnected(false) // Reset manual disconnect flag
       
-      // Create SSE connection to Kafka events endpoint
-      const sseUrl = `${kafkaUrl}/events`
+      // Create SSE connection to data stream endpoint
+      const sseUrl = `${dataUrl}/live/video-to-video/${streamName}/data`
+      console.log(`Connecting to data stream: ${sseUrl}`)
+      
       const eventSource = new EventSource(sseUrl)
       eventSourceRef.current = eventSource
 
+      // Debug: Log all properties of the EventSource
+      console.log('EventSource created:', {
+        url: eventSource.url,
+        readyState: eventSource.readyState,
+        withCredentials: eventSource.withCredentials
+      })
+
       eventSource.onopen = () => {
-        console.log('Connected to Event Logs SSE stream')
+        console.log('Connected to Data Stream')
+        console.log('EventSource readyState:', eventSource.readyState)
+        console.log('EventSource url:', eventSource.url)
         setIsConnected(true)
         setConnectionStatus('connected')
       }
 
       eventSource.onmessage = (event) => {
+        console.log('Data stream message received:', event.data)
         try {
           const data = JSON.parse(event.data)
+          console.log('Parsed data:', data)
           
           // Parse timestamp - handle both string and number formats
           let parsedTimestamp = Date.now()
@@ -89,31 +116,29 @@ const EventLogs: React.FC<EventLogsProps> = ({
             }
           }
           
-          const log: KafkaLog = {
-            id: `log-${logCounterRef.current++}`,
+          const log: DataLog = {
+            id: `data-${logCounterRef.current++}`,
             timestamp: parsedTimestamp,
-            type: data.type || 'unknown',
-            topic: data.topic || topic,
-            partition: data.partition || 0,
-            offset: data.offset || 0,
-            key: data.key,
-            value: data,
-            headers: data.headers,
+            type: data.type || 'data',
+            data: data,
             expanded: false
           }
           
           setLogs(prevLogs => {
             const newLogs = [...prevLogs, log]
+            console.log('Updated logs count:', newLogs.length)
             // Keep only the last maxLogs entries
             return newLogs.slice(-maxLogs)
           })
         } catch (error) {
-          console.error('Error parsing SSE message:', error)
+          console.error('Error parsing data stream message:', error)
         }
       }
 
       eventSource.onerror = (error) => {
-        console.error('Event Logs SSE error:', error)
+        console.error('Data Stream SSE error:', error)
+        console.error('SSE readyState:', eventSource.readyState)
+        console.error('SSE url was:', sseUrl)
         setIsConnected(false)
         setConnectionStatus('error')
         if (eventSourceRef.current) {
@@ -123,18 +148,19 @@ const EventLogs: React.FC<EventLogsProps> = ({
       }
 
     } catch (error) {
-      console.error('Error connecting to Event Logs SSE:', error)
+      console.error('Error connecting to Data Stream:', error)
       setConnectionStatus('error')
     }
   }
 
-  const disconnectFromKafka = () => {
+  const disconnectFromDataStream = () => {
     if (eventSourceRef.current) {
       eventSourceRef.current.close()
       eventSourceRef.current = null
     }
     setIsConnected(false)
     setConnectionStatus('disconnected')
+    setManuallyDisconnected(true) // Mark as manually disconnected
   }
 
   const clearLogs = () => {
@@ -166,7 +192,7 @@ const EventLogs: React.FC<EventLogsProps> = ({
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `event-logs-${topic}-${new Date().toISOString().split('T')[0]}.json`
+    a.download = `data-stream-${streamName}-${new Date().toISOString().split('T')[0]}.json`
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
@@ -178,22 +204,18 @@ const EventLogs: React.FC<EventLogsProps> = ({
     const searchText = filterText.toLowerCase()
     return (
       log.type.toLowerCase().includes(searchText) ||
-      log.topic.toLowerCase().includes(searchText) ||
-      (log.key && log.key.toLowerCase().includes(searchText)) ||
-      JSON.stringify(log.value).toLowerCase().includes(searchText)
+      JSON.stringify(log.data).toLowerCase().includes(searchText)
     )
   })
 
   const formatTimestamp = (timestamp: number) => {
     try {
-      // Validate timestamp - if it's not a valid number or date, use current time
       if (!timestamp || isNaN(timestamp)) {
         return new Date().toLocaleTimeString()
       }
       
       const date = new Date(timestamp)
       
-      // Check if the date is valid
       if (isNaN(date.getTime())) {
         return new Date().toLocaleTimeString()
       }
@@ -208,7 +230,6 @@ const EventLogs: React.FC<EventLogsProps> = ({
   const formatValue = (value: any) => {
     if (typeof value === 'string') {
       try {
-        // Try to parse as JSON for better formatting
         const parsed = JSON.parse(value)
         return JSON.stringify(parsed, null, 2)
       } catch {
@@ -223,12 +244,14 @@ const EventLogs: React.FC<EventLogsProps> = ({
       <div className="p-6 border-b border-white/10">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
-              <Activity className="w-6 h-6 text-white" />
+            <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center">
+              <Database className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-white">Event Logs</h2>
-              <p className="text-sm text-gray-300">Real-time streaming events</p>
+              <h2 className="text-xl font-bold text-white">Data Stream</h2>
+              <p className="text-sm text-gray-300">
+                {streamName ? `Stream: ${streamName}` : 'Real-time data from video processing'}
+              </p>
             </div>
           </div>
           
@@ -246,8 +269,8 @@ const EventLogs: React.FC<EventLogsProps> = ({
             </div>
             
             <button
-              onClick={isConnected ? disconnectFromKafka : connectToKafka}
-              disabled={connectionStatus === 'connecting'}
+              onClick={isConnected ? disconnectFromDataStream : connectToDataStream}
+              disabled={connectionStatus === 'connecting' || !streamName}
               className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-colors ${
                 isConnected
                   ? 'bg-red-600 hover:bg-red-700 text-white'
@@ -273,29 +296,28 @@ const EventLogs: React.FC<EventLogsProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
-              Kafka SSE Events URL
+              Data Stream Base URL
             </label>
             <input
               type="text"
-              value={kafkaUrl}
-              onChange={(e) => setKafkaUrl(e.target.value)}
-              placeholder="localhost:7114"
-              className="w-full px-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              value={dataUrl}
+              onChange={(e) => setDataUrl(e.target.value)}
+              placeholder="http://localhost:7114"
+              className="w-full px-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               disabled={isConnected}
             />
           </div>
           
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
-              Topic
+              Stream Name
             </label>
             <input
               type="text"
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-              placeholder="streaming-events"
-              className="w-full px-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              disabled={isConnected}
+              value={streamName || ''}
+              placeholder="Stream name from video session"
+              className="w-full px-4 py-2 bg-black/20 border border-white/10 rounded-lg text-gray-400 placeholder-gray-500 cursor-not-allowed"
+              disabled={true}
             />
           </div>
         </div>
@@ -308,8 +330,8 @@ const EventLogs: React.FC<EventLogsProps> = ({
                 type="text"
                 value={filterText}
                 onChange={(e) => setFilterText(e.target.value)}
-                placeholder="Filter logs..."
-                className="px-3 py-1 bg-black/20 border border-white/10 rounded text-white placeholder-gray-400 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500"
+                placeholder="Filter data..."
+                className="px-3 py-1 bg-black/20 border border-white/10 rounded text-white placeholder-gray-400 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
               {filterText && (
                 <button
@@ -326,7 +348,7 @@ const EventLogs: React.FC<EventLogsProps> = ({
                 type="checkbox"
                 checked={autoScroll}
                 onChange={(e) => setAutoScroll(e.target.checked)}
-                className="rounded bg-black/20 border-white/10 text-purple-600 focus:ring-purple-500"
+                className="rounded bg-black/20 border-white/10 text-blue-600 focus:ring-blue-500"
               />
               <span>Auto-scroll</span>
             </label>
@@ -352,14 +374,14 @@ const EventLogs: React.FC<EventLogsProps> = ({
             </button>
             
             <span className="text-sm text-gray-400">
-              {filteredLogs.length} of {logs.length} logs
+              {filteredLogs.length} of {logs.length} entries
             </span>
             
             <button
               onClick={exportLogs}
               disabled={logs.length === 0}
               className="p-2 text-gray-400 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Export logs as JSON"
+              title="Export data as JSON"
             >
               <Download className="w-4 h-4" />
             </button>
@@ -368,7 +390,7 @@ const EventLogs: React.FC<EventLogsProps> = ({
               onClick={clearLogs}
               disabled={logs.length === 0}
               className="p-2 text-gray-400 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Clear all logs"
+              title="Clear all data"
             >
               <X className="w-4 h-4" />
             </button>
@@ -386,13 +408,15 @@ const EventLogs: React.FC<EventLogsProps> = ({
             <div className="flex items-center justify-center h-full text-gray-400">
               <div className="text-center">
                 <MessageSquare className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p className="text-lg font-medium mb-2">No logs available</p>
+                <p className="text-lg font-medium mb-2">No data available</p>
                 <p className="text-sm">
-                  {!isConnected 
-                    ? 'Connect to start receiving event logs'
-                    : filterText 
-                      ? 'No logs match your filter'
-                      : 'Waiting for log messages...'
+                  {!streamName 
+                    ? 'Start streaming to enable data connection'
+                    : !isConnected 
+                      ? 'Connect to start receiving data stream'
+                      : filterText 
+                        ? 'No data matches your filter'
+                        : 'Waiting for data messages...'
                   }
                 </p>
               </div>
@@ -417,14 +441,9 @@ const EventLogs: React.FC<EventLogsProps> = ({
                       <span className="text-xs text-gray-400 font-mono">
                         {formatTimestamp(log.timestamp)}
                       </span>
-                      <span className="px-2 py-1 bg-purple-600/20 text-purple-300 rounded text-xs">
-                        {log.topic}:{log.partition}@{log.offset}
+                      <span className="px-2 py-1 bg-blue-600/20 text-blue-300 rounded text-xs">
+                        data
                       </span>
-                      {log.key && (
-                        <span className="px-2 py-1 bg-blue-600/20 text-blue-300 rounded text-xs font-mono">
-                          {log.key}
-                        </span>
-                      )}
                     </div>
                     <div className="text-xs text-gray-500">
                       {log.expanded ? 'Click to collapse' : 'Click to expand'}
@@ -436,22 +455,9 @@ const EventLogs: React.FC<EventLogsProps> = ({
                   <div className="px-3 pb-3">
                     <div className="bg-black/50 rounded p-3 overflow-x-auto">
                       <pre className="text-xs text-gray-300 whitespace-pre-wrap font-mono">
-                        {formatValue(log.value)}
+                        {formatValue(log.data)}
                       </pre>
                     </div>
-                    
-                    {log.headers && Object.keys(log.headers).length > 0 && (
-                      <div className="mt-2 text-xs">
-                        <span className="text-gray-400">Headers:</span>
-                        <div className="mt-1 flex flex-wrap gap-1">
-                          {Object.entries(log.headers).map(([key, value]) => (
-                            <span key={key} className="px-2 py-1 bg-gray-600/20 text-gray-300 rounded text-xs">
-                              {key}: {value}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
@@ -463,4 +469,4 @@ const EventLogs: React.FC<EventLogsProps> = ({
   )
 }
 
-export default EventLogs
+export default DataStream
