@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { Video, Mic, MicOff, VideoOff, Play, Square, Upload, AlertCircle, Download, X, Wifi, WifiOff, RefreshCw } from 'lucide-react'
+import { Video, Mic, MicOff, VideoOff, Play, Square, Upload, AlertCircle, Download, X, Wifi, WifiOff, RefreshCw, Camera, Monitor } from 'lucide-react'
 import { getDefaultWhipUrl } from '../utils/urls'
 import { ConnectionResilient, DEFAULT_RESILIENCE_CONFIG } from '../utils/resilience'
 import { 
@@ -9,6 +9,12 @@ import {
   sendStreamUpdate,
   StreamUpdateData
 } from '../api'
+
+interface MediaDevice {
+  deviceId: string
+  label: string
+  kind: MediaDeviceKind
+}
 
 interface StreamControlsProps {
   isStreaming: boolean
@@ -68,6 +74,15 @@ const StreamControls: React.FC<StreamControlsProps> = ({
   const videoRef = useRef<HTMLVideoElement>(null)
   const [sdpModalOpen, setSdpModalOpen] = useState(false)
   const [sdpModalContent, setSdpModalContent] = useState<{type: 'offer' | 'answer', content: string} | null>(null)
+  
+  // Media device selection states
+  const [showMediaModal, setShowMediaModal] = useState(false)
+  const [cameras, setCameras] = useState<MediaDevice[]>([])
+  const [microphones, setMicrophones] = useState<MediaDevice[]>([])
+  const [selectedCamera, setSelectedCamera] = useState<string>('')
+  const [selectedMicrophone, setSelectedMicrophone] = useState<string>('')
+  const [useScreenShare, setUseScreenShare] = useState(false)
+  
   const statsIntervalRef = useRef<number | null>(null)
   const lastStatsRef = useRef({
     time: 0,
@@ -93,6 +108,78 @@ const StreamControls: React.FC<StreamControlsProps> = ({
       }
     }
   }, [localStream, peerConnection, resilience])
+
+  // Load media devices on component mount
+  useEffect(() => {
+    loadMediaDevices()
+  }, [])
+
+  const loadMediaDevices = async () => {
+    try {
+      // Request permission to access media devices
+      await navigator.mediaDevices.getUserMedia({ audio: true, video: true })
+      
+      const devices = await navigator.mediaDevices.enumerateDevices()
+      
+      const videoDevices = devices
+        .filter(device => device.kind === 'videoinput')
+        .map(device => ({
+          deviceId: device.deviceId,
+          label: device.label || `Camera ${device.deviceId.slice(0, 8)}`,
+          kind: device.kind
+        }))
+      
+      const audioDevices = devices
+        .filter(device => device.kind === 'audioinput')
+        .map(device => ({
+          deviceId: device.deviceId,
+          label: device.label || `Microphone ${device.deviceId.slice(0, 8)}`,
+          kind: device.kind
+        }))
+      
+      setCameras(videoDevices)
+      setMicrophones(audioDevices)
+      
+      // Set default selections
+      if (videoDevices.length > 0 && !selectedCamera) {
+        setSelectedCamera(videoDevices[0].deviceId)
+      }
+      if (audioDevices.length > 0 && !selectedMicrophone) {
+        setSelectedMicrophone(audioDevices[0].deviceId)
+      }
+      
+      console.log('Media devices loaded:', { videoDevices, audioDevices })
+    } catch (error) {
+      console.error('Error loading media devices:', error)
+    }
+  }
+
+  const refreshMediaDevices = () => {
+    loadMediaDevices()
+  }
+
+  const handleScreenShare = () => {
+    setUseScreenShare(!useScreenShare)
+    if (!useScreenShare) {
+      // When enabling screen share, we might want to also update the selected camera
+      console.log('Screen sharing enabled')
+    }
+  }
+
+  const handleStartStreamClick = () => {
+    if (!whipUrl) {
+      alert('Please enter a WHIP URL')
+      return
+    }
+    
+    // Start streaming directly without modal
+    startStream()
+  }
+
+  const handleStreamWithDevices = () => {
+    setShowMediaModal(false)
+    startStream()
+  }
 
   const startStream = async () => {
     if (!whipUrl) {
@@ -144,24 +231,64 @@ const StreamControls: React.FC<StreamControlsProps> = ({
       
       setResilience(resilienceManager)
       
-      // Get user media
+      // Get user media with selected devices
       const [width, height] = resolution.split('x').map(Number)
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: videoEnabled ? {
-          width: { ideal: width },
-          height: { ideal: height },
-          frameRate: { ideal: fpsLimit, max: fpsLimit }
-        } : false,
-        audio: audioEnabled
-      })
+      let currentStream: MediaStream
       
-      setLocalStream(stream)
+      if (videoEnabled) {
+        if (useScreenShare) {
+          // For screen share, we'll handle it separately
+          const displayStream = await navigator.mediaDevices.getDisplayMedia({
+            video: {
+              width: { ideal: width },
+              height: { ideal: height },
+              frameRate: { ideal: fpsLimit, max: fpsLimit }
+            }
+          })
+          
+          // If audio is enabled, get audio separately and combine
+          if (audioEnabled && selectedMicrophone) {
+            const audioStream = await navigator.mediaDevices.getUserMedia({
+              audio: { deviceId: selectedMicrophone }
+            })
+            
+            // Combine streams
+            currentStream = new MediaStream([
+              ...displayStream.getVideoTracks(),
+              ...audioStream.getAudioTracks()
+            ])
+          } else {
+            currentStream = displayStream
+          }
+        } else {
+          // Regular camera
+          const videoConstraints = {
+            deviceId: selectedCamera ? { exact: selectedCamera } : undefined,
+            width: { ideal: width },
+            height: { ideal: height },
+            frameRate: { ideal: fpsLimit, max: fpsLimit }
+          }
+          
+          currentStream = await navigator.mediaDevices.getUserMedia({
+            video: videoConstraints,
+            audio: audioEnabled ? (selectedMicrophone ? { deviceId: selectedMicrophone } : true) : false
+          })
+        }
+      } else {
+        // Audio only
+        currentStream = await navigator.mediaDevices.getUserMedia({
+          video: false,
+          audio: audioEnabled ? (selectedMicrophone ? { deviceId: selectedMicrophone } : true) : false
+        })
+      }
+      
+      setLocalStream(currentStream)
       if (videoRef.current) {
-        videoRef.current.srcObject = stream
+        videoRef.current.srcObject = currentStream
       }
 
       // Log the actual video track settings to verify resolution
-      const videoTrack = stream.getVideoTracks()[0]
+      const videoTrack = currentStream.getVideoTracks()[0]
       if (videoTrack) {
         const settings = videoTrack.getSettings()
         console.log(`Video track settings: ${settings.width}x${settings.height} @ ${settings.frameRate}fps`)
@@ -201,8 +328,8 @@ const StreamControls: React.FC<StreamControlsProps> = ({
       })
 
       // Add tracks to peer connection
-      stream.getTracks().forEach(track => {
-        pc.addTrack(track, stream)
+      currentStream.getTracks().forEach(track => {
+        pc.addTrack(track, currentStream)
       })
 
       // Create offer
@@ -822,7 +949,7 @@ const StreamControls: React.FC<StreamControlsProps> = ({
               )}
               
               <button
-                onClick={isStreaming ? stopStream : startStream}
+                onClick={isStreaming ? stopStream : handleStartStreamClick}
                 disabled={!whipUrl && !isStreaming}
                 className={`flex items-center space-x-2 px-6 py-3 rounded-lg font-medium transition-colors ${
                   isStreaming
@@ -922,6 +1049,104 @@ const StreamControls: React.FC<StreamControlsProps> = ({
 
           {/* Stream Configuration Inputs */}
           <div className="space-y-4">
+            {/* Media Device Selection */}
+            <div className="p-4 bg-black/20 rounded-lg border border-white/10">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-medium text-white flex items-center">
+                  <Camera className="w-4 h-4 mr-2" />
+                  Media Sources
+                </h3>
+                <button
+                  onClick={refreshMediaDevices}
+                  className="text-gray-400 hover:text-white transition-colors"
+                  title="Refresh devices"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                </button>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Camera Selection */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-400 mb-2">
+                    Camera
+                  </label>
+                  <select
+                    value={selectedCamera}
+                    onChange={(e) => setSelectedCamera(e.target.value)}
+                    className="w-full px-3 py-2 bg-black/30 border border-white/10 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    disabled={useScreenShare}
+                  >
+                    <option value="">Select Camera</option>
+                    {cameras.map((camera) => (
+                      <option key={camera.deviceId} value={camera.deviceId}>
+                        {camera.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Microphone Selection */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-400 mb-2">
+                    Microphone
+                  </label>
+                  <select
+                    value={selectedMicrophone}
+                    onChange={(e) => setSelectedMicrophone(e.target.value)}
+                    className="w-full px-3 py-2 bg-black/30 border border-white/10 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  >
+                    <option value="">Select Microphone</option>
+                    {microphones.map((mic) => (
+                      <option key={mic.deviceId} value={mic.deviceId}>
+                        {mic.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Screen Share Toggle */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-400 mb-2">
+                    Screen Share
+                  </label>
+                  <button
+                    onClick={handleScreenShare}
+                    className={`w-full flex items-center justify-center space-x-2 px-3 py-2 rounded text-sm font-medium transition-colors ${
+                      useScreenShare
+                        ? 'bg-green-600 hover:bg-green-700 text-white'
+                        : 'bg-gray-600 hover:bg-gray-700 text-white'
+                    }`}
+                  >
+                    <Monitor className="w-4 h-4" />
+                    <span>{useScreenShare ? 'Screen Share ON' : 'Screen Share OFF'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Selected Source Info */}
+              <div className="mt-3 text-xs text-gray-400">
+                <span>Source: </span>
+                {useScreenShare ? (
+                  <span className="text-green-400">Screen Share</span>
+                ) : selectedCamera ? (
+                  <span className="text-blue-400">
+                    {cameras.find(c => c.deviceId === selectedCamera)?.label || 'Camera'}
+                  </span>
+                ) : (
+                  <span className="text-red-400">No video source selected</span>
+                )}
+                {selectedMicrophone && (
+                  <>
+                    <span> + </span>
+                    <span className="text-purple-400">
+                      {microphones.find(m => m.deviceId === selectedMicrophone)?.label || 'Microphone'}
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+
             {/* WHIP URL Input */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -1065,6 +1290,126 @@ const StreamControls: React.FC<StreamControlsProps> = ({
         </div>
       </div>
       </div>
+
+      {/* Media Device Selection Modal */}
+      {showMediaModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-white/10 rounded-xl p-6 max-w-md w-full mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-white flex items-center">
+                <Camera className="w-5 h-5 mr-2" />
+                Select Media Sources
+              </h3>
+              <button
+                onClick={() => setShowMediaModal(false)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Camera Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Camera
+                </label>
+                <select
+                  value={selectedCamera}
+                  onChange={(e) => setSelectedCamera(e.target.value)}
+                  className="w-full px-3 py-2 bg-black/30 border border-white/10 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  disabled={useScreenShare}
+                >
+                  <option value="">Select Camera</option>
+                  {cameras.map((camera) => (
+                    <option key={camera.deviceId} value={camera.deviceId}>
+                      {camera.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Microphone Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Microphone
+                </label>
+                <select
+                  value={selectedMicrophone}
+                  onChange={(e) => setSelectedMicrophone(e.target.value)}
+                  className="w-full px-3 py-2 bg-black/30 border border-white/10 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                >
+                  <option value="">Select Microphone</option>
+                  {microphones.map((mic) => (
+                    <option key={mic.deviceId} value={mic.deviceId}>
+                      {mic.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Screen Share Toggle */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Screen Share
+                </label>
+                <button
+                  onClick={() => setUseScreenShare(!useScreenShare)}
+                  className={`w-full flex items-center justify-center space-x-2 px-3 py-2 rounded text-sm font-medium transition-colors ${
+                    useScreenShare
+                      ? 'bg-green-600 hover:bg-green-700 text-white'
+                      : 'bg-gray-600 hover:bg-gray-700 text-white'
+                  }`}
+                >
+                  <Monitor className="w-4 h-4" />
+                  <span>{useScreenShare ? 'Screen Share ON' : 'Screen Share OFF'}</span>
+                </button>
+              </div>
+
+              {/* Selected Source Info */}
+              <div className="p-3 bg-black/30 rounded-lg">
+                <p className="text-xs text-gray-400 mb-1">Selected sources:</p>
+                <div className="text-sm">
+                  <div className="text-white">
+                    📹 {useScreenShare ? (
+                      <span className="text-green-400">Screen Share</span>
+                    ) : selectedCamera ? (
+                      <span className="text-blue-400">
+                        {cameras.find(c => c.deviceId === selectedCamera)?.label || 'Camera'}
+                      </span>
+                    ) : (
+                      <span className="text-red-400">No video source</span>
+                    )}
+                  </div>
+                  {selectedMicrophone && (
+                    <div className="text-white">
+                      🎤 <span className="text-purple-400">
+                        {microphones.find(m => m.deviceId === selectedMicrophone)?.label || 'Microphone'}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex space-x-3 mt-6">
+              <button
+                onClick={() => setShowMediaModal(false)}
+                className="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleStreamWithDevices}
+                disabled={!useScreenShare && !selectedCamera}
+                className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
+              >
+                Start Stream
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }
