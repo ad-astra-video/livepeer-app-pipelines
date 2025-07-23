@@ -43,6 +43,36 @@ const StreamControls: React.FC<StreamControlsProps> = ({
     frameCount: 0
   })
 
+  // Initialize camera/microphone access when component loads
+  useEffect(() => {
+    const initializeMedia = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: videoEnabled ? {
+            frameRate: { ideal: fpsLimit, max: fpsLimit }
+          } : false,
+          audio: audioEnabled
+        })
+        setLocalStream(stream)
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream
+        }
+      } catch (error) {
+        console.error('Failed to initialize media devices:', error)
+        // Don't show alert here as user might not want to grant permissions immediately
+      }
+    }
+
+    initializeMedia()
+
+    // Cleanup function
+    return () => {
+      if (localStream) {
+        localStream.getTracks().forEach(track => track.stop())
+      }
+    }
+  }, []) // Only run once on component mount
+
   useEffect(() => {
     return () => {
       if (statsIntervalRef.current) {
@@ -115,17 +145,20 @@ const StreamControls: React.FC<StreamControlsProps> = ({
       
       setResilience(resilienceManager)
       
-      // Get user media
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: videoEnabled ? {
-          frameRate: { ideal: fpsLimit, max: fpsLimit }
-        } : false,
-        audio: audioEnabled
-      })
-      
-      setLocalStream(stream)
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
+      // Get user media (use existing stream if available)
+      let stream = localStream
+      if (!stream) {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: videoEnabled ? {
+            frameRate: { ideal: fpsLimit, max: fpsLimit }
+          } : false,
+          audio: audioEnabled
+        })
+        
+        setLocalStream(stream)
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream
+        }
       }
 
       // Create peer connection with enhanced configuration
@@ -408,22 +441,60 @@ const StreamControls: React.FC<StreamControlsProps> = ({
     })
   }
 
-  const toggleVideo = () => {
+  const toggleVideo = async () => {
     if (localStream) {
       const videoTrack = localStream.getVideoTracks()[0]
       if (videoTrack) {
         videoTrack.enabled = !videoTrack.enabled
         setVideoEnabled(videoTrack.enabled)
       }
+    } else {
+      // If no local stream exists, create one with the new video state
+      try {
+        const newVideoEnabled = !videoEnabled
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: newVideoEnabled ? {
+            frameRate: { ideal: fpsLimit, max: fpsLimit }
+          } : false,
+          audio: audioEnabled
+        })
+        setLocalStream(stream)
+        setVideoEnabled(newVideoEnabled)
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream
+        }
+      } catch (error) {
+        console.error('Failed to toggle video:', error)
+        alert('Failed to access camera. Please check permissions.')
+      }
     }
   }
 
-  const toggleAudio = () => {
+  const toggleAudio = async () => {
     if (localStream) {
       const audioTrack = localStream.getAudioTracks()[0]
       if (audioTrack) {
         audioTrack.enabled = !audioTrack.enabled
         setAudioEnabled(audioTrack.enabled)
+      }
+    } else {
+      // If no local stream exists, create one with the new audio state
+      try {
+        const newAudioEnabled = !audioEnabled
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: videoEnabled ? {
+            frameRate: { ideal: fpsLimit, max: fpsLimit }
+          } : false,
+          audio: newAudioEnabled
+        })
+        setLocalStream(stream)
+        setAudioEnabled(newAudioEnabled)
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream
+        }
+      } catch (error) {
+        console.error('Failed to toggle audio:', error)
+        alert('Failed to access microphone. Please check permissions.')
       }
     }
   }
