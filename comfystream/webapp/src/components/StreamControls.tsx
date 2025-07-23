@@ -407,12 +407,6 @@ const StreamControls: React.FC<StreamControlsProps> = ({
         setCurrentStreamId(streamId)
         setPlaybackUrl(playbackUrl)
         
-        // Configure resilience manager with ICE restart endpoint from Location header and stream ID
-        if (resilienceManager && streamId && locationHeader) {
-          // Use the Location header as the ICE restart endpoint
-          resilienceManager.updateIceRestartConfig(locationHeader, streamId)
-        }
-        
         // Start collecting real-time stats
         statsIntervalRef.current = window.setInterval(() => {
           collectPublisherStats(pc)
@@ -769,13 +763,6 @@ const StreamControls: React.FC<StreamControlsProps> = ({
     }
   }
 
-  const forceIceRestart = () => {
-    if (peerConnection && resilience) {
-      console.log('Forcing ICE restart for publisher...')
-      resilience.forceIceRestart(peerConnection)
-    }
-  }
-
   return (
     <>
       {/* SDP Modal */}
@@ -928,15 +915,6 @@ const StreamControls: React.FC<StreamControlsProps> = ({
               {/* Manual Recovery Controls */}
               {isStreaming && (
                 <div className="flex items-center space-x-2">
-                  <button
-                    onClick={forceIceRestart}
-                    disabled={!peerConnection}
-                    className="px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white text-sm rounded-lg transition-colors"
-                    title="Force ICE restart to recover connection"
-                  >
-                    ICE Restart
-                  </button>
-                  
                   <button
                     onClick={forceReconnect}
                     disabled={isRecovering}

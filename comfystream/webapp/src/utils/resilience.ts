@@ -3,8 +3,6 @@
  * Provides functionality for making WHIP/WHEP connections more resilient to disconnects and quality loss
  */
 
-import { sendIceRestartRequest } from '../api'
-
 export interface ResilienceConfig {
   maxReconnectAttempts: number
   reconnectBackoffMs: number
@@ -16,8 +14,6 @@ export interface ResilienceConfig {
     maxLatency: number // ms
     maxPacketLoss: number // percentage (0-100)
   }
-  // ICE restart configuration
-  iceRestartEndpoint?: string // Base URL for ICE restart
   streamId?: string | null // Current stream ID
   connectionType?: 'whip' | 'whep' // Connection type for determining endpoint
 }
@@ -264,42 +260,11 @@ export class ConnectionResilient {
         await pc.setLocalDescription(offer)
         this.state.lastReconnectTime = Date.now()
         
-        // Send ICE restart request to server if endpoint and stream ID are available
-        if (this.config.iceRestartEndpoint && this.config.streamId) {
-          try {
-            await this.sendIceRestartRequest(offer.sdp)
-            console.log('ICE restart request sent to server successfully')
-          } catch (error) {
-            console.error('Failed to send ICE restart request to server:', error)
-            // Continue with local ICE restart even if server request fails
-          }
-        } else {
-          console.log('ICE restart offer created - no server endpoint configured')
-        }
+        console.log('ICE restart offer created locally')
       }
     } catch (error) {
       console.error('ICE restart failed:', error)
       this.handleRecoveryFailure()
-    }
-  }
-
-  private async sendIceRestartRequest(offerSdp: string): Promise<void> {
-    if (!this.config.iceRestartEndpoint || !this.config.streamId) {
-      throw new Error('ICE restart endpoint or stream ID not configured')
-    }
-
-    try {
-      const answerSdp = await sendIceRestartRequest({
-        endpoint: this.config.iceRestartEndpoint,
-        streamId: this.config.streamId,
-        connectionType: this.config.connectionType,
-        offerSdp
-      })
-      
-      // Note: In a complete implementation, you would apply this answer to the peer connection
-      // This would require access to the peer connection from the calling context
-    } catch (error) {
-      throw error
     }
   }
 
@@ -354,11 +319,6 @@ export class ConnectionResilient {
     }
   }
 
-  // Manual recovery triggers
-  public forceIceRestart(pc: RTCPeerConnection) {
-    this.attemptIceRestart(pc)
-  }
-
   public resetState() {
     this.state = {
       reconnectAttempts: 0,
@@ -368,13 +328,6 @@ export class ConnectionResilient {
       isRecovering: false,
       qualityIssues: []
     }
-  }
-
-  // Configuration updates
-  public updateIceRestartConfig(endpoint: string, streamId: string | null) {
-    this.config.iceRestartEndpoint = endpoint
-    this.config.streamId = streamId
-    console.log(`Updated ICE restart config - endpoint: ${endpoint}, streamId: ${streamId}`)
   }
 
   public updateStreamId(streamId: string | null) {
