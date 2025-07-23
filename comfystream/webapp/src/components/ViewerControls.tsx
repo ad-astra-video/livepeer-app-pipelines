@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Play, Square, Monitor, AlertCircle, Download, X, Wifi, WifiOff, RefreshCw } from 'lucide-react'
 import { getDefaultWhepUrl } from '../utils/urls'
+import { loadSettingsFromStorage } from './SettingsModal'
 import { constructWhepUrl, sendWhepOffer } from '../api'
 
 interface ViewerControlsProps {
@@ -18,7 +19,10 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
   setStreamStats,
   playbackUrl
 }) => {
-  const [whepUrl, setWhepUrl] = useState(getDefaultWhepUrl())
+  const [whepUrl, setWhepUrl] = useState(() => {
+    const savedSettings = loadSettingsFromStorage()
+    return savedSettings.whepUrl
+  })
   const [latestOffer, setLatestOffer] = useState<string>('')
   const [latestAnswer, setLatestAnswer] = useState<string>('')
   const [peerConnection, setPeerConnection] = useState<RTCPeerConnection | null>(null)
@@ -54,6 +58,28 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
       }
     }
   }, [peerConnection])
+
+  // Listen for storage changes to update URL from settings
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const savedSettings = loadSettingsFromStorage()
+      setWhepUrl(savedSettings.whepUrl)
+    }
+    
+    const handleSettingsChange = (event: CustomEvent) => {
+      if (event.detail?.whepUrl) {
+        setWhepUrl(event.detail.whepUrl)
+      }
+    }
+    
+    window.addEventListener('storage', handleStorageChange)
+    window.addEventListener('comfystream-settings-changed', handleSettingsChange as EventListener)
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange)
+      window.removeEventListener('comfystream-settings-changed', handleSettingsChange as EventListener)
+    }
+  }, [])
 
   const startViewing = async () => {
     if (!whepUrl) {

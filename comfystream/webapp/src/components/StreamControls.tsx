@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Video, Mic, MicOff, VideoOff, Play, Square, Upload, AlertCircle, Download, X, Wifi, WifiOff, RefreshCw, Camera, Monitor } from 'lucide-react'
-import { getDefaultWhipUrl } from '../utils/urls'
+import { getDefaultWhipUrl, generateStreamId, getWhipUrlWithStreamId } from '../utils/urls'
+import { loadSettingsFromStorage } from './SettingsModal'
 import { 
   constructWhipUrl, 
   sendWhipOffer, 
@@ -34,7 +35,10 @@ const StreamControls: React.FC<StreamControlsProps> = ({
   setStreamName: setParentStreamName,
   setPlaybackUrl
 }) => {
-  const [whipUrl, setWhipUrl] = useState(getDefaultWhipUrl())
+  const [whipUrl, setWhipUrl] = useState(() => {
+    const savedSettings = loadSettingsFromStorage()
+    return savedSettings.whipUrl
+  })
   const [streamName, setLocalStreamName] = useState(() => `stream-${Math.random().toString(36).substring(2, 8)}`)
   
   // Wrapper function to update both local and parent state
@@ -46,6 +50,28 @@ const StreamControls: React.FC<StreamControlsProps> = ({
   // Initialize parent stream name on mount
   useEffect(() => {
     setParentStreamName(streamName)
+  }, [])
+
+  // Listen for storage changes to update URL from settings
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const savedSettings = loadSettingsFromStorage()
+      setWhipUrl(savedSettings.whipUrl)
+    }
+    
+    const handleSettingsChange = (event: CustomEvent) => {
+      if (event.detail?.whipUrl) {
+        setWhipUrl(event.detail.whipUrl)
+      }
+    }
+    
+    window.addEventListener('storage', handleStorageChange)
+    window.addEventListener('comfystream-settings-changed', handleSettingsChange as EventListener)
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange)
+      window.removeEventListener('comfystream-settings-changed', handleSettingsChange as EventListener)
+    }
   }, [])
   const [pipeline, setPipeline] = useState('comfystream')
   const [prompt1, setPrompt1] = useState('')
@@ -184,6 +210,12 @@ const StreamControls: React.FC<StreamControlsProps> = ({
 
     try {
       setConnectionStatus('connecting')
+      
+      // Generate a random streamId for this stream
+      const streamId = generateStreamId()
+      setCurrentStreamId(streamId)
+      setStreamId(streamId) // Also update parent state
+      console.log(`Generated streamId: ${streamId}`)
       
       // Get user media with selected devices
       const [width, height] = resolution.split('x').map(Number)
@@ -328,7 +360,7 @@ const StreamControls: React.FC<StreamControlsProps> = ({
       // Construct the WHIP URL with parameters
       const [resWidth, resHeight] = resolution.split('x').map(Number)
       const prompts = [prompt1, prompt2, prompt3].filter(p => p.trim() !== '')
-      const constructedUrl = constructWhipUrl(whipUrl, streamName, pipeline, resWidth, resHeight, prompts)
+      const constructedUrl = constructWhipUrl(whipUrl, streamName, pipeline, resWidth, resHeight, prompts, streamId)
       console.log(`Constructed WHIP URL: ${constructedUrl}`)
       
       // Send WHIP offer with retry logic

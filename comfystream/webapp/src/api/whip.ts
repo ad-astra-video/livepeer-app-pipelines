@@ -31,7 +31,8 @@ export const constructWhipUrl = (
   pipeline: string, 
   width: number, 
   height: number,
-  prompts: string[]
+  prompts: string[],
+  streamId?: string
 ): string => {
   let url = new URL(baseUrl)
   
@@ -45,6 +46,11 @@ export const constructWhipUrl = (
   // Build query parameters
   if (pipeline && pipeline.trim()) {
     url.searchParams.set('pipeline', pipeline.trim())
+  }
+  
+  // Add streamId if provided
+  if (streamId && streamId.trim()) {
+    url.searchParams.set('streamId', streamId.trim())
   }
   
   var params: PipelineParams = {}

@@ -4,7 +4,9 @@ import StreamControls from './components/StreamControls'
 import ViewerControls from './components/ViewerControls'
 import ConnectionStatus from './components/ConnectionStatus'
 import StreamStatusSidebar from './components/StreamStatusSidebar'
+import StreamStatusIndicator from './components/StreamStatusIndicator'
 import TabbedDataView from './components/TabbedDataView'
+import SettingsModal, { UrlSettings } from './components/SettingsModal'
 
 function App() {
   const [isStreaming, setIsStreaming] = useState(false)
@@ -22,6 +24,16 @@ function App() {
     streamId: null
   })
   const [isStatusSidebarOpen, setIsStatusSidebarOpen] = useState(false)
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false)
+  const [urlSettings, setUrlSettings] = useState<UrlSettings | null>(null)
+
+  const handleSettingsChange = (settings: UrlSettings) => {
+    setUrlSettings(settings)
+  }
+
+  const handleOpenSettings = () => {
+    setIsSettingsModalOpen(true)
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-emerald-900 to-slate-900">
@@ -48,13 +60,12 @@ function App() {
                 <span className="text-sm text-gray-300">Viewer:</span>
                 <ConnectionStatus status={viewerConnectionStatus} />
               </div>
-              <button 
+              <StreamStatusIndicator
+                streamId={streamId}
+                isStreaming={isStreaming}
                 onClick={() => setIsStatusSidebarOpen(true)}
-                className="p-2 text-gray-300 hover:text-white transition-colors"
-                title="Stream Status"
-              >
-                <Settings className="w-5 h-5" />
-              </button>
+                onOpenSettings={handleOpenSettings}
+              />
             </div>
           </div>
         </div>
@@ -113,6 +124,13 @@ function App() {
         isOpen={isStatusSidebarOpen}
         onClose={() => setIsStatusSidebarOpen(false)}
         streamId={streamId}
+      />
+
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
+        onSave={handleSettingsChange}
       />
     </div>
   )

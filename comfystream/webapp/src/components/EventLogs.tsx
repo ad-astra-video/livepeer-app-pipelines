@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Activity, Play, Square, Server, MessageSquare, X, Download, RefreshCw, ChevronRight } from 'lucide-react'
+import { loadSettingsFromStorage } from './SettingsModal'
 
 interface KafkaLog {
   id: string
@@ -24,7 +25,10 @@ const EventLogs: React.FC<EventLogsProps> = ({
   autoStart = true,
   maxLogs = 1000
 }) => {
-  const [kafkaUrl, setKafkaUrl] = useState('http://localhost:7114')
+  const [kafkaUrl, setKafkaUrl] = useState(() => {
+    const savedSettings = loadSettingsFromStorage()
+    return savedSettings.kafkaEventsUrl
+  })
   const [topic, setTopic] = useState('streaming-events')
   const [isConnected, setIsConnected] = useState(false)
   const [logs, setLogs] = useState<KafkaLog[]>([])
@@ -57,6 +61,28 @@ const EventLogs: React.FC<EventLogsProps> = ({
       }
     }
   }, [logs, autoScroll])
+
+  // Listen for storage changes to update URL from settings
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const savedSettings = loadSettingsFromStorage()
+      setKafkaUrl(savedSettings.kafkaEventsUrl)
+    }
+    
+    const handleSettingsChange = (event: CustomEvent) => {
+      if (event.detail?.kafkaEventsUrl) {
+        setKafkaUrl(event.detail.kafkaEventsUrl)
+      }
+    }
+    
+    window.addEventListener('storage', handleStorageChange)
+    window.addEventListener('comfystream-settings-changed', handleSettingsChange as EventListener)
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange)
+      window.removeEventListener('comfystream-settings-changed', handleSettingsChange as EventListener)
+    }
+  }, [])
 
   const connectToKafka = async () => {
     if (isConnected || connectionStatus === 'connecting') return

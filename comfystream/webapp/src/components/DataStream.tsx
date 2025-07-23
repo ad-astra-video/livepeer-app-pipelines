@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Database, Play, Square, Server, MessageSquare, X, Download, RefreshCw, ChevronRight } from 'lucide-react'
+import { loadSettingsFromStorage } from './SettingsModal'
 
 interface DataLog {
   id: string
@@ -22,7 +23,10 @@ const DataStream: React.FC<DataStreamProps> = ({
   autoStart = false,
   maxLogs = 1000
 }) => {
-  const [dataUrl, setDataUrl] = useState('http://localhost:5937')
+  const [dataUrl, setDataUrl] = useState(() => {
+    const savedSettings = loadSettingsFromStorage()
+    return savedSettings.dataStreamUrl
+  })
   const [isConnected, setIsConnected] = useState(false)
   const [logs, setLogs] = useState<DataLog[]>([])
   const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected')
@@ -53,6 +57,28 @@ const DataStream: React.FC<DataStreamProps> = ({
         eventSourceRef.current.close()
         eventSourceRef.current = null
       }
+    }
+  }, [])
+
+  // Listen for storage changes to update URL from settings
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const savedSettings = loadSettingsFromStorage()
+      setDataUrl(savedSettings.dataStreamUrl)
+    }
+    
+    const handleSettingsChange = (event: CustomEvent) => {
+      if (event.detail?.dataStreamUrl) {
+        setDataUrl(event.detail.dataStreamUrl)
+      }
+    }
+    
+    window.addEventListener('storage', handleStorageChange)
+    window.addEventListener('comfystream-settings-changed', handleSettingsChange as EventListener)
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange)
+      window.removeEventListener('comfystream-settings-changed', handleSettingsChange as EventListener)
     }
   }, [])
 

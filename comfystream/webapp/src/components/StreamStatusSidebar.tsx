@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { X, RefreshCw } from 'lucide-react'
-import { getBaseUrl } from '../utils/urls'
+import { getBaseUrl, getStreamStatusUrl } from '../utils/urls'
 
 interface StreamStatusSidebarProps {
   isOpen: boolean
@@ -20,7 +20,7 @@ const StreamStatusSidebar: React.FC<StreamStatusSidebarProps> = ({ isOpen, onClo
       
       let endpoint = `${getBaseUrl()}/status`
       if (streamId) {
-        endpoint = `${getBaseUrl()}/gateway/process/stream/status/${streamId}`
+        endpoint = getStreamStatusUrl(streamId)
       }
       
       const response = await fetch(endpoint)
