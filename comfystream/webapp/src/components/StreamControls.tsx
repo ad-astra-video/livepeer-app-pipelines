@@ -966,18 +966,18 @@ const StreamControls: React.FC<StreamControlsProps> = ({
             </div>
           )}
 
-          {/* Stream Configuration Inputs */}
+            {/* Stream Configuration Inputs */}
           <div className="space-y-4">
             {/* Media Device Selection */}
-            <div className="p-4 bg-black/20 rounded-lg border border-white/10">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-medium text-white flex items-center">
-                  <Camera className="w-4 h-4 mr-2" />
+            <div className="p-4 bg-gradient-to-br from-black/30 to-black/10 rounded-lg border border-white/20 backdrop-blur-sm">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold text-white flex items-center">
+                  <Camera className="w-5 h-5 mr-2 text-emerald-400" />
                   Media Sources
                 </h3>
                 <button
                   onClick={refreshMediaDevices}
-                  className="text-gray-400 hover:text-white transition-colors"
+                  className="p-2 text-gray-400 hover:text-emerald-400 hover:bg-emerald-400/10 rounded-lg transition-all duration-200"
                   title="Refresh devices"
                 >
                   <RefreshCw className="w-4 h-4" />
@@ -986,83 +986,150 @@ const StreamControls: React.FC<StreamControlsProps> = ({
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Camera Selection */}
-                <div>
-                  <label className="block text-xs font-medium text-gray-400 mb-2">
+                <div className="space-y-2">
+                  <label className="block text-xs font-medium text-gray-300 mb-2 flex items-center">
+                    <Video className="w-3 h-3 mr-1 text-blue-400" />
                     Camera
                   </label>
-                  <select
-                    value={selectedCamera}
-                    onChange={(e) => setSelectedCamera(e.target.value)}
-                    className="w-full px-3 py-2 bg-black/30 border border-white/10 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                    disabled={useScreenShare}
-                  >
-                    <option value="">Select Camera</option>
-                    {cameras.map((camera) => (
-                      <option key={camera.deviceId} value={camera.deviceId}>
-                        {camera.label}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <select
+                      value={selectedCamera}
+                      onChange={(e) => setSelectedCamera(e.target.value)}
+                      className="w-full px-3 py-2.5 bg-black/40 border border-white/20 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400 transition-all duration-200 appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={useScreenShare}
+                    >
+                      <option value="" className="bg-gray-800">Select Camera</option>
+                      {cameras.map((camera) => (
+                        <option key={camera.deviceId} value={camera.deviceId} className="bg-gray-800">
+                          {camera.label}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
+                  {!selectedCamera && !useScreenShare && (
+                    <p className="text-xs text-red-400">No camera selected</p>
+                  )}
+                  {useScreenShare && (
+                    <p className="text-xs text-amber-400">Screen share enabled</p>
+                  )}
                 </div>
 
                 {/* Microphone Selection */}
-                <div>
-                  <label className="block text-xs font-medium text-gray-400 mb-2">
+                <div className="space-y-2">
+                  <label className="block text-xs font-medium text-gray-300 mb-2 flex items-center">
+                    <Mic className="w-3 h-3 mr-1 text-purple-400" />
                     Microphone
                   </label>
-                  <select
-                    value={selectedMicrophone}
-                    onChange={(e) => setSelectedMicrophone(e.target.value)}
-                    className="w-full px-3 py-2 bg-black/30 border border-white/10 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                  >
-                    <option value="">Select Microphone</option>
-                    {microphones.map((mic) => (
-                      <option key={mic.deviceId} value={mic.deviceId}>
-                        {mic.label}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <select
+                      value={selectedMicrophone}
+                      onChange={(e) => setSelectedMicrophone(e.target.value)}
+                      className="w-full px-3 py-2.5 bg-black/40 border border-white/20 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-400 transition-all duration-200 appearance-none cursor-pointer"
+                    >
+                      <option value="" className="bg-gray-800">Select Microphone</option>
+                      {microphones.map((mic) => (
+                        <option key={mic.deviceId} value={mic.deviceId} className="bg-gray-800">
+                          {mic.label}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
+                  {!selectedMicrophone && (
+                    <p className="text-xs text-yellow-400">No microphone selected</p>
+                  )}
                 </div>
 
                 {/* Screen Share Toggle */}
-                <div>
-                  <label className="block text-xs font-medium text-gray-400 mb-2">
+                <div className="space-y-2">
+                  <label className="block text-xs font-medium text-gray-300 mb-2 flex items-center">
+                    <Monitor className="w-3 h-3 mr-1 text-green-400" />
                     Screen Share
                   </label>
                   <button
                     onClick={handleScreenShare}
-                    className={`w-full flex items-center justify-center space-x-2 px-3 py-2 rounded text-sm font-medium transition-colors ${
+                    className={`w-full flex items-center justify-center space-x-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
                       useScreenShare
-                        ? 'bg-green-600 hover:bg-green-700 text-white'
-                        : 'bg-gray-600 hover:bg-gray-700 text-white'
+                        ? 'bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white shadow-lg shadow-green-500/25'
+                        : 'bg-gray-700/50 hover:bg-gray-600/50 text-gray-300 border border-white/10'
                     }`}
                   >
                     <Monitor className="w-4 h-4" />
                     <span>{useScreenShare ? 'Screen Share ON' : 'Screen Share OFF'}</span>
+                    {useScreenShare && (
+                      <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                    )}
                   </button>
                 </div>
               </div>
 
               {/* Selected Source Info */}
-              <div className="mt-3 text-xs text-gray-400">
-                <span>Source: </span>
-                {useScreenShare ? (
-                  <span className="text-green-400">Screen Share</span>
-                ) : selectedCamera ? (
-                  <span className="text-blue-400">
-                    {cameras.find(c => c.deviceId === selectedCamera)?.label || 'Camera'}
-                  </span>
-                ) : (
-                  <span className="text-red-400">No video source selected</span>
-                )}
-                {selectedMicrophone && (
-                  <>
-                    <span> + </span>
-                    <span className="text-purple-400">
-                      {microphones.find(m => m.deviceId === selectedMicrophone)?.label || 'Microphone'}
-                    </span>
-                  </>
-                )}
+              <div className="mt-4 p-3 bg-black/30 rounded-lg border border-white/10">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-xs font-medium text-gray-400">Video:</span>
+                      {useScreenShare ? (
+                        <div className="flex items-center space-x-1">
+                          <Monitor className="w-3 h-3 text-green-400" />
+                          <span className="text-xs text-green-400 font-medium">Screen Share</span>
+                        </div>
+                      ) : selectedCamera ? (
+                        <div className="flex items-center space-x-1">
+                          <Video className="w-3 h-3 text-blue-400" />
+                          <span className="text-xs text-blue-400 font-medium">
+                            {cameras.find(c => c.deviceId === selectedCamera)?.label?.split('(')[0].trim() || 'Camera'}
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center space-x-1">
+                          <VideoOff className="w-3 h-3 text-red-400" />
+                          <span className="text-xs text-red-400">None</span>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="flex items-center space-x-2">
+                      <span className="text-xs font-medium text-gray-400">Audio:</span>
+                      {selectedMicrophone ? (
+                        <div className="flex items-center space-x-1">
+                          <Mic className="w-3 h-3 text-purple-400" />
+                          <span className="text-xs text-purple-400 font-medium">
+                            {microphones.find(m => m.deviceId === selectedMicrophone)?.label?.split('(')[0].trim() || 'Microphone'}
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center space-x-1">
+                          <MicOff className="w-3 h-3 text-yellow-400" />
+                          <span className="text-xs text-yellow-400">None</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center space-x-1">
+                    {(useScreenShare || selectedCamera) && selectedMicrophone ? (
+                      <div className="flex items-center space-x-1">
+                        <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                        <span className="text-xs text-green-400 font-medium">Ready</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center space-x-1">
+                        <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>
+                        <span className="text-xs text-yellow-400 font-medium">Incomplete</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -1213,100 +1280,160 @@ const StreamControls: React.FC<StreamControlsProps> = ({
       {/* Media Device Selection Modal */}
       {showMediaModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-white/10 rounded-xl p-6 max-w-md w-full mx-4">
-            <div className="flex items-center justify-between mb-4">
+          <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-white/20 rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl">
+            <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-bold text-white flex items-center">
-                <Camera className="w-5 h-5 mr-2" />
+                <Camera className="w-6 h-6 mr-2 text-emerald-400" />
                 Select Media Sources
               </h3>
               <button
                 onClick={() => setShowMediaModal(false)}
-                className="text-gray-400 hover:text-white transition-colors"
+                className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-all duration-200"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-5">
               {/* Camera Selection */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center">
+                  <Video className="w-4 h-4 mr-2 text-blue-400" />
                   Camera
                 </label>
-                <select
-                  value={selectedCamera}
-                  onChange={(e) => setSelectedCamera(e.target.value)}
-                  className="w-full px-3 py-2 bg-black/30 border border-white/10 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                  disabled={useScreenShare}
-                >
-                  <option value="">Select Camera</option>
-                  {cameras.map((camera) => (
-                    <option key={camera.deviceId} value={camera.deviceId}>
-                      {camera.label}
-                    </option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <select
+                    value={selectedCamera}
+                    onChange={(e) => setSelectedCamera(e.target.value)}
+                    className="w-full px-3 py-3 bg-black/40 border border-white/20 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400 transition-all duration-200 appearance-none cursor-pointer disabled:opacity-50"
+                    disabled={useScreenShare}
+                  >
+                    <option value="" className="bg-gray-800">Select Camera</option>
+                    {cameras.map((camera) => (
+                      <option key={camera.deviceId} value={camera.deviceId} className="bg-gray-800">
+                        {camera.label}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
+                {useScreenShare && (
+                  <p className="text-xs text-amber-400">Camera disabled when screen sharing</p>
+                )}
               </div>
 
               {/* Microphone Selection */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center">
+                  <Mic className="w-4 h-4 mr-2 text-purple-400" />
                   Microphone
                 </label>
-                <select
-                  value={selectedMicrophone}
-                  onChange={(e) => setSelectedMicrophone(e.target.value)}
-                  className="w-full px-3 py-2 bg-black/30 border border-white/10 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                >
-                  <option value="">Select Microphone</option>
-                  {microphones.map((mic) => (
-                    <option key={mic.deviceId} value={mic.deviceId}>
-                      {mic.label}
-                    </option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <select
+                    value={selectedMicrophone}
+                    onChange={(e) => setSelectedMicrophone(e.target.value)}
+                    className="w-full px-3 py-3 bg-black/40 border border-white/20 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-400 transition-all duration-200 appearance-none cursor-pointer"
+                  >
+                    <option value="" className="bg-gray-800">Select Microphone</option>
+                    {microphones.map((mic) => (
+                      <option key={mic.deviceId} value={mic.deviceId} className="bg-gray-800">
+                        {mic.label}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
               </div>
 
               {/* Screen Share Toggle */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center">
+                  <Monitor className="w-4 h-4 mr-2 text-green-400" />
                   Screen Share
                 </label>
                 <button
                   onClick={() => setUseScreenShare(!useScreenShare)}
-                  className={`w-full flex items-center justify-center space-x-2 px-3 py-2 rounded text-sm font-medium transition-colors ${
+                  className={`w-full flex items-center justify-center space-x-2 px-3 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
                     useScreenShare
-                      ? 'bg-green-600 hover:bg-green-700 text-white'
-                      : 'bg-gray-600 hover:bg-gray-700 text-white'
+                      ? 'bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white shadow-lg shadow-green-500/25'
+                      : 'bg-gray-700/50 hover:bg-gray-600/50 text-gray-300 border border-white/10'
                   }`}
                 >
                   <Monitor className="w-4 h-4" />
                   <span>{useScreenShare ? 'Screen Share ON' : 'Screen Share OFF'}</span>
+                  {useScreenShare && (
+                    <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                  )}
                 </button>
               </div>
 
               {/* Selected Source Info */}
-              <div className="p-3 bg-black/30 rounded-lg">
-                <p className="text-xs text-gray-400 mb-1">Selected sources:</p>
-                <div className="text-sm">
-                  <div className="text-white">
-                    📹 {useScreenShare ? (
-                      <span className="text-green-400">Screen Share</span>
+              <div className="p-4 bg-black/30 rounded-lg border border-white/10">
+                <p className="text-xs font-medium text-gray-400 mb-3">Selected Sources:</p>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-300">Video:</span>
+                    {useScreenShare ? (
+                      <div className="flex items-center space-x-2">
+                        <Monitor className="w-4 h-4 text-green-400" />
+                        <span className="text-sm text-green-400 font-medium">Screen Share</span>
+                      </div>
                     ) : selectedCamera ? (
-                      <span className="text-blue-400">
-                        {cameras.find(c => c.deviceId === selectedCamera)?.label || 'Camera'}
-                      </span>
+                      <div className="flex items-center space-x-2">
+                        <Video className="w-4 h-4 text-blue-400" />
+                        <span className="text-sm text-blue-400 font-medium truncate max-w-[180px]">
+                          {cameras.find(c => c.deviceId === selectedCamera)?.label?.split('(')[0].trim() || 'Camera'}
+                        </span>
+                      </div>
                     ) : (
-                      <span className="text-red-400">No video source</span>
+                      <div className="flex items-center space-x-2">
+                        <VideoOff className="w-4 h-4 text-red-400" />
+                        <span className="text-sm text-red-400">None</span>
+                      </div>
                     )}
                   </div>
-                  {selectedMicrophone && (
-                    <div className="text-white">
-                      🎤 <span className="text-purple-400">
-                        {microphones.find(m => m.deviceId === selectedMicrophone)?.label || 'Microphone'}
-                      </span>
+                  
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-300">Audio:</span>
+                    {selectedMicrophone ? (
+                      <div className="flex items-center space-x-2">
+                        <Mic className="w-4 h-4 text-purple-400" />
+                        <span className="text-sm text-purple-400 font-medium truncate max-w-[180px]">
+                          {microphones.find(m => m.deviceId === selectedMicrophone)?.label?.split('(')[0].trim() || 'Microphone'}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center space-x-2">
+                        <MicOff className="w-4 h-4 text-yellow-400" />
+                        <span className="text-sm text-yellow-400">None</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="pt-2 border-t border-white/10">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-gray-400">Status:</span>
+                      {(useScreenShare || selectedCamera) && selectedMicrophone ? (
+                        <div className="flex items-center space-x-1">
+                          <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                          <span className="text-xs text-green-400 font-medium">Ready to stream</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center space-x-1">
+                          <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>
+                          <span className="text-xs text-yellow-400 font-medium">Setup incomplete</span>
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -1314,14 +1441,14 @@ const StreamControls: React.FC<StreamControlsProps> = ({
             <div className="flex space-x-3 mt-6">
               <button
                 onClick={() => setShowMediaModal(false)}
-                className="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
+                className="flex-1 px-4 py-3 bg-gray-600/50 hover:bg-gray-600/70 text-white rounded-lg transition-all duration-200 font-medium border border-white/10"
               >
                 Cancel
               </button>
               <button
                 onClick={handleStreamWithDevices}
                 disabled={!useScreenShare && !selectedCamera}
-                className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-3 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white rounded-lg transition-all duration-200 disabled:from-gray-600 disabled:to-gray-600 disabled:cursor-not-allowed font-medium shadow-lg disabled:shadow-none"
               >
                 Start Stream
               </button>
