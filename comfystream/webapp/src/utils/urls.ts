@@ -41,6 +41,28 @@ export const getDefaultWhepUrl = (): string => {
   return `${getBaseUrl()}`
 }
 
+// Get default data stream URL
+export const getDefaultDataStreamUrl = (): string => {
+  // Check if WHIP host environment variable is set
+  if (import.meta.env.VITE_WHIP_HOST) {
+    return `http://${import.meta.env.VITE_WHIP_HOST}`
+  }
+  
+  // Fallback to base URL
+  return `${getBaseUrl()}`
+}
+
+// Get default Kafka SSE URL
+export const getDefaultKafkaUrl = (): string => {
+  // Check if Kafka host environment variable is set
+  if (import.meta.env.VITE_KAFKA_HOST) {
+    return `http://${import.meta.env.VITE_KAFKA_HOST}`
+  }
+  
+  // Fallback to base URL
+  return `${getBaseUrl()}`
+}
+
 // Get stream status URL
 export const getStreamStatusUrl = (streamId: string): string => {
   // Check if WHIP host environment variable is set

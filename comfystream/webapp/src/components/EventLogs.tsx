@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Activity, Play, Square, Server, MessageSquare, X, Download, RefreshCw, ChevronRight } from 'lucide-react'
+import { getDefaultKafkaUrl } from '../utils/urls'
 
 interface KafkaLog {
   id: string
@@ -24,7 +25,7 @@ const EventLogs: React.FC<EventLogsProps> = ({
   autoStart = true,
   maxLogs = 1000
 }) => {
-  const [kafkaUrl, setKafkaUrl] = useState('http://localhost:7114')
+  const [kafkaUrl, setKafkaUrl] = useState(getDefaultKafkaUrl())
   const [topic, setTopic] = useState('streaming-events')
   const [isConnected, setIsConnected] = useState(false)
   const [logs, setLogs] = useState<KafkaLog[]>([])

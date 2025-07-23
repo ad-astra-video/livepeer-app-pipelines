@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Database, Play, Square, Server, MessageSquare, X, Download, RefreshCw, ChevronRight } from 'lucide-react'
+import { getDefaultDataStreamUrl } from '../utils/urls'
 
 interface DataLog {
   id: string
@@ -22,7 +23,7 @@ const DataStream: React.FC<DataStreamProps> = ({
   autoStart = false,
   maxLogs = 1000
 }) => {
-  const [dataUrl, setDataUrl] = useState('http://localhost:5937')
+  const [dataUrl, setDataUrl] = useState(getDefaultDataStreamUrl())
   const [isConnected, setIsConnected] = useState(false)
   const [logs, setLogs] = useState<DataLog[]>([])
   const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected')
