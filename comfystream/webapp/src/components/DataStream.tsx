@@ -103,7 +103,7 @@ const DataStream: React.FC<DataStreamProps> = ({
       eventSource.onmessage = (event) => {
         console.log('Data stream message received:', event.data)
         try {
-          const data = JSON.parse(event.data)
+          const data = JSON.parse(event.data.trim())
           console.log('Parsed data:', data)
           
           // Parse timestamp - handle both string and number formats
@@ -132,13 +132,26 @@ const DataStream: React.FC<DataStreamProps> = ({
           })
         } catch (error) {
           console.error('Error parsing data stream message:', error)
+          
+          // Create a log entry even if parsing fails
+          const log: DataLog = {
+            id: `data-${logCounterRef.current++}`,
+            timestamp: Date.now(),
+            type: 'raw',
+            data: { raw: event.data, error: error.message },
+            expanded: false
+          }
+          
+          setLogs(prevLogs => {
+            const newLogs = [...prevLogs, log]
+            return newLogs.slice(-maxLogs)
+          })
         }
       }
 
       eventSource.onerror = (error) => {
         console.error('Data Stream SSE error:', error)
         console.error('SSE readyState:', eventSource.readyState)
-        console.error('SSE url was:', sseUrl)
         setIsConnected(false)
         setConnectionStatus('error')
         if (eventSourceRef.current) {
