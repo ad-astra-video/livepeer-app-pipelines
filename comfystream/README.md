@@ -11,6 +11,26 @@ This is a sample web application that uses a custom built container as the worke
 
 - an Ethereum address wallet json encrypted and copied into data/gateway/keystore
 
+### Environment Configuration
+
+You can configure WHIP and WHEP endpoint URLs using environment variables:
+
+1. Copy the example environment file:
+   ```bash
+   cd webapp
+   cp env.example .env
+   ```
+2. Edit the `.env` file to set your desired hosts:
+   ```
+   # WHIP endpoint host (for streaming/publishing) 
+   VITE_WHIP_HOST=localhost:5937
+   
+   # WHEP endpoint host (for viewing/playback)
+   VITE_WHEP_HOST=localhost:8890
+   ```
+
+   The application will construct the full URLs using these hosts. If neither VITE_WHIP_HOST nor VITE_WHEP_HOST is set, the application will use the current window location.
+
 ### Instructions  
 
 1. Pull docker image of go-livepeer with generic pipeline
