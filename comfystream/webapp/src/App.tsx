@@ -34,8 +34,8 @@ function App() {
                 <Radio className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-white">WebRTC Streaming</h1>
-                <p className="text-sm text-gray-300">WHIP/WHEP Protocol</p>
+                <h1 className="text-xl font-bold text-white">Comfystream</h1>
+                <p className="text-sm text-gray-300">Livepeer Live-Video-To-Video</p>
               </div>
             </div>
             

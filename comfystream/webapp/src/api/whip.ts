@@ -139,7 +139,7 @@ export const stopStream = async ({ streamId, whipUrl }: WhipStopRequest): Promis
     const requestData = {
       "request": JSON.stringify({"stop_stream": true, "stream_id": streamId}),
       "parameters": JSON.stringify({}),
-      "capability": 'webrtc-stream',
+      "capability": 'comfystream',
       "timeout_seconds": 30
     }
     

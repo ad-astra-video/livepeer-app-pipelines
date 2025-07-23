@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Video, Mic, MicOff, VideoOff, Play, Square, Upload, AlertCircle, Download, X, Wifi, WifiOff, RefreshCw, Camera, Monitor } from 'lucide-react'
 import { getDefaultWhipUrl } from '../utils/urls'
-import { ConnectionResilient, DEFAULT_RESILIENCE_CONFIG } from '../utils/resilience'
 import { 
   constructWhipUrl, 
   sendWhipOffer, 
@@ -61,7 +60,6 @@ const StreamControls: React.FC<StreamControlsProps> = ({
   const [currentStreamId, setCurrentStreamId] = useState<string | null>(null)
   const [latestOffer, setLatestOffer] = useState<string>('')
   const [latestAnswer, setLatestAnswer] = useState<string>('')
-  const [resilience, setResilience] = useState<ConnectionResilient | null>(null)
   const [qualityIssues, setQualityIssues] = useState<string[]>([])
   const [isRecovering, setIsRecovering] = useState(false)
   const [reconnectAttempts, setReconnectAttempts] = useState(0)
@@ -97,9 +95,6 @@ const StreamControls: React.FC<StreamControlsProps> = ({
         clearInterval(statsIntervalRef.current)
         statsIntervalRef.current = null
       }
-      if (resilience) {
-        resilience.cleanup()
-      }
       if (localStream) {
         localStream.getTracks().forEach(track => track.stop())
       }
@@ -107,7 +102,7 @@ const StreamControls: React.FC<StreamControlsProps> = ({
         peerConnection.close()
       }
     }
-  }, [localStream, peerConnection, resilience])
+  }, [localStream, peerConnection])
 
   // Load media devices on component mount
   useEffect(() => {
@@ -190,47 +185,6 @@ const StreamControls: React.FC<StreamControlsProps> = ({
     try {
       setConnectionStatus('connecting')
       
-      // Create resilience manager
-      const resilienceManager = new ConnectionResilient({
-        ...DEFAULT_RESILIENCE_CONFIG,
-        connectionType: 'whip',
-        qualityThresholds: {
-          minBitrate: 200, // Higher threshold for publisher
-          maxLatency: 300,
-          maxPacketLoss: 3
-        }
-      })
-      
-      resilienceManager.setCallbacks({
-        onReconnecting: () => {
-          console.log('Publisher connection recovering...')
-          setIsRecovering(true)
-          setConnectionStatus('connecting')
-        },
-        onReconnected: () => {
-          console.log('Publisher connection recovered!')
-          setIsRecovering(false)
-          setReconnectAttempts(0)
-          setConnectionStatus('connected')
-        },
-        onReconnectFailed: () => {
-          console.error('Publisher reconnection failed permanently')
-          setIsRecovering(false)
-          setConnectionStatus('error')
-          stopStream()
-        },
-        onQualityIssue: (issue) => {
-          console.warn(`Publisher quality issue: ${issue}`)
-          setQualityIssues(prev => [...prev.filter(i => i !== issue), issue])
-        },
-        onQualityRecovered: () => {
-          console.log('Publisher quality recovered')
-          setQualityIssues([])
-        }
-      })
-      
-      setResilience(resilienceManager)
-      
       // Get user media with selected devices
       const [width, height] = resolution.split('x').map(Number)
       let currentStream: MediaStream
@@ -307,9 +261,6 @@ const StreamControls: React.FC<StreamControlsProps> = ({
       })
 
       setPeerConnection(pc)
-
-      // Set up resilience monitoring
-      resilienceManager.monitorConnection(pc)
 
       // Enhanced connection state monitoring
       pc.addEventListener('connectionstatechange', () => {
@@ -421,10 +372,6 @@ const StreamControls: React.FC<StreamControlsProps> = ({
     } catch (error) {
       console.error('Error starting stream:', error)
       setConnectionStatus('error')
-      if (resilience) {
-        resilience.cleanup()
-        setResilience(null)
-      }
       if (localStream) {
         localStream.getTracks().forEach(track => track.stop())
       }
@@ -447,13 +394,7 @@ const StreamControls: React.FC<StreamControlsProps> = ({
       statsIntervalRef.current = null
     }
     
-    // Clean up resilience manager
-    if (resilience) {
-      resilience.cleanup()
-      setResilience(null)
-    }
-    
-    // Reset resilience state
+    // Reset connection state
     setQualityIssues([])
     setIsRecovering(false)
     setReconnectAttempts(0)
@@ -878,7 +819,7 @@ const StreamControls: React.FC<StreamControlsProps> = ({
                 {audioEnabled ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
               </button>
               
-              {/* Resilience Status Indicators */}
+              {/* Connection Status Indicators */}
               {isStreaming && (
                 <div className="flex items-center space-x-2">
                   {isRecovering && (

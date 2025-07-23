@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Play, Square, Monitor, AlertCircle, Download, X, Wifi, WifiOff, RefreshCw } from 'lucide-react'
 import { getDefaultWhepUrl } from '../utils/urls'
-import { ConnectionResilient, DEFAULT_RESILIENCE_CONFIG } from '../utils/resilience'
 import { constructWhepUrl, sendWhepOffer } from '../api'
 
 interface ViewerControlsProps {
@@ -25,7 +24,6 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
   const [peerConnection, setPeerConnection] = useState<RTCPeerConnection | null>(null)
   const [sdpModalOpen, setSdpModalOpen] = useState(false)
   const [sdpModalContent, setSdpModalContent] = useState<{type: 'offer' | 'answer', content: string} | null>(null)
-  const [resilience, setResilience] = useState<ConnectionResilient | null>(null)
   const [qualityIssues, setQualityIssues] = useState<string[]>([])
   const [isRecovering, setIsRecovering] = useState(false)
   const [reconnectAttempts, setReconnectAttempts] = useState(0)
@@ -51,14 +49,11 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
         clearInterval(statsIntervalRef.current)
         statsIntervalRef.current = null
       }
-      if (resilience) {
-        resilience.cleanup()
-      }
       if (peerConnection) {
         peerConnection.close()
       }
     }
-  }, [peerConnection, resilience])
+  }, [peerConnection])
 
   const startViewing = async () => {
     if (!whepUrl) {
@@ -79,47 +74,6 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
     try {
       setConnectionStatus('connecting')
       
-      // Create resilience manager
-      const resilienceManager = new ConnectionResilient({
-        ...DEFAULT_RESILIENCE_CONFIG,
-        connectionType: 'whep',
-        qualityThresholds: {
-          minBitrate: 50, // Lower threshold for viewer
-          maxLatency: 1000,
-          maxPacketLoss: 10
-        }
-      })
-      
-      resilienceManager.setCallbacks({
-        onReconnecting: () => {
-          console.log('Viewer connection recovering...')
-          setIsRecovering(true)
-          setConnectionStatus('connecting')
-        },
-        onReconnected: () => {
-          console.log('Viewer connection recovered!')
-          setIsRecovering(false)
-          setReconnectAttempts(0)
-          setConnectionStatus('connected')
-        },
-        onReconnectFailed: () => {
-          console.error('Viewer reconnection failed permanently')
-          setIsRecovering(false)
-          setConnectionStatus('error')
-          stopViewing()
-        },
-        onQualityIssue: (issue) => {
-          console.warn(`Viewer quality issue: ${issue}`)
-          setQualityIssues(prev => [...prev.filter(i => i !== issue), issue])
-        },
-        onQualityRecovered: () => {
-          console.log('Viewer quality recovered')
-          setQualityIssues([])
-        }
-      })
-      
-      setResilience(resilienceManager)
-      
       // Create peer connection with enhanced configuration
       const pc = new RTCPeerConnection({
         iceServers: [
@@ -132,9 +86,6 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
       })
 
       setPeerConnection(pc)
-
-      // Set up resilience monitoring
-      resilienceManager.monitorConnection(pc)
 
       // Handle incoming stream
       pc.ontrack = (event) => {
@@ -231,23 +182,6 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
         setIsViewing(true)
         setConnectionStatus('connected')
         
-        // Configure resilience manager with ICE restart endpoint from Location header
-        if (resilienceManager && playbackUrl) {
-          if (locationHeader) {
-            // Use the Location header as the ICE restart endpoint
-            // Extract stream ID from playback URL for identification
-            const streamIdMatch = playbackUrl.match(/\/([^\/]+)\/whep$/)
-            const extractedStreamId = streamIdMatch ? streamIdMatch[1] : 'viewer-session'
-            resilienceManager.updateIceRestartConfig(locationHeader, extractedStreamId)
-          } else {
-            // Fallback to using the WHEP endpoint base URL for ICE restart
-            const iceRestartEndpoint = getDefaultWhepUrl()
-            const streamIdMatch = playbackUrl.match(/\/([^\/]+)\/whep$/)
-            const extractedStreamId = streamIdMatch ? streamIdMatch[1] : 'viewer-session'
-            resilienceManager.updateIceRestartConfig(iceRestartEndpoint, extractedStreamId)
-          }
-        }
-        
         // Start collecting real-time stats
         statsIntervalRef.current = window.setInterval(() => {
           collectViewerStats(pc)
@@ -262,10 +196,6 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
     } catch (error) {
       console.error('Error starting viewer:', error)
       setConnectionStatus('error')
-      if (resilience) {
-        resilience.cleanup()
-        setResilience(null)
-      }
     }
   }
 
@@ -276,13 +206,7 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
       statsIntervalRef.current = null
     }
     
-    // Clean up resilience manager
-    if (resilience) {
-      resilience.cleanup()
-      setResilience(null)
-    }
-    
-    // Reset resilience state
+    // Reset connection state
     setQualityIssues([])
     setIsRecovering(false)
     setReconnectAttempts(0)
@@ -454,13 +378,6 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
     }
   }
 
-  const forceIceRestart = () => {
-    if (peerConnection && resilience) {
-      console.log('Forcing ICE restart for viewer...')
-      resilience.forceIceRestart(peerConnection)
-    }
-  }
-
   return (
     <>
       {/* SDP Modal */}
@@ -562,7 +479,7 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
                 <Monitor className="w-5 h-5" />
               </button>
               
-              {/* Resilience Status Indicators */}
+              {/* Connection Status Indicators */}
               {isViewing && (
                 <div className="flex items-center space-x-2">
                   {isRecovering && (
@@ -599,14 +516,6 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
               {/* Manual Recovery Controls */}
               {isViewing && (
                 <div className="flex items-center space-x-2">
-                  <button
-                    onClick={forceIceRestart}
-                    disabled={!peerConnection}
-                    className="px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white text-sm rounded-lg transition-colors"
-                    title="Force ICE restart to recover connection"
-                  >
-                    ICE Restart
-                  </button>
                   
                   <button
                     onClick={forceReconnect}
