@@ -58,11 +58,8 @@ const DataStream: React.FC<DataStreamProps> = ({
 
   useEffect(() => {
     if (autoScroll && logsContainerRef.current) {
-      // Check if any log is expanded - if so, don't auto-scroll
-      const hasExpandedLogs = logs.some(log => log.expanded)
-      if (!hasExpandedLogs) {
-        logsContainerRef.current.scrollTop = logsContainerRef.current.scrollHeight
-      }
+      // Always scroll to bottom to show latest events
+      logsContainerRef.current.scrollTop = logsContainerRef.current.scrollHeight
     }
   }, [logs, autoScroll])
 
@@ -121,7 +118,7 @@ const DataStream: React.FC<DataStreamProps> = ({
             timestamp: parsedTimestamp,
             type: data.type || 'data',
             data: data,
-            expanded: false
+            expanded: true
           }
           
           setLogs(prevLogs => {
@@ -139,7 +136,7 @@ const DataStream: React.FC<DataStreamProps> = ({
             timestamp: Date.now(),
             type: 'raw',
             data: { raw: event.data, error: error.message },
-            expanded: false
+            expanded: true
           }
           
           setLogs(prevLogs => {

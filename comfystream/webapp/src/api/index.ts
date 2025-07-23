@@ -11,5 +11,3 @@ export * from './whep'
 // Stream Update API
 export * from './stream-update'
 
-// ICE Restart API
-export * from './ice-restart'
