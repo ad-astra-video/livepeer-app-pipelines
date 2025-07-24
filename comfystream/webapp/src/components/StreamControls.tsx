@@ -24,6 +24,7 @@ interface StreamControlsProps {
   setStreamId: (streamId: string | null) => void
   setStreamName: (streamName: string | null) => void
   setPlaybackUrl: (playbackUrl: string | null) => void
+  onOpenStatusSidebar?: () => void
 }
 
 const StreamControls: React.FC<StreamControlsProps> = ({
@@ -33,7 +34,8 @@ const StreamControls: React.FC<StreamControlsProps> = ({
   setStreamStats,
   setStreamId,
   setStreamName: setParentStreamName,
-  setPlaybackUrl
+  setPlaybackUrl,
+  onOpenStatusSidebar
 }) => {
   const [whipUrl, setWhipUrl] = useState(() => {
     const savedSettings = loadSettingsFromStorage()
@@ -855,24 +857,39 @@ const StreamControls: React.FC<StreamControlsProps> = ({
               {isStreaming && (
                 <div className="flex items-center space-x-2">
                   {isRecovering && (
-                    <div className="flex items-center space-x-1 text-amber-400">
+                    <button 
+                      onClick={onOpenStatusSidebar}
+                      disabled={!onOpenStatusSidebar}
+                      className="flex items-center space-x-1 text-amber-400 hover:text-amber-300 transition-colors cursor-pointer p-1 rounded disabled:cursor-default"
+                      title="Click to view stream status details"
+                    >
                       <RefreshCw className="w-4 h-4 animate-spin" />
                       <span className="text-xs">Recovering</span>
-                    </div>
+                    </button>
                   )}
                   
                   {qualityIssues.length > 0 && !isRecovering && (
-                    <div className="flex items-center space-x-1 text-red-400">
+                    <button 
+                      onClick={onOpenStatusSidebar}
+                      disabled={!onOpenStatusSidebar}
+                      className="flex items-center space-x-1 text-red-400 hover:text-red-300 transition-colors cursor-pointer p-1 rounded disabled:cursor-default"
+                      title="Click to view stream status details"
+                    >
                       <WifiOff className="w-4 h-4" />
                       <span className="text-xs">{qualityIssues.length} issue{qualityIssues.length > 1 ? 's' : ''}</span>
-                    </div>
+                    </button>
                   )}
                   
                   {qualityIssues.length === 0 && !isRecovering && (
-                    <div className="flex items-center space-x-1 text-emerald-400">
+                    <button 
+                      onClick={onOpenStatusSidebar}
+                      disabled={!onOpenStatusSidebar}
+                      className="flex items-center space-x-1 text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer p-1 rounded disabled:cursor-default"
+                      title="Click to view stream status details"
+                    >
                       <Wifi className="w-4 h-4" />
                       <span className="text-xs">Good</span>
-                    </div>
+                    </button>
                   )}
                   
                   {reconnectAttempts > 0 && (

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { X, RefreshCw } from 'lucide-react'
 import { getBaseUrl, getStreamStatusUrl } from '../utils/urls'
+import { loadSettingsFromStorage } from './SettingsModal'
 
 interface StreamStatusSidebarProps {
   isOpen: boolean
@@ -18,9 +19,11 @@ const StreamStatusSidebar: React.FC<StreamStatusSidebarProps> = ({ isOpen, onClo
       setLoading(true)
       setError(null)
       
+      const savedSettings = loadSettingsFromStorage()
+      
       let endpoint = `${getBaseUrl()}/status`
       if (streamId) {
-        endpoint = getStreamStatusUrl(streamId)
+        endpoint = getStreamStatusUrl(streamId, savedSettings.whipUrl)
       }
       
       const response = await fetch(endpoint)
@@ -46,6 +49,29 @@ const StreamStatusSidebar: React.FC<StreamStatusSidebarProps> = ({ isOpen, onClo
       return () => clearInterval(interval)
     }
   }, [isOpen, streamId])
+
+  // Listen for settings changes to refetch status with new URL
+  useEffect(() => {
+    const handleSettingsChange = () => {
+      if (isOpen) {
+        fetchStatus()
+      }
+    }
+    
+    const handleStorageChange = () => {
+      if (isOpen) {
+        fetchStatus()
+      }
+    }
+    
+    window.addEventListener('comfystream-settings-changed', handleSettingsChange)
+    window.addEventListener('storage', handleStorageChange)
+    
+    return () => {
+      window.removeEventListener('comfystream-settings-changed', handleSettingsChange)
+      window.removeEventListener('storage', handleStorageChange)
+    }
+  }, [isOpen])
 
   if (!isOpen) return null
 

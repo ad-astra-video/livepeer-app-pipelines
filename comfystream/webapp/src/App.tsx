@@ -4,7 +4,6 @@ import StreamControls from './components/StreamControls'
 import ViewerControls from './components/ViewerControls'
 import ConnectionStatus from './components/ConnectionStatus'
 import StreamStatusSidebar from './components/StreamStatusSidebar'
-import StreamStatusIndicator from './components/StreamStatusIndicator'
 import TabbedDataView from './components/TabbedDataView'
 import SettingsModal, { UrlSettings } from './components/SettingsModal'
 
@@ -60,12 +59,13 @@ function App() {
                 <span className="text-sm text-gray-300">Viewer:</span>
                 <ConnectionStatus status={viewerConnectionStatus} />
               </div>
-              <StreamStatusIndicator
-                streamId={streamId}
-                isStreaming={isStreaming}
-                onClick={() => setIsStatusSidebarOpen(true)}
-                onOpenSettings={handleOpenSettings}
-              />
+              <button
+                onClick={handleOpenSettings}
+                className="p-2 text-gray-400 hover:text-white transition-colors"
+                title="Settings - Configure URL defaults"
+              >
+                <Settings className="w-5 h-5" />
+              </button>
             </div>
           </div>
         </div>
@@ -89,6 +89,7 @@ function App() {
               setStreamId={setStreamId}
               setStreamName={setStreamName}
               setPlaybackUrl={setPlaybackUrl}
+              onOpenStatusSidebar={() => setIsStatusSidebarOpen(true)}
             />
           </div>
           
