@@ -84,7 +84,7 @@ services:
           "-aiModelsDir=/mnt/c/dev/livepeer-job-poc/comfystream/data/orchestrator/models",
           "-aiRunnerImageOverrides={\"live\":{\"comfystream\":\"livepeer/comfystream:latest\"}}"]
   ai-runner:
-    image: livepeer/comfystream:latest
+    image: livepeer/comfystream:feat-trickle-api-poc
     container_name: byoc-comfystream-ai-runner
     command: "--api"
     ## alternative commands for comfystream ##
@@ -94,9 +94,9 @@ services:
     environment:
       - VERSION=0.13.9
     volumes:
-      - C:\dev\comfystream-workspace\models:/workspace/ComfyUI/models
-      - C:\dev\comfystream-workspace\output:/workspace/ComfyUI/output
-      - C:\dev\comfystream-workspace\input:/workspace/ComfyUI/input
+      - ./data/models:/workspace/ComfyUI/models
+      - ./data/output:/workspace/ComfyUI/output
+      - ./data/input:/workspace/ComfyUI/input
     ##development examples##
     #  - C:\dev\comfystream:/workspace/comfystream
     #  - C:\dev\pytrickle\pytrickle:/workspace/miniconda3/envs/comfystream/lib/python3.11/site-packages/pytrickle
