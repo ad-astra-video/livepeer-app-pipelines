@@ -11,3 +11,6 @@ export * from './whep'
 // Stream Update API
 export * from './stream-update'
 
+// Status API
+export * from './status'
+

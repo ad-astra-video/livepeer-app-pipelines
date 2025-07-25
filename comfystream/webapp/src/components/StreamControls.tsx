@@ -7,7 +7,8 @@ import {
   sendWhipOffer, 
   stopStream as stopStreamApi,
   sendStreamUpdate,
-  StreamUpdateData
+  StreamUpdateData,
+  fetchStreamStatus
 } from '../api'
 
 interface MediaDevice {
@@ -24,7 +25,7 @@ interface StreamControlsProps {
   setStreamId: (streamId: string | null) => void
   setStreamName: (streamName: string | null) => void
   setPlaybackUrl: (playbackUrl: string | null) => void
-  onOpenStatusSidebar?: () => void
+  streamId?: string | null
 }
 
 const StreamControls: React.FC<StreamControlsProps> = ({
@@ -35,7 +36,7 @@ const StreamControls: React.FC<StreamControlsProps> = ({
   setStreamId,
   setStreamName: setParentStreamName,
   setPlaybackUrl,
-  onOpenStatusSidebar
+  streamId: parentStreamId
 }) => {
   const [whipUrl, setWhipUrl] = useState(() => {
     const savedSettings = loadSettingsFromStorage()
@@ -100,6 +101,12 @@ const StreamControls: React.FC<StreamControlsProps> = ({
   const videoRef = useRef<HTMLVideoElement>(null)
   const [sdpModalOpen, setSdpModalOpen] = useState(false)
   const [sdpModalContent, setSdpModalContent] = useState<{type: 'offer' | 'answer', content: string} | null>(null)
+  
+  // Status modal state
+  const [statusModalOpen, setStatusModalOpen] = useState(false)
+  const [statusData, setStatusData] = useState<any>(null)
+  const [statusLoading, setStatusLoading] = useState(false)
+  const [statusError, setStatusError] = useState<string | null>(null)
   
   // Media device selection states
   const [showMediaModal, setShowMediaModal] = useState(false)
@@ -370,7 +377,6 @@ const StreamControls: React.FC<StreamControlsProps> = ({
 
       if (response.status == 201) {
         const answerSdp = response.answerSdp
-        const streamId = response.streamId
         const playbackUrl = response.playbackUrl
         const locationHeader = response.locationHeader
         
@@ -388,8 +394,6 @@ const StreamControls: React.FC<StreamControlsProps> = ({
 
         setIsStreaming(true)
         setConnectionStatus('connected')
-        setStreamId(streamId)
-        setCurrentStreamId(streamId)
         setPlaybackUrl(playbackUrl)
         
         // Start collecting real-time stats
@@ -536,6 +540,38 @@ const StreamControls: React.FC<StreamControlsProps> = ({
         audioTrack.enabled = !audioTrack.enabled
         setAudioEnabled(audioTrack.enabled)
       }
+    }
+  }
+
+  // Function to handle status modal
+  const handleOpenStatusModal = async () => {
+    try {
+      setStatusLoading(true)
+      setStatusError(null)
+      setStatusModalOpen(true)
+      
+      // Use parentStreamId (from App component) or fallback to currentStreamId
+      const streamIdToUse = parentStreamId || currentStreamId
+      
+      // If we're streaming but don't have a stream ID, that's an error
+      if (isStreaming && !streamIdToUse) {
+        throw new Error('Stream is active but no stream ID is available. This may indicate a timing issue - please try again.')
+      }
+      
+      // If we're not streaming and have no stream ID, we'll fetch general status
+      if (!streamIdToUse) {
+        console.log('No stream ID available, fetching general system status')
+      } else {
+        console.log(`Fetching status for stream: ${streamIdToUse}`)
+      }
+      
+      const data = await fetchStreamStatus(streamIdToUse)
+      setStatusData(data)
+    } catch (error) {
+      setStatusError(error instanceof Error ? error.message : 'Failed to fetch status')
+      setStatusData(null)
+    } finally {
+      setStatusLoading(false)
     }
   }
 
@@ -858,9 +894,8 @@ const StreamControls: React.FC<StreamControlsProps> = ({
                 <div className="flex items-center space-x-2">
                   {isRecovering && (
                     <button 
-                      onClick={onOpenStatusSidebar}
-                      disabled={!onOpenStatusSidebar}
-                      className="flex items-center space-x-1 text-amber-400 hover:text-amber-300 transition-colors cursor-pointer p-1 rounded disabled:cursor-default"
+                      onClick={handleOpenStatusModal}
+                      className="flex items-center space-x-1 text-amber-400 hover:text-amber-300 transition-colors cursor-pointer p-1 rounded"
                       title="Click to view stream status details"
                     >
                       <RefreshCw className="w-4 h-4 animate-spin" />
@@ -870,9 +905,8 @@ const StreamControls: React.FC<StreamControlsProps> = ({
                   
                   {qualityIssues.length > 0 && !isRecovering && (
                     <button 
-                      onClick={onOpenStatusSidebar}
-                      disabled={!onOpenStatusSidebar}
-                      className="flex items-center space-x-1 text-red-400 hover:text-red-300 transition-colors cursor-pointer p-1 rounded disabled:cursor-default"
+                      onClick={handleOpenStatusModal}
+                      className="flex items-center space-x-1 text-red-400 hover:text-red-300 transition-colors cursor-pointer p-1 rounded"
                       title="Click to view stream status details"
                     >
                       <WifiOff className="w-4 h-4" />
@@ -882,13 +916,11 @@ const StreamControls: React.FC<StreamControlsProps> = ({
                   
                   {qualityIssues.length === 0 && !isRecovering && (
                     <button 
-                      onClick={onOpenStatusSidebar}
-                      disabled={!onOpenStatusSidebar}
-                      className="flex items-center space-x-1 text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer p-1 rounded disabled:cursor-default"
+                      onClick={handleOpenStatusModal}
+                      className="flex items-center space-x-1 text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer p-1 rounded"
                       title="Click to view stream status details"
                     >
                       <Wifi className="w-4 h-4" />
-                      <span className="text-xs">Good</span>
                     </button>
                   )}
                   
@@ -1501,6 +1533,80 @@ const StreamControls: React.FC<StreamControlsProps> = ({
               >
                 Start Stream
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Status Modal */}
+      {statusModalOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
+            onClick={() => setStatusModalOpen(false)}
+          />
+          
+          {/* Modal */}
+          <div className="flex min-h-full items-center justify-center p-4">
+            <div className="relative bg-slate-800 rounded-lg w-full max-w-2xl max-h-[80vh] overflow-hidden shadow-xl">
+              {/* Header */}
+              <div className="flex items-center justify-between p-4 border-b border-gray-700">
+                <h2 className="text-lg font-semibold text-white">
+                  {(parentStreamId || currentStreamId) ? `Stream Status: ${parentStreamId || currentStreamId}` : 'System Status'}
+                </h2>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={handleOpenStatusModal}
+                    disabled={statusLoading}
+                    className="p-1 text-gray-400 hover:text-white transition-colors disabled:opacity-50"
+                    title="Refresh"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${statusLoading ? 'animate-spin' : ''}`} />
+                  </button>
+                  <button
+                    onClick={() => setStatusModalOpen(false)}
+                    className="p-1 text-gray-400 hover:text-white transition-colors"
+                    title="Close"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="p-4 max-h-[60vh] overflow-y-auto">
+                {statusLoading && !statusData && (
+                  <div className="flex items-center justify-center py-8">
+                    <RefreshCw className="w-6 h-6 animate-spin text-gray-400" />
+                    <span className="ml-2 text-gray-400">Loading...</span>
+                  </div>
+                )}
+
+                {statusError && (
+                  <div className="bg-red-900/50 border border-red-700 rounded-lg p-4 mb-4">
+                    <h3 className="text-red-400 font-semibold mb-2">Error</h3>
+                    <p className="text-red-300 text-sm">{statusError}</p>
+                  </div>
+                )}
+
+                {statusData && (
+                  <div className="space-y-4">
+                    <div className="bg-slate-700 rounded-lg p-4">
+                      <h3 className="text-white font-semibold mb-3">Status Data</h3>
+                      <pre className="text-xs text-gray-300 overflow-x-auto whitespace-pre-wrap bg-slate-900 p-3 rounded border">
+                        {JSON.stringify(statusData, null, 2)}
+                      </pre>
+                    </div>
+                  </div>
+                )}
+
+                {!statusLoading && !statusError && !statusData && (
+                  <div className="text-center py-8">
+                    <p className="text-gray-400">No status data available</p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

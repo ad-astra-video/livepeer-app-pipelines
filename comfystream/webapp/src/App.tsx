@@ -3,7 +3,6 @@ import { Video, Mic, MicOff, VideoOff, Play, Square, Settings, Radio, Monitor } 
 import StreamControls from './components/StreamControls'
 import ViewerControls from './components/ViewerControls'
 import ConnectionStatus from './components/ConnectionStatus'
-import StreamStatusSidebar from './components/StreamStatusSidebar'
 import TabbedDataView from './components/TabbedDataView'
 import SettingsModal, { UrlSettings } from './components/SettingsModal'
 
@@ -22,7 +21,6 @@ function App() {
     latency: 0,
     streamId: null
   })
-  const [isStatusSidebarOpen, setIsStatusSidebarOpen] = useState(false)
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false)
   const [urlSettings, setUrlSettings] = useState<UrlSettings | null>(null)
 
@@ -89,7 +87,7 @@ function App() {
               setStreamId={setStreamId}
               setStreamName={setStreamName}
               setPlaybackUrl={setPlaybackUrl}
-              onOpenStatusSidebar={() => setIsStatusSidebarOpen(true)}
+              streamId={streamId}
             />
           </div>
           
@@ -119,13 +117,6 @@ function App() {
           </div>
         </div>
       </div>
-
-      {/* Stream Status Sidebar */}
-      <StreamStatusSidebar
-        isOpen={isStatusSidebarOpen}
-        onClose={() => setIsStatusSidebarOpen(false)}
-        streamId={streamId}
-      />
 
       {/* Settings Modal */}
       <SettingsModal
