@@ -1,4 +1,14 @@
 services:
+### webapp ###
+  webapp:
+    image: node:20
+    working_dir: /webapp
+    volumes:
+      - ./webapp:/webapp
+    network_mode: "host"
+    ports:
+      - "3001:3001"
+    command: sh -c "npm install && npm run dev"
 ###  INGEST  ###
   mediamtx:
     image: livepeerci/mediamtx
@@ -10,7 +20,7 @@ services:
       - 9997:9997
       - 1935:1935
   gateway:
-    image: adastravideo/go-livepeer:byoc-add-streaming
+    image: adastravideo/go-livepeer:add-data-url
     container_name: byoc-comfystream-gateway
     volumes:
       - ./data/gateway:/data
@@ -44,7 +54,7 @@ services:
           "-kafkaGatewayTopic=streaming-events"]
 ### LOCAL LIVEPEER NETWORK ###
   orchestrator:
-    image: adastravideo/go-livepeer:byoc-add-streaming
+    image: adastravideo/go-livepeer:add-data-url
     container_name: byoc-comfystream-orchestrator
     volumes:
       - /mnt/c/dev/livepeer-job-poc/comfystream/data/orchestrator/models:/mnt/c/dev/livepeer-job-poc/comfystream/data/orchestrator
@@ -64,7 +74,7 @@ services:
           "-ethUrl=https://arb1.arbitrum.io/rpc",
           "-ethPassword=some-random-password",
           "-dataDir=/data",
-          "-ethOrchAddr=0x3b28a7d785356dc67c7970666747e042305bfb79",
+          "-ethOrchAddr=0x16a72bdb3017196825bc53809b87f96fbee31f6c",
           "-pricePerUnit=0",
           "-ticketEV=1800",
           "-monitor",
@@ -72,21 +82,30 @@ services:
           "-liveAITrickleHostForRunner=172.17.0.1:9995",
           "-aiModels=/data/aimodels.json",
           "-aiModelsDir=/mnt/c/dev/livepeer-job-poc/comfystream/data/orchestrator/models",
-          "-aiRunnerImageOverrides={\"live\":{\"byoc\":\"adastravideo/ai-runner:live-app-byoc\"}}"]
+          "-aiRunnerImageOverrides={\"live\":{\"comfystream\":\"livepeer/comfystream:latest\"}}"]
   ai-runner:
-#    image: livepeer/ai-runner:live-app-noop
-#    image: livepeer/comfystream:feat-trickle-api-poc
-    image: adastravideo/comfystream:feat-trickle-api-poc-2
+    image: livepeer/comfystream:latest
     container_name: byoc-comfystream-ai-runner
     command: "--api"
+    ## alternative commands for comfystream ##
+    #command: "--download-models --build-engines --api"
+    #command: "--comfyui"
     runtime: nvidia
+    environment:
+      - VERSION=0.13.9
     volumes:
-      - C:\dev\comfystream:/workspace/comfystream
       - C:\dev\comfystream-workspace\models:/workspace/ComfyUI/models
-      - C:\dev\comfystream-workspace\output:/workspace/ComfyUI/ouput
+      - C:\dev\comfystream-workspace\output:/workspace/ComfyUI/output
       - C:\dev\comfystream-workspace\input:/workspace/ComfyUI/input
+    ##development examples##
+    #  - C:\dev\comfystream:/workspace/comfystream
+    #  - C:\dev\pytrickle\pytrickle:/workspace/miniconda3/envs/comfystream/lib/python3.11/site-packages/pytrickle
+    #  - C:\dev\comfystream-workspace\custom_nodes\audio_utils:/workspace/ComfyUI/custom_nodes/comfystream/nodes/audio_utils
+    #  - C:\dev\comfystream-workspace\custom_nodes\ComfyUI-Whisper:/workspace/ComfyUI/custom_nodes/ComfyUI-Whisper
+      
     ports:
       - 8037:8889
+      - 8188:8188
 ####  Monitoring  ####
   kafka:
     image: bitnami/kafka:3.5
@@ -160,5 +179,3 @@ services:
 networks:
   default:
     name: byoc-comfystream
-    external: true
-    

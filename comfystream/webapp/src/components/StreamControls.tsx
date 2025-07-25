@@ -1328,20 +1328,27 @@ const StreamControls: React.FC<StreamControlsProps> = ({
               <label className="block text-sm font-medium text-gray-300 mb-2">
                 Resolution: {resolution}
               </label>
-              <select
-                value={resolution}
-                onChange={(e) => setResolution(e.target.value)}
-                className="w-full px-4 py-3 bg-black/20 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                disabled={isStreaming}
-              >
-                <option value="512x512">512x512 (SD)</option>
-                <option value="640x480">640x480 (VGA)</option>
-                <option value="854x480">854x480 (FWVGA)</option>
-                <option value="1280x720">1280x720 (HD) - Default</option>
-                <option value="1920x1080">1920x1080 (Full HD)</option>
-                <option value="2560x1440">2560x1440 (QHD)</option>
-                <option value="3840x2160">3840x2160 (4K UHD)</option>
-              </select>
+              <div className="relative">
+                <select
+                  value={resolution}
+                  onChange={(e) => setResolution(e.target.value)}
+                  className="w-full px-3 py-3 bg-black/40 border border-white/20 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-400 transition-all duration-200 appearance-none cursor-pointer disabled:opacity-50"
+                  disabled={isStreaming}
+                >
+                  <option value="512x512" className="bg-gray-800">512x512 (SD)</option>
+                  <option value="640x480" className="bg-gray-800">640x480 (VGA)</option>
+                  <option value="854x480" className="bg-gray-800">854x480 (FWVGA)</option>
+                  <option value="1280x720" className="bg-gray-800">1280x720 (HD) - Default</option>
+                  <option value="1920x1080" className="bg-gray-800">1920x1080 (Full HD)</option>
+                  <option value="2560x1440" className="bg-gray-800">2560x1440 (QHD)</option>
+                  <option value="3840x2160" className="bg-gray-800">3840x2160 (4K UHD)</option>
+                </select>
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </div>
               <p className="text-xs text-gray-400 mt-1">
                 {isStreaming ? 'Stop stream to change resolution' : 'Select video resolution before starting stream'}
               </p>
