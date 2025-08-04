@@ -43,7 +43,7 @@ Comfystream is a real-time video processing application that enables live video-
 
 The Docker Compose setup includes:
 
-- **Web UI** (`localhost:3001`) - Main Application Interface
+- **Web UI** (`localhost:8088`) - Main Application Interface (or port 3001 if running npm dev server)
 - **Gateway** (`localhost:5937`) - Livepeer Gateway Node
 - **Orchestrator** (`localhost:8890`) - Livepeer Orchestrator Node
 - **MediaMTX** (`localhost:8889`) - Media Server for RTMP/WebRTC
@@ -67,7 +67,10 @@ __Documentation__
    cp .env.template .env
    ```
 
-   Update `HOST` to match to your local network ip address or the ip address of the remote machine using.  The domain `192.168.50.16.sslip.io` will resolve to `192.168.50.16` which enables the Caddy webserver to do self signed SSL certificates appropriately.
+   - Update `HOST` to match to your local network ip address or the ip address of the remote machine using.  The domain `192.168.50.16.sslip.io` will resolve to `192.168.50.16` which enables the Caddy webserver to do self signed SSL certificates appropriately.
+   - Update `HOST_IP` to be accesible IP address.  This is added to the IPs available on the gateway WHIP ingest.
+   - Set `ARB_ETH_URL` if have an alternative endpoint available
+   - Set `AI_MODELS_DIR` to path this repo is in so it points to `data/models` in this folder.  The path must be the absolute path and cannot be a relative path to the .env file.
 
    If have your own domain name, update `webserver/Caddyfile` to replace `tls internal` with `tls [path to cert] [path to key]` or if have access to ports 80/443 you can use [automatic https with Caddy (link to docs)](https://caddyserver.com/docs/automatic-https).
 #### **Gateway Configuration**
