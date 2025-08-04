@@ -1,4 +1,13 @@
 services:
+### webserver ###
+  webserver:
+    image: caddy:latest
+    container_name: byoc-comfystream-webserver
+    ports:
+      - 8088:8088
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - ./webapp/dist:/var/www/html/app
 ### webapp ###
   webapp:
     image: node:20
@@ -19,7 +28,7 @@ services:
       - 9997:9997
       - 1935:1935
   gateway:
-    image: adastravideo/go-livepeer:add-data-url
+    image: adastravideo/go-livepeer:add-data-url-buf
     container_name: byoc-comfystream-gateway
     volumes:
       - ./data/gateway:/data
@@ -36,7 +45,7 @@ services:
       - LIVE_AI_NAT_IP=127.0.0.1
       - LIVE_AI_PLAYBACK_HOST=rtmp://mediamtx/
 #      should match to the mediamtx webrtcAddress in mediamtx.yml
-      - LIVE_AI_WHEP_URL=http://mediamtx:8890/
+      - LIVE_AI_WHEP_URL=https://localhost:8088/mediamtx/
     command: ["-gateway",
           "-orchAddr=https://orchestrator:9995",
           "-rtmpAddr=gateway:1937",
@@ -53,7 +62,7 @@ services:
           "-kafkaGatewayTopic=streaming-events"]
 ### LOCAL LIVEPEER NETWORK ###
   orchestrator:
-    image: adastravideo/go-livepeer:add-data-url
+    image: adastravideo/go-livepeer:add-data-url-buf
     container_name: byoc-comfystream-orchestrator
     volumes:
       - /mnt/c/dev/livepeer-job-poc/comfystream/data/orchestrator/models:/mnt/c/dev/livepeer-job-poc/comfystream/data/orchestrator
@@ -78,7 +87,7 @@ services:
           "-ticketEV=1800",
           "-monitor",
           "-aiVerboseLogs",
-          "-liveAITrickleHostForRunner=172.17.0.1:9995",
+          "-liveAITrickleHostForRunner=136.33.87.165:9995",
           "-aiModels=/data/aimodels.json",
           "-aiModelsDir=/mnt/c/dev/livepeer-job-poc/comfystream/data/orchestrator/models",
           "-aiRunnerImageOverrides={\"live\":{\"comfystream\":\"livepeer/comfystream:latest\"}}"]

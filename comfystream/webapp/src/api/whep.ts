@@ -14,7 +14,7 @@ export interface WhepOfferResponse {
  */
 export const constructWhepUrl = (whepUrl: string, playbackUrl: string): string => {
   if (!playbackUrl) return whepUrl
-  
+  return playbackUrl
   try {
     const playbackUrlObj = new URL(playbackUrl)
     const pathFromPlayback = playbackUrlObj.pathname

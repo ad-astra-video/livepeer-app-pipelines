@@ -21,10 +21,11 @@ const StreamStatusSidebar: React.FC<StreamStatusSidebarProps> = ({ isOpen, onClo
       
       const savedSettings = loadSettingsFromStorage()
       
-      let endpoint = `${getBaseUrl()}/status`
-      if (streamId) {
-        endpoint = getStreamStatusUrl(streamId, savedSettings.whipUrl)
+      if (!streamId) {
+        throw new Error('Stream ID is required to fetch status')
       }
+      
+      const endpoint = getStreamStatusUrl(streamId, savedSettings.whipUrl)
       
       const response = await fetch(endpoint)
       if (!response.ok) {

@@ -2,7 +2,7 @@
  * Status API functions
  */
 
-import { getBaseUrl, getStreamStatusUrl } from '../utils/urls'
+import { getStreamStatusUrl } from '../utils/urls'
 import { loadSettingsFromStorage } from '../components/SettingsModal'
 
 /**
