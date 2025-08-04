@@ -27,6 +27,8 @@ services:
     container_name: byoc-comfystream-mediamtx
     volumes:
       - ./mediamtx/mediamtx.yml:/mediamtx.yml
+    environment:
+      - MTX_WEBRTCADDITIONALHOSTS=${HOST}
     ports:
       - 8890:8890
       - 9997:9997
@@ -46,10 +48,10 @@ services:
       - LIVE_AI_GATHER_TIMEOUT=5
 #      input LIVE_AI_MIN_SEG_DUR as duration string (e.g. 1s)
       - LIVE_AI_MIN_SEG_DUR=1s
-      - LIVE_AI_NAT_IP=127.0.0.1
-      - LIVE_AI_PLAYBACK_HOST=rtmp://mediamtx/
+      - LIVE_AI_NAT_IP=${HOST_IP}
+      - LIVE_AI_PLAYBACK_HOST=rtmp://mediamtx:1935/
 #      should match to the mediamtx webrtcAddress in mediamtx.yml
-      - LIVE_AI_WHEP_URL=https://localhost:8088/mediamtx/
+      - LIVE_AI_WHEP_URL=https://${HOST}:8088/mediamtx/
     command: ["-gateway",
           "-orchAddr=https://orchestrator:9995",
           "-rtmpAddr=gateway:1937",
@@ -58,7 +60,7 @@ services:
           "-v=9",
           "-network=arbitrum-one-mainnet",
           "-blockPollingInterval=10",
-          "-ethUrl=https://arb1.arbitrum.io/rpc",
+          "-ethUrl=${ARB_ETH_URL}",
           "-ethPassword=testbroadcaster",
           "-dataDir=/data",
           "-monitor",
@@ -69,7 +71,7 @@ services:
     image: adastravideo/go-livepeer:add-data-url-buf
     container_name: byoc-comfystream-orchestrator
     volumes:
-      - /mnt/c/dev/livepeer-job-poc/comfystream/data/orchestrator/models:/mnt/c/dev/livepeer-job-poc/comfystream/data/orchestrator
+      - ${AI_MODELS_DIR}:${AI_MODELS_DIR}
       - ./worker/aimodels.json:/data/aimodels.json
       - /var/run/docker.sock:/var/run/docker.sock
     runtime: nvidia
@@ -83,7 +85,7 @@ services:
           "-serviceAddr=orchestrator:9995",
           "-v=99",
           "-network=arbitrum-one-mainnet",
-          "-ethUrl=https://arb1.arbitrum.io/rpc",
+          "-ethUrl=${ARB_ETH_URL}",
           "-ethPassword=some-random-password",
           "-dataDir=/data",
           "-ethOrchAddr=0x16a72bdb3017196825bc53809b87f96fbee31f6c",
@@ -91,9 +93,9 @@ services:
           "-ticketEV=1800",
           "-monitor",
           "-aiVerboseLogs",
-          "-liveAITrickleHostForRunner=136.33.87.165:9995",
+#          "-liveAITrickleHostForRunner=172.17.0.1:9995",
           "-aiModels=/data/aimodels.json",
-          "-aiModelsDir=/mnt/c/dev/livepeer-job-poc/comfystream/data/orchestrator/models",
+          "-aiModelsDir=${AI_MODELS_DIR}",
           "-aiRunnerImageOverrides={\"live\":{\"comfystream\":\"livepeer/comfystream:latest\"}}"]
   ai-runner:
     image: livepeer/comfystream:feat-trickle-api-poc
@@ -114,9 +116,8 @@ services:
     #  - C:\dev\pytrickle\pytrickle:/workspace/miniconda3/envs/comfystream/lib/python3.11/site-packages/pytrickle
     #  - C:\dev\comfystream-workspace\custom_nodes\audio_utils:/workspace/ComfyUI/custom_nodes/comfystream/nodes/audio_utils
     #  - C:\dev\comfystream-workspace\custom_nodes\ComfyUI-Whisper:/workspace/ComfyUI/custom_nodes/ComfyUI-Whisper
-      
     ports:
-      - 8037:8889
+      - 8889:8889
       - 8188:8188
 ####  Monitoring  ####
   kafka:

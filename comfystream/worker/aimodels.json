@@ -3,7 +3,7 @@
     "model_id": "comfystream",
     "pipeline": "live-video-to-video",
     "warm": true,
-    "url": "http://172.17.0.1:8037",
+    "url": "http://byoc-comfystream-ai-runner:8889",
     "capacity": 2,
     "price_per_unit": 0,
     "pixels_per_unit": 1,

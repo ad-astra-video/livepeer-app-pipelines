@@ -18,13 +18,11 @@ bindings:
       - when:
           - headers:
               :scheme: http
-              :authority: localhost:7114
               :path: /events
         exit: north_sse_server
       - when:
           - headers:
               :scheme: http
-              :authority: localhost:7114
         exit: east_http_filesystem_mapping
 
   # UI html file server
