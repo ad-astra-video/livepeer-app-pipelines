@@ -6,17 +6,21 @@ services:
     ports:
       - 8088:8088
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile
+      - ./webserver/Caddyfile:/etc/caddy/Caddyfile
       - ./webapp/dist:/var/www/html/app
+    environment:
+      - HOST=${HOST}
 ### webapp ###
   webapp:
     image: node:20
     working_dir: /webapp
     volumes:
       - ./webapp:/webapp
-    ports:
-      - 3001:3001
-    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 3001"
+    command: sh -c "npm install && npm run build"
+#  uncomment if want to run dev server
+#    ports:
+#     - 3001:3001
+#    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 3001"
 ###  INGEST  ###
   mediamtx:
     image: livepeerci/mediamtx

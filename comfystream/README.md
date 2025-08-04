@@ -36,7 +36,7 @@ Comfystream is a real-time video processing application that enables live video-
    ```
 
 6. **Access the Web Interface**:
-   - Open your browser and navigate to: `https://localhost:3001`
+   - Open your browser and navigate to: `https://localhost:8088`
    - The application will be ready to use immediately
 
 ### Services Overview
@@ -61,6 +61,15 @@ __Documentation__
 
 ### **Environment Setup**
 
+#### Setup .env file
+   Create a copy of the .env.template to use locally
+   ```bash
+   cp .env.template .env
+   ```
+
+   Update `HOST` to match to your local network ip address or the ip address of the remote machine using.  The domain `192.168.50.16.sslip.io` will resolve to `192.168.50.16` which enables the Caddy webserver to do self signed SSL certificates appropriately.
+
+   If have your own domain name, update `webserver/Caddyfile` to replace `tls internal` with `tls [path to cert] [path to key]` or if have access to ports 80/443 you can use [automatic https with Caddy (link to docs)](https://caddyserver.com/docs/automatic-https).
 #### **Gateway Configuration**
 - Consider using a unique `-ethUrl`.  The default Arbiturm rpc url has limited rate limits and can cause issues at startup sometimes. Some options are infura, alchemy, dprc or if you are an Orchestrator or Delegator you can use https://livepeer.rpcgarage.xyz/
 - Update `-ethPassword` to be the password for your Ethereum wallet file
@@ -69,7 +78,7 @@ __Documentation__
 #### **Orchestrator Configuration**
 - Consider using a unique `-ethUrl`.  The default Arbiturm rpc url has limited rate limits and can cause issues at startup sometimes. Some options are infura, alchemy, dprc or if you are an Orchestrator or Delegator you can use https://livepeer.rpcgarage.xyz/
 - Change `-ethOrchAddr` to your on-chain orchestrator address if testing on-chain (defaults to AI SPE Orchestrator eth address)
-- For off-chain testing: set `-network` to `offchain`
+- for off-chain testing: set `-network` to `offchain`
 
 #### **Worker Configuration**
 - Review `worker/aimodels.json` to adjust settings as needed.
@@ -80,7 +89,7 @@ __Documentation__
 
 
 ### **Default Endpoints**
-- **Web UI**: `https://localhost:3001`
+- **Web UI**: `https://localhost:8088 (or at https://$HOST:8088, HOST set in .env file)`
 - **WHIP Server**: `http://localhost:7280`
 - **WHEP Server**: `http://localhost:8890`
 - **Data Stream**: `http://localhost:5937`
@@ -243,7 +252,7 @@ __Documentation__
 
 5. **Docker Services Not Starting**:
    - Ensure Docker is running
-   - Check port availability (3000, 5937, 8890, etc.)
+   - Check port availability (8088, 5937, 8890, etc.)
    - Review docker-compose logs: `docker-compose logs`
 
 ### **Debugging Tools**
@@ -271,4 +280,3 @@ __Documentation__
 - Configure for production deployment with proper DNS and certificates
 
 
-    
