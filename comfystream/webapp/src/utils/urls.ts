@@ -44,5 +44,5 @@ export const getDefaultDataStreamUrl = (): string => {
 
 // Get default Kafka events URL
 export const getDefaultKafkaEventsUrl = (): string => {
-  return `https://localhost:8088/kafka-events`
+  return `https://localhost:8088/kafka/events`
 }

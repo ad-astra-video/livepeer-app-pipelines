@@ -72,6 +72,7 @@ services:
     container_name: byoc-comfystream-orchestrator
     volumes:
       - ${AI_MODELS_DIR}:${AI_MODELS_DIR}
+      - ./data/orchestrator:/data
       - ./worker/aimodels.json:/data/aimodels.json
       - /var/run/docker.sock:/var/run/docker.sock
     runtime: nvidia
