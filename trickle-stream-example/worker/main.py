@@ -5,7 +5,6 @@ import logging
 from typing import Union
 
 import torch
-
 from pytrickle import TrickleApp
 from pytrickle.frames import (
     VideoFrame,
@@ -91,9 +90,18 @@ async def main():
     processor = AsyncUpsideDownProcessor()
     processor.start()
 
+    # Derive port from CAPABILITY_URL if set
+    port = 8080
+    cap_url = os.environ.get("CAPABILITY_URL")
+    if cap_url and ":" in cap_url:
+        try:
+            port = int(cap_url.rsplit(":", 1)[-1])
+        except Exception:
+            port = 8080
+
     app = TrickleApp(
         frame_processor=processor.process_frame_sync,
-        port=int(os.environ.get("CAPABILITY_URL", "http://localhost:7777").rsplit(":", 1)[-1]),
+        port=port,
     )
 
     await app.run_forever()
