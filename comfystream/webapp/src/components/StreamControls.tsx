@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { Video, Mic, MicOff, VideoOff, Play, Square, Upload, AlertCircle, Download, X, Wifi, WifiOff, RefreshCw, Camera, Monitor, Plus, Trash2 } from 'lucide-react'
+import { Video, Mic, MicOff, VideoOff, Play, Square, Upload, AlertCircle, Download, X, Wifi, WifiOff, RefreshCw, Camera, Monitor, Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react'
 import { getDefaultWhipUrl, generateStreamId, getWhipUrlWithStreamId } from '../utils/urls'
 import { loadSettingsFromStorage } from './SettingsModal'
 import { 
@@ -79,12 +79,13 @@ const StreamControls: React.FC<StreamControlsProps> = ({
   const [pipeline, setPipeline] = useState('comfystream')
   const [prompt1, setPrompt1] = useState('')
   const [prompt2, setPrompt2] = useState('')
-  const [prompt3, setPrompt3] = useState('')
   // Persisted selectable lists
   const PIPELINE_OPTIONS_KEY = 'comfystream_pipeline_options'
   const LAST_PIPELINE_KEY = 'comfystream_last_pipeline'
   const PROMPT_OPTIONS_KEY = 'comfystream_prompt_options'
-  const LAST_PROMPTS_KEY = 'comfystream_last_prompts' // stores JSON array of 3 strings
+  const LAST_PROMPTS_KEY = 'comfystream_last_prompts' // stores JSON array of up to 2 strings
+  const MEDIA_SECTION_KEY = 'comfystream_show_media_section'
+  const WHIP_SECTION_KEY = 'comfystream_show_whip_section'
 
   const [pipelineOptions, setPipelineOptions] = useState<string[]>(() => {
     try {
@@ -175,7 +176,6 @@ const StreamControls: React.FC<StreamControlsProps> = ({
         const arr = JSON.parse(lastPromptsRaw) as string[]
         setPrompt1(arr[0] || '')
         setPrompt2(arr[1] || '')
-        setPrompt3(arr[2] || '')
       }
     } catch {}
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -218,8 +218,7 @@ const StreamControls: React.FC<StreamControlsProps> = ({
     // If any selected prompts match removed, clear them
     if (prompt1 === option.content) setPrompt1('')
     if (prompt2 === option.content) setPrompt2('')
-    if (prompt3 === option.content) setPrompt3('')
-    try { localStorage.setItem(LAST_PROMPTS_KEY, JSON.stringify([prompt1, prompt2, prompt3])) } catch {}
+    try { localStorage.setItem(LAST_PROMPTS_KEY, JSON.stringify([prompt1, prompt2])) } catch {}
   }
   const [videoEnabled, setVideoEnabled] = useState(true)
   const [audioEnabled, setAudioEnabled] = useState(true)
@@ -239,6 +238,27 @@ const StreamControls: React.FC<StreamControlsProps> = ({
     resolution: '',
     streamId: null as string | null
   })
+  const [showMediaSection, setShowMediaSection] = useState<boolean>(() => {
+    try {
+      const raw = localStorage.getItem(MEDIA_SECTION_KEY)
+      if (raw != null) return raw === 'true'
+    } catch {}
+    return false
+  })
+  const [showWhipSection, setShowWhipSection] = useState<boolean>(() => {
+    try {
+      const raw = localStorage.getItem(WHIP_SECTION_KEY)
+      if (raw != null) return raw === 'true'
+    } catch {}
+    return false
+  })
+
+  useEffect(() => {
+    try { localStorage.setItem(MEDIA_SECTION_KEY, String(showMediaSection)) } catch {}
+  }, [showMediaSection])
+  useEffect(() => {
+    try { localStorage.setItem(WHIP_SECTION_KEY, String(showWhipSection)) } catch {}
+  }, [showWhipSection])
   const videoRef = useRef<HTMLVideoElement>(null)
   const [sdpModalOpen, setSdpModalOpen] = useState(false)
   const [sdpModalContent, setSdpModalContent] = useState<{type: 'offer' | 'answer', content: string} | null>(null)
@@ -509,7 +529,7 @@ const StreamControls: React.FC<StreamControlsProps> = ({
       
       // Construct the WHIP URL with parameters
       const [resWidth, resHeight] = resolution.split('x').map(Number)
-      const prompts = [prompt1, prompt2, prompt3].filter(p => p.trim() !== '')
+      const prompts = [prompt1, prompt2].filter(p => p.trim() !== '')
       const constructedUrl = constructWhipUrl(whipUrl, streamName, pipeline, resWidth, resHeight, prompts, streamId)
       console.log(`Constructed WHIP URL: ${constructedUrl}`)
       
@@ -631,7 +651,7 @@ const StreamControls: React.FC<StreamControlsProps> = ({
 
     try {
       // Prepare prompts data
-      const prompts = [prompt1, prompt2, prompt3].filter(p => p.trim() !== '')
+      const prompts = [prompt1, prompt2].filter(p => p.trim() !== '')
       let promptsData
       
       if (prompts.length === 0) {
@@ -658,7 +678,7 @@ const StreamControls: React.FC<StreamControlsProps> = ({
       })
 
       // remember last used prompts
-      try { localStorage.setItem(LAST_PROMPTS_KEY, JSON.stringify([prompt1, prompt2, prompt3])) } catch {}
+      try { localStorage.setItem(LAST_PROMPTS_KEY, JSON.stringify([prompt1, prompt2])) } catch {}
       
       // You could show a success message here
     } catch (error) {
@@ -1193,13 +1213,22 @@ const StreamControls: React.FC<StreamControlsProps> = ({
 
             {/* Stream Configuration Inputs */}
           <div className="space-y-4">
-            {/* Media Device Selection */}
+            {/* Media Device Selection (collapsible) */}
             <div className="p-4 bg-gradient-to-br from-black/30 to-black/10 rounded-lg border border-white/20 backdrop-blur-sm">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold text-white flex items-center">
+              <div className="flex items-center justify-between mb-2">
+                <button
+                  type="button"
+                  onClick={() => setShowMediaSection(v => !v)}
+                  className="flex items-center text-left text-sm font-semibold text-white"
+                >
+                  {showMediaSection ? (
+                    <ChevronDown className="w-5 h-5 mr-2 text-emerald-400" />
+                  ) : (
+                    <ChevronRight className="w-5 h-5 mr-2 text-emerald-400" />
+                  )}
                   <Camera className="w-5 h-5 mr-2 text-emerald-400" />
                   Media Sources
-                </h3>
+                </button>
                 <button
                   onClick={refreshMediaDevices}
                   className="p-2 text-gray-400 hover:text-emerald-400 hover:bg-emerald-400/10 rounded-lg transition-all duration-200"
@@ -1208,8 +1237,9 @@ const StreamControls: React.FC<StreamControlsProps> = ({
                   <RefreshCw className="w-4 h-4" />
                 </button>
               </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {showMediaSection && (
+                <>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Camera Selection */}
                 <div className="space-y-2">
                   <label className="block text-xs font-medium text-gray-300 mb-2 flex items-center">
@@ -1356,24 +1386,37 @@ const StreamControls: React.FC<StreamControlsProps> = ({
                   </div>
                 </div>
               </div>
+              </>
+              )}
             </div>
 
-            {/* WHIP URL Input */}
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+            {/* WHIP URL Input (collapsible) */}
+            <div className="p-4 bg-gradient-to-br from-black/30 to-black/10 rounded-lg border border-white/20 backdrop-blur-sm">
+              <button
+                type="button"
+                onClick={() => setShowWhipSection(v => !v)}
+                className="flex items-center text-left text-sm font-semibold text-white mb-2"
+              >
+                {showWhipSection ? (
+                  <ChevronDown className="w-5 h-5 mr-2 text-emerald-400" />
+                ) : (
+                  <ChevronRight className="w-5 h-5 mr-2 text-emerald-400" />
+                )}
                 WHIP Endpoint URL
-              </label>
-              <div className="relative">
-                <input
-                  type="url"
-                  value={whipUrl}
-                  onChange={(e) => setWhipUrl(e.target.value)}
-                  placeholder={getDefaultWhipUrl()}
-                  className="w-full px-4 py-3 bg-black/20 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                  disabled={isStreaming}
-                />
-                <Upload className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-              </div>
+              </button>
+              {showWhipSection && (
+                <div className="relative">
+                  <input
+                    type="url"
+                    value={whipUrl}
+                    onChange={(e) => setWhipUrl(e.target.value)}
+                    placeholder={getDefaultWhipUrl()}
+                    className="w-full px-4 py-3 bg-black/20 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                    disabled={isStreaming}
+                  />
+                  <Upload className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                </div>
+              )}
             </div>
 
             {/* Stream Name Input */}
@@ -1534,25 +1577,24 @@ const StreamControls: React.FC<StreamControlsProps> = ({
                 </div>
               )}
               <div className="space-y-2">
-                {[0,1,2].map((idx) => (
+                {[0,1].map((idx) => (
                   <div key={idx} className="relative">
                     <select
-                      value={idx===0 ? prompt1 : idx===1 ? prompt2 : prompt3}
+                      value={idx===0 ? prompt1 : prompt2}
                       onChange={(e) => {
                         const val = e.target.value
                         if (idx===0) setPrompt1(val)
                         if (idx===1) setPrompt2(val)
-                        if (idx===2) setPrompt3(val)
-                        try { localStorage.setItem(LAST_PROMPTS_KEY, JSON.stringify([idx===0?val:prompt1, idx===1?val:prompt2, idx===2?val:prompt3])) } catch {}
+                        try { localStorage.setItem(LAST_PROMPTS_KEY, JSON.stringify([idx===0?val:prompt1, idx===1?val:prompt2])) } catch {}
                       }}
                       className="w-full px-3 py-2.5 bg-black/40 border border-white/20 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-400 appearance-none cursor-pointer"
                       title={(() => {
-                        const currentValue = idx===0 ? prompt1 : idx===1 ? prompt2 : prompt3
+                        const currentValue = idx===0 ? prompt1 : prompt2
                         const selectedOption = promptOptions.find(opt => opt.content === currentValue)
                         return selectedOption ? selectedOption.content : ''
                       })()}
                     >
-                      <option value="" className="bg-gray-800">{idx===0 ? 'No prompt' : idx===1 ? 'No prompt (optional)' : 'No prompt (optional)'}</option>
+                      <option value="" className="bg-gray-800">{idx===0 ? 'No prompt' : 'No prompt (optional)'}</option>
                       {promptOptions.map((opt) => (
                         <option key={opt.name+idx} value={opt.content} className="bg-gray-800" title={opt.content}>
                           {opt.name}
