@@ -1,4 +1,4 @@
 torch
 aiohttp
 requests
-pytrickle @ git+https://github.com/livepeer/pytrickle.git@ce23cc127adcce0ce128fe377380a23110dbd805
+pytrickle @ git+https://github.com/livepeer/pytrickle.git@c5b75f96f4fbe254432ea2b9978bd73c2a037377
