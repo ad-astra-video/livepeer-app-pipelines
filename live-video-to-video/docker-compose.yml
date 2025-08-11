@@ -1,0 +1,195 @@
+services:
+### webserver ###
+  webserver:
+    image: caddy:latest
+    container_name: byoc-comfystream-webserver
+    ports:
+      - 8088:8088
+    volumes:
+      - ./webserver/Caddyfile:/etc/caddy/Caddyfile
+      - ./webapp/dist:/var/www/html/app
+    environment:
+      - HOST=${HOST}
+### webapp ###
+  webapp:
+    image: node:20
+    working_dir: /webapp
+    volumes:
+      - ./webapp:/webapp
+    command: sh -c "npm install && npm run build"
+#  uncomment if want to run dev server
+#    ports:
+#     - 3001:3001
+#    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 3001"
+###  INGEST  ###
+  mediamtx:
+    image: livepeerci/mediamtx
+    container_name: byoc-comfystream-mediamtx
+    volumes:
+      - ./mediamtx/mediamtx.yml:/mediamtx.yml
+    environment:
+      - MTX_WEBRTCADDITIONALHOSTS=${HOST}
+    ports:
+      - 8890:8890
+      - 9997:9997
+      - 1935:1935
+  gateway:
+    image: adastravideo/go-livepeer:add-data-url-buf
+    container_name: byoc-comfystream-gateway
+    volumes:
+      - ./data/gateway:/data
+    ports:
+      - 5937:5937
+      - 7280:7280
+    environment:
+      - LIVE_AI_ALLOW_CORS=1
+      - LIVE_AI_WHIP_ADDR=gateway:7280
+#       input LIVE_AI_GATHER_TIMEOUT as integer (parses to seconds)
+      - LIVE_AI_GATHER_TIMEOUT=5
+#      input LIVE_AI_MIN_SEG_DUR as duration string (e.g. 1s)
+      - LIVE_AI_MIN_SEG_DUR=1s
+      - LIVE_AI_NAT_IP=${HOST_IP}
+      - LIVE_AI_PLAYBACK_HOST=rtmp://mediamtx:1935/
+#      should match to the mediamtx webrtcAddress in mediamtx.yml
+      - LIVE_AI_WHEP_URL=https://${HOST}:8088/mediamtx/
+    command: ["-gateway",
+          "-orchAddr=https://orchestrator:9995",
+          "-rtmpAddr=gateway:1937",
+          "-httpAddr=gateway:5937",
+          "-httpIngest=true",
+          "-v=9",
+          "-network=arbitrum-one-mainnet",
+          "-blockPollingInterval=10",
+          "-ethUrl=${ARB_ETH_URL}",
+          "-ethPassword=testbroadcaster",
+          "-dataDir=/data",
+          "-monitor",
+          "-kafkaBootstrapServers=kafka:9092",
+          "-kafkaGatewayTopic=streaming-events"]
+### LOCAL LIVEPEER NETWORK ###
+  orchestrator:
+    image: adastravideo/go-livepeer:add-data-url-buf
+    container_name: byoc-comfystream-orchestrator
+    volumes:
+      - ${AI_MODELS_DIR}:${AI_MODELS_DIR}
+      - ./data/orchestrator:/data
+      - ./worker/aimodels.json:/data/aimodels.json
+      - /var/run/docker.sock:/var/run/docker.sock
+    runtime: nvidia
+    ports:
+      - 9995:9995
+    command: ["-orchestrator",
+          "-aiWorker",
+          "-transcoder",
+          "-nvidia=0",
+          "-orchSecret=orch-secret",
+          "-serviceAddr=orchestrator:9995",
+          "-v=99",
+          "-network=arbitrum-one-mainnet",
+          "-ethUrl=${ARB_ETH_URL}",
+          "-ethPassword=some-random-password",
+          "-dataDir=/data",
+          "-ethOrchAddr=0x16a72bdb3017196825bc53809b87f96fbee31f6c",
+          "-pricePerUnit=0",
+          "-ticketEV=1800",
+          "-monitor",
+          "-aiVerboseLogs",
+#          "-liveAITrickleHostForRunner=172.17.0.1:9995",
+          "-aiModels=/data/aimodels.json",
+          "-aiModelsDir=${AI_MODELS_DIR}",
+          "-aiRunnerImageOverrides={\"live\":{\"comfystream\":\"livepeer/comfystream:latest\"}}"]
+  ai-runner:
+    image: livepeer/comfystream:feat-trickle-api-poc
+    container_name: byoc-comfystream-ai-runner
+    command: "--api"
+    ## alternative commands for comfystream ##
+    #command: "--download-models --build-engines --api"
+    #command: "--comfyui"
+    runtime: nvidia
+    environment:
+      - VERSION=0.13.9
+    volumes:
+      - ./data/models:/workspace/ComfyUI/models
+      - ./data/output:/workspace/ComfyUI/output
+      - ./data/input:/workspace/ComfyUI/input
+    ##development examples##
+    #  - C:\dev\comfystream:/workspace/comfystream
+    #  - C:\dev\pytrickle\pytrickle:/workspace/miniconda3/envs/comfystream/lib/python3.11/site-packages/pytrickle
+    #  - C:\dev\comfystream-workspace\custom_nodes\audio_utils:/workspace/ComfyUI/custom_nodes/comfystream/nodes/audio_utils
+    #  - C:\dev\comfystream-workspace\custom_nodes\ComfyUI-Whisper:/workspace/ComfyUI/custom_nodes/ComfyUI-Whisper
+    ports:
+      - 8889:8889
+      - 8188:8188
+####  Monitoring  ####
+  kafka:
+    image: bitnami/kafka:3.5
+    container_name: byoc-comfystream-kafka
+    ports:
+      - 9092:9092
+    environment:
+      KAFKA_CFG_NODE_ID: 1
+      KAFKA_CFG_BROKER_ID: 1
+      KAFKA_CFG_PROCESS_ROLES: broker,controller
+      KAFKA_CFG_LISTENERS: PLAINTEXT://kafka:9092,CONTROLLER://localhost:9093
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: true
+    healthcheck:
+      test: /opt/bitnami/kafka/bin/kafka-cluster.sh cluster-id --bootstrap-server kafka:9092 || exit 1
+      interval: 1s
+      timeout: 60s
+      retries: 60
+  #kafka-sse-api setup docs https://docs.aklivity.io/zilla/latest/tutorials/sse/sse-intro.html#setup-sse-kafka-proxy
+  kafka-sse-api:
+    image: ghcr.io/aklivity/zilla:latest
+    container_name: byoc-comfystream-kafka-sse-api
+    restart: unless-stopped
+    ports:
+      - 7114:7114
+    healthcheck:
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      test: ["CMD", "bash", "-c", "echo -n '' > /dev/tcp/127.0.0.1/7114"]
+    environment:
+      KAFKA_BOOTSTRAP_SERVER: kafka:9092
+      ZILLA_INCUBATOR_ENABLED: "true"
+    volumes:
+      - ./data/zilla:/etc/zilla
+      - ./data/zilla/index.html:/var/www/index.html
+    command: start -v -e
+    depends_on:
+      kafka:
+        condition: service_healthy
+        restart: true
+  kafka-ui:
+    image: ghcr.io/kafbat/kafka-ui:latest
+    container_name: byoc-comfystream-kafka-ui
+    restart: unless-stopped
+    ports:
+      - 8080:8080
+    environment:
+      KAFKA_CLUSTERS_0_NAME: byoc-comfystream
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+    depends_on:
+      kafka:
+        condition: service_healthy
+        restart: true
+  kafka-init:
+    image: bitnami/kafka:3.5
+    container_name: byoc-comfystream-kafka-init
+    command:
+        - /bin/sh
+        - -c
+        - |
+          /opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic streaming-events
+    depends_on:
+      kafka:
+        condition: service_healthy
+        restart: true
+    init: true
+networks:
+  default:
+    name: byoc-comfystream
