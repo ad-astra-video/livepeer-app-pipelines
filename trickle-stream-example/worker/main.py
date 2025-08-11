@@ -116,15 +116,16 @@ async def main():
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger("trickle-stream-example")
 
-    # Register as a worker with orchestrator
-    RegisterCapability.register(logger)
-
     # Create and start async processor
     processor = AsyncUpsideDownProcessor()
     await processor.start()
     
     # Ensure processor is ready with fallback frames
     await processor.ensure_ready()
+
+    # Register as a worker with orchestrator after warmup
+    # TODO: register can return a success/failure with capability url/port for reuse
+    RegisterCapability.register(logger)
 
     # Use port from CAPABILITY_URL if set
     port = 8080
