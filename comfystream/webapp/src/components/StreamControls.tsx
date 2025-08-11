@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { Video, Mic, MicOff, VideoOff, Play, Square, Upload, AlertCircle, Download, X, Wifi, WifiOff, RefreshCw, Camera, Monitor } from 'lucide-react'
+import { Video, Mic, MicOff, VideoOff, Play, Square, Upload, AlertCircle, Download, X, Wifi, WifiOff, RefreshCw, Camera, Monitor, Plus, Trash2 } from 'lucide-react'
 import { getDefaultWhipUrl, generateStreamId, getWhipUrlWithStreamId } from '../utils/urls'
 import { loadSettingsFromStorage } from './SettingsModal'
 import { 
@@ -80,6 +80,147 @@ const StreamControls: React.FC<StreamControlsProps> = ({
   const [prompt1, setPrompt1] = useState('')
   const [prompt2, setPrompt2] = useState('')
   const [prompt3, setPrompt3] = useState('')
+  // Persisted selectable lists
+  const PIPELINE_OPTIONS_KEY = 'comfystream_pipeline_options'
+  const LAST_PIPELINE_KEY = 'comfystream_last_pipeline'
+  const PROMPT_OPTIONS_KEY = 'comfystream_prompt_options'
+  const LAST_PROMPTS_KEY = 'comfystream_last_prompts' // stores JSON array of 3 strings
+
+  const [pipelineOptions, setPipelineOptions] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem(PIPELINE_OPTIONS_KEY)
+      if (raw) return JSON.parse(raw)
+    } catch {}
+    // sensible defaults
+    return ['comfystream', 'trickle-stream-example', 'noop']
+  })
+  interface PromptOption {
+    name: string
+    content: string
+  }
+
+  const [promptOptions, setPromptOptions] = useState<PromptOption[]>(() => {
+    const hardCodedDefaults: PromptOption[] = [
+      // Workflow prompt seeds (hard-coded)
+      // JSON workflow defaults - will be added below
+      { name: 'tensor-utils-example-api', content: JSON.stringify({"1":{"inputs":{"images":["2",0]},"class_type":"SaveTensor","_meta":{"title":"SaveTensor"}},"2":{"inputs":{},"class_type":"LoadTensor","_meta":{"title":"LoadTensor"}}}) },
+      { name: 'inverted-color-api', content: JSON.stringify({"1":{"inputs":{"images":["3",0]},"class_type":"SaveTensor","_meta":{"title":"SaveTensor"}},"2":{"inputs":{},"class_type":"LoadTensor","_meta":{"title":"LoadTensor"}},"3":{"inputs":{"image":["2",0]},"class_type":"ImageInvert","_meta":{"title":"Invert Image"}}}) },
+      { name: 'audio-tensor-utils-example-api', content: JSON.stringify({"1":{"inputs":{"buffer_size":500.0},"class_type":"LoadAudioTensor","_meta":{"title":"Load Audio Tensor"}},"2":{"inputs":{"audio":["1",0],"sample_rate":["1",1],"pitch_shift":4.0},"class_type":"PitchShifter","_meta":{"title":"Pitch Shift"}},"3":{"inputs":{"audio":["2",0]},"class_type":"SaveAudioTensor","_meta":{"title":"Save Audio Tensor"}}}) },
+      { name: 'audio-text-api', content: JSON.stringify({"1":{"inputs":{"buffer_size":500.5},"class_type":"LoadAudioTensor","_meta":{"title":"Load Audio Tensor"}},"4":{"inputs":{"text":["6",0]},"class_type":"SaveTextTensor","_meta":{"title":"SaveTextTensor"}},"6":{"inputs":{"text":"Hello from comfystream","strip_whitespace":true,"remove_empty_lines":false},"class_type":"MultilineText","_meta":{"title":"Multiline Text"}}}) },
+      { name: 'sd15-tensorrt-api', content: JSON.stringify({"1":{"inputs":{"image":"example.png","upload":"image"},"class_type":"LoadImage","_meta":{"title":"Load Image"}},"2":{"inputs":{"engine":"depth_anything_vitl14-fp16.engine","images":["1",0]},"class_type":"DepthAnythingTensorrt","_meta":{"title":"Depth Anything Tensorrt"}},"3":{"inputs":{"unet_name":"static-dreamshaper8_SD15_$stat-b-1-h-512-w-512_00001_.engine","model_type":"SD15"},"class_type":"TensorRTLoader","_meta":{"title":"TensorRT Loader"}},"5":{"inputs":{"text":"the hulk","clip":["23",0]},"class_type":"CLIPTextEncode","_meta":{"title":"CLIP Text Encode (Prompt)"}},"6":{"inputs":{"text":"","clip":["23",0]},"class_type":"CLIPTextEncode","_meta":{"title":"CLIP Text Encode (Prompt)"}},"7":{"inputs":{"seed":905056445574169,"steps":1,"cfg":1,"sampler_name":"lcm","scheduler":"normal","denoise":1,"model":["3",0],"positive":["9",0],"negative":["9",1],"latent_image":["16",0]},"class_type":"KSampler","_meta":{"title":"KSampler"}},"8":{"inputs":{"control_net_name":"control_v11f1p_sd15_depth_fp16.safetensors"},"class_type":"ControlNetLoader","_meta":{"title":"Load ControlNet Model"}},"9":{"inputs":{"strength":1,"start_percent":0,"end_percent":1,"positive":["5",0],"negative":["6",0],"control_net":["10",0],"image":["2",0]},"class_type":"ControlNetApplyAdvanced","_meta":{"title":"Apply ControlNet"}},"10":{"inputs":{"backend":"inductor","fullgraph":false,"mode":"reduce-overhead","controlnet":["8",0]},"class_type":"TorchCompileLoadControlNet","_meta":{"title":"TorchCompileLoadControlNet"}},"11":{"inputs":{"vae_name":"taesd"},"class_type":"VAELoader","_meta":{"title":"Load VAE"}},"13":{"inputs":{"backend":"inductor","fullgraph":true,"mode":"reduce-overhead","compile_encoder":true,"compile_decoder":true,"vae":["11",0]},"class_type":"TorchCompileLoadVAE","_meta":{"title":"TorchCompileLoadVAE"}},"14":{"inputs":{"samples":["7",0],"vae":["13",0]},"class_type":"VAEDecode","_meta":{"title":"VAE Decode"}},"15":{"inputs":{"images":["14",0]},"class_type":"PreviewImage","_meta":{"title":"Preview Image"}},"16":{"inputs":{"width":512,"height":512,"batch_size":1},"class_type":"EmptyLatentImage","_meta":{"title":"Empty Latent Image"}},"23":{"inputs":{"clip_name":"CLIPText/model.fp16.safetensors","type":"stable_diffusion","device":"default"},"class_type":"CLIPLoader","_meta":{"title":"Load CLIP"}}}) }
+    ]
+    try {
+      const raw = localStorage.getItem(PROMPT_OPTIONS_KEY)
+      if (raw) {
+        const stored = JSON.parse(raw)
+        if (Array.isArray(stored)) {
+          // Handle migration from old string array format
+          if (stored.length > 0 && typeof stored[0] === 'string') {
+            const migrated = stored.map((s: string) => ({ name: s, content: s }))
+            return [...hardCodedDefaults, ...migrated.filter((m: PromptOption) => 
+              !hardCodedDefaults.some(d => d.name === m.name)
+            )]
+          } else {
+            // New format with name/content objects
+            return [...hardCodedDefaults, ...stored.filter((s: PromptOption) => 
+              !hardCodedDefaults.some(d => d.name === s.name)
+            )]
+          }
+        }
+      }
+    } catch {}
+    return hardCodedDefaults
+  })
+  const [newPipelineText, setNewPipelineText] = useState('')
+  const [newPromptName, setNewPromptName] = useState('')
+  const [newPromptContent, setNewPromptContent] = useState('')
+  const [showPipelineAdd, setShowPipelineAdd] = useState(false)
+  const pipelineAddRef = useRef<HTMLDivElement | null>(null)
+  const [showPromptAdd, setShowPromptAdd] = useState(false)
+  const promptAddRef = useRef<HTMLDivElement | null>(null)
+
+  // Close pipeline add popover when clicking outside
+  useEffect(() => {
+    if (!showPipelineAdd) return
+    const handleClickOutside = (e: MouseEvent) => {
+      if (pipelineAddRef.current && !pipelineAddRef.current.contains(e.target as Node)) {
+        setShowPipelineAdd(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showPipelineAdd])
+
+  // Close prompt add popover on outside click
+  useEffect(() => {
+    if (!showPromptAdd) return
+    const handleClickOutside = (e: MouseEvent) => {
+      if (promptAddRef.current && !promptAddRef.current.contains(e.target as Node)) {
+        setShowPromptAdd(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showPromptAdd])
+
+  // Initialize last used selections
+  useEffect(() => {
+    try {
+      const lastPipeline = localStorage.getItem(LAST_PIPELINE_KEY)
+      if (lastPipeline && pipelineOptions.includes(lastPipeline)) {
+        setPipeline(lastPipeline)
+      }
+      const lastPromptsRaw = localStorage.getItem(LAST_PROMPTS_KEY)
+      if (lastPromptsRaw) {
+        const arr = JSON.parse(lastPromptsRaw) as string[]
+        setPrompt1(arr[0] || '')
+        setPrompt2(arr[1] || '')
+        setPrompt3(arr[2] || '')
+      }
+    } catch {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Persist lists when they change
+  useEffect(() => {
+    try { localStorage.setItem(PIPELINE_OPTIONS_KEY, JSON.stringify(pipelineOptions)) } catch {}
+  }, [pipelineOptions])
+  useEffect(() => {
+    try { localStorage.setItem(PROMPT_OPTIONS_KEY, JSON.stringify(promptOptions)) } catch {}
+  }, [promptOptions])
+
+  const addPipelineOption = () => {
+    const value = newPipelineText.trim()
+    if (!value) return
+    setPipelineOptions(prev => (prev.includes(value) ? prev : [...prev, value]))
+    setNewPipelineText('')
+  }
+  const removePipelineOption = (value: string) => {
+    setPipelineOptions(prev => prev.filter(v => v !== value))
+    if (pipeline === value) {
+      const fallback = pipelineOptions.find(v => v !== value) || ''
+      setPipeline(fallback)
+      try { localStorage.setItem(LAST_PIPELINE_KEY, fallback) } catch {}
+    }
+  }
+
+  const addPromptOption = () => {
+    const name = newPromptName.trim()
+    const content = newPromptContent.trim()
+    if (!name || !content) return
+    const newOption = { name, content }
+    setPromptOptions(prev => (prev.some(p => p.name === name) ? prev : [...prev, newOption]))
+    setNewPromptName('')
+    setNewPromptContent('')
+  }
+  const removePromptOption = (option: PromptOption) => {
+    setPromptOptions(prev => prev.filter(p => p.name !== option.name))
+    // If any selected prompts match removed, clear them
+    if (prompt1 === option.content) setPrompt1('')
+    if (prompt2 === option.content) setPrompt2('')
+    if (prompt3 === option.content) setPrompt3('')
+    try { localStorage.setItem(LAST_PROMPTS_KEY, JSON.stringify([prompt1, prompt2, prompt3])) } catch {}
+  }
   const [videoEnabled, setVideoEnabled] = useState(true)
   const [audioEnabled, setAudioEnabled] = useState(true)
   const [fpsLimit, setFpsLimit] = useState(30)
@@ -515,6 +656,9 @@ const StreamControls: React.FC<StreamControlsProps> = ({
         streamName,
         updateData
       })
+
+      // remember last used prompts
+      try { localStorage.setItem(LAST_PROMPTS_KEY, JSON.stringify([prompt1, prompt2, prompt3])) } catch {}
       
       // You could show a success message here
     } catch (error) {
@@ -1247,49 +1391,202 @@ const StreamControls: React.FC<StreamControlsProps> = ({
               />
             </div>
 
-            {/* Pipeline Input */}
+            {/* Pipeline Select with Add/Remove */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
                 Pipeline
               </label>
-              <input
-                type="text"
-                value={pipeline}
-                onChange={(e) => setPipeline(e.target.value)}
-                placeholder="Default: noop"
-                className="w-full px-4 py-3 bg-black/20 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                disabled={isStreaming}
-              />
+              <div className="relative">
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <select
+                      value={pipeline}
+                      onChange={(e) => {
+                        const val = e.target.value
+                        setPipeline(val)
+                        try { localStorage.setItem(LAST_PIPELINE_KEY, val) } catch {}
+                      }}
+                      className="w-full px-3 py-3 bg-black/40 border border-white/20 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-400 appearance-none cursor-pointer disabled:opacity-50"
+                      disabled={isStreaming}
+                    >
+                      {pipelineOptions.map((opt) => (
+                        <option key={opt} value={opt} className="bg-gray-800">{opt}</option>
+                      ))}
+                    </select>
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowPipelineAdd((v) => !v)}
+                    disabled={isStreaming}
+                    className="p-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg disabled:bg-gray-600"
+                    title="Add pipeline"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {showPipelineAdd && (
+                  <div ref={pipelineAddRef} className="absolute z-20 right-0 mt-2 w-72 bg-slate-900 border border-white/10 rounded-lg shadow-xl p-3">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={newPipelineText}
+                        onChange={(e) => setNewPipelineText(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') { addPipelineOption(); setShowPipelineAdd(false) }
+                          if (e.key === 'Escape') { setShowPipelineAdd(false) }
+                        }}
+                        placeholder="Add pipeline name"
+                        className="flex-1 px-3 py-2 bg-black/30 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        autoFocus
+                      />
+                      <button
+                        onClick={() => { addPipelineOption(); setShowPipelineAdd(false) }}
+                        className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg"
+                        title="Add"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-2">Press Enter to add. Esc to close.</p>
+                  </div>
+                )}
+              </div>
+              {pipelineOptions.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {pipelineOptions.map(opt => (
+                    <span key={opt} className="inline-flex items-center space-x-1 bg-black/30 border border-white/10 text-gray-200 text-xs px-2 py-1 rounded">
+                      <span>{opt}</span>
+                      <button
+                        onClick={() => removePipelineOption(opt)}
+                        disabled={isStreaming}
+                        className="p-0.5 text-gray-400 hover:text-red-400"
+                        title={`Remove ${opt}`}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* Prompts Input */}
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Prompts
-              </label>
-              <div className="space-y-2">
-                <input
-                  type="text"
-                  value={prompt1}
-                  onChange={(e) => setPrompt1(e.target.value)}
-                  placeholder="Enter first prompt"
-                  className="w-full px-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                />
-                <input
-                  type="text"
-                  value={prompt2}
-                  onChange={(e) => setPrompt2(e.target.value)}
-                  placeholder="Enter second prompt (optional)"
-                  className="w-full px-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                />
-                <input
-                  type="text"
-                  value={prompt3}
-                  onChange={(e) => setPrompt3(e.target.value)}
-                  placeholder="Enter third prompt (optional)"
-                  className="w-full px-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                />
+            {/* Prompts Selects with Shared List and Add/Remove */}
+            <div className="relative">
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-gray-300">
+                  Prompts
+                </label>
+                <button
+                  onClick={() => setShowPromptAdd((v) => !v)}
+                  className="p-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg"
+                  title="Add prompt to list"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
               </div>
+              {showPromptAdd && (
+                <div ref={promptAddRef} className="absolute z-20 right-0 mt-0 w-96 bg-slate-900 border border-white/10 rounded-lg shadow-xl p-3">
+                  <div className="space-y-3">
+                    <input
+                      type="text"
+                      value={newPromptName}
+                      onChange={(e) => setNewPromptName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && newPromptName.trim() && newPromptContent.trim()) { 
+                          addPromptOption(); setShowPromptAdd(false) 
+                        }
+                        if (e.key === 'Escape') { setShowPromptAdd(false) }
+                      }}
+                      placeholder="Prompt name (shown in dropdown)"
+                      className="w-full px-3 py-2 bg-black/30 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      autoFocus
+                    />
+                    <textarea
+                      value={newPromptContent}
+                      onChange={(e) => setNewPromptContent(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && e.ctrlKey && newPromptName.trim() && newPromptContent.trim()) { 
+                          addPromptOption(); setShowPromptAdd(false) 
+                        }
+                        if (e.key === 'Escape') { setShowPromptAdd(false) }
+                      }}
+                      placeholder="Prompt content (will be sent to server)"
+                      className="w-full px-3 py-2 bg-black/30 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 h-20 resize-none"
+                      rows={3}
+                    />
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => { addPromptOption(); setShowPromptAdd(false) }}
+                        disabled={!newPromptName.trim() || !newPromptContent.trim()}
+                        className="flex-1 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+                      >
+                        <Plus className="w-4 h-4 inline mr-1" />
+                        Add Prompt
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-2">Ctrl+Enter to add. Esc to close.</p>
+                </div>
+              )}
+              <div className="space-y-2">
+                {[0,1,2].map((idx) => (
+                  <div key={idx} className="relative">
+                    <select
+                      value={idx===0 ? prompt1 : idx===1 ? prompt2 : prompt3}
+                      onChange={(e) => {
+                        const val = e.target.value
+                        if (idx===0) setPrompt1(val)
+                        if (idx===1) setPrompt2(val)
+                        if (idx===2) setPrompt3(val)
+                        try { localStorage.setItem(LAST_PROMPTS_KEY, JSON.stringify([idx===0?val:prompt1, idx===1?val:prompt2, idx===2?val:prompt3])) } catch {}
+                      }}
+                      className="w-full px-3 py-2.5 bg-black/40 border border-white/20 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-400 appearance-none cursor-pointer"
+                      title={(() => {
+                        const currentValue = idx===0 ? prompt1 : idx===1 ? prompt2 : prompt3
+                        const selectedOption = promptOptions.find(opt => opt.content === currentValue)
+                        return selectedOption ? selectedOption.content : ''
+                      })()}
+                    >
+                      <option value="" className="bg-gray-800">{idx===0 ? 'No prompt' : idx===1 ? 'No prompt (optional)' : 'No prompt (optional)'}</option>
+                      {promptOptions.map((opt) => (
+                        <option key={opt.name+idx} value={opt.content} className="bg-gray-800" title={opt.content}>
+                          {opt.name}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {promptOptions.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {promptOptions.map(opt => (
+                    <span 
+                      key={opt.name} 
+                      className="inline-flex items-center space-x-1 bg-black/30 border border-white/10 text-gray-200 text-xs px-2 py-1 rounded"
+                      title={opt.content}
+                    >
+                      <span className="truncate max-w-[200px]">{opt.name}</span>
+                      <button
+                        onClick={() => removePromptOption(opt)}
+                        className="p-0.5 text-gray-400 hover:text-red-400"
+                        title={`Remove ${opt.name}`}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
               <button
                 onClick={sendUpdate}
                 disabled={!isStreaming}
@@ -1298,7 +1595,7 @@ const StreamControls: React.FC<StreamControlsProps> = ({
                 Update
               </button>
               <p className="text-xs text-gray-400 mt-1">
-                Enter prompts and click Update to send changes with current resolution
+                Choose prompts and click Update to send changes with current resolution
               </p>
             </div>
 
