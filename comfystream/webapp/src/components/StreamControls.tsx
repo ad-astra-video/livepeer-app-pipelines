@@ -531,7 +531,7 @@ const StreamControls: React.FC<StreamControlsProps> = ({
       // Construct the WHIP URL with parameters
       const [resWidth, resHeight] = resolution.split('x').map(Number)
       const prompts = [prompt1, prompt2].filter(p => p.trim() !== '')
-      const constructedUrl = constructWhipUrl(whipUrl, streamName, pipeline, resWidth, resHeight, prompts, streamId)
+      const constructedUrl = constructWhipUrl(whipUrl, streamName, pipeline, resWidth, resHeight, prompts, streamId, fpsLimit)
       console.log(`Constructed WHIP URL: ${constructedUrl}`)
       
       // Send WHIP offer with retry logic
@@ -669,7 +669,8 @@ const StreamControls: React.FC<StreamControlsProps> = ({
       const updateData: StreamUpdateData = {
         height: resHeight,
         width: resWidth,
-        prompts: promptsData
+        prompts: promptsData,
+        max_framerate: fpsLimit
       }
 
       await sendStreamUpdate({
