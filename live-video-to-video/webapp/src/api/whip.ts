@@ -19,7 +19,7 @@ export interface WhipStopRequest {
 export interface PipelineParams {
   width?: number
   height?: number
-  prompts?: any
+  [key: string]: any
 }
 
 /**
@@ -31,7 +31,7 @@ export const constructWhipUrl = (
   pipeline: string, 
   width: number, 
   height: number,
-  prompts: string[],
+  customParams: Record<string, any>,
   streamId?: string
 ): string => {
   let url = new URL(baseUrl)
@@ -59,14 +59,8 @@ export const constructWhipUrl = (
     params.height = height
   }
   
-  // Add prompts from the prompt fields
-  if (prompts.length === 0) {
-    params.prompts = ""
-  } else if (prompts.length === 1) {
-    params.prompts = prompts[0]
-  } else {
-    params.prompts = prompts
-  }
+  // Add custom parameters
+  Object.assign(params, customParams)
 
   // Convert the params object to a JSON string
   const paramsString = JSON.stringify(params)

@@ -77,16 +77,14 @@ const StreamControls: React.FC<StreamControlsProps> = ({
     }
   }, [])
   const [pipeline, setPipeline] = useState('comfystream')
-  const [pipeline, setPipeline] = useState('comfystream')
   const [jsonParams, setJsonParams] = useState('')
   const [videoEnabled, setVideoEnabled] = useState(true)
-  const [prompt1, setPrompt1] = useState('')
-  const [prompt2, setPrompt2] = useState('')
-  const [prompt3, setPrompt3] = useState('')
-  const [videoEnabled, setVideoEnabled] = useState(true)
+  const [customParams, setCustomParams] = useState<Record<string, any>>({})
+  const [customParamKey, setCustomParamKey] = useState('')
+  const [customParamValue, setCustomParamValue] = useState('')
   const [audioEnabled, setAudioEnabled] = useState(true)
   const [fpsLimit, setFpsLimit] = useState(30)
-  const [resolution, setResolution] = useState('1280x720')
+  const [resolution, setResolution] = useState('1024x1024')
   const [localStream, setLocalStream] = useState<MediaStream | null>(null)
   const [peerConnection, setPeerConnection] = useState<RTCPeerConnection | null>(null)
   const [currentStreamId, setCurrentStreamId] = useState<string | null>(null)
@@ -126,6 +124,46 @@ const StreamControls: React.FC<StreamControlsProps> = ({
     frameTime: 0,
     frameCount: 0
   })
+
+  // Helper functions for custom parameters
+  const addCustomParam = () => {
+    if (customParamKey.trim() && customParamValue.trim()) {
+      let parsedValue: any = customParamValue.trim()
+      
+      // Try to parse as JSON if it looks like a JSON value
+      try {
+        if (parsedValue.startsWith('{') || parsedValue.startsWith('[') || 
+            parsedValue === 'true' || parsedValue === 'false' || 
+            !isNaN(Number(parsedValue))) {
+          parsedValue = JSON.parse(parsedValue)
+        }
+      } catch {
+        // Keep as string if JSON parsing fails
+      }
+      
+      setCustomParams(prev => ({
+        ...prev,
+        [customParamKey.trim()]: parsedValue
+      }))
+      setCustomParamKey('')
+      setCustomParamValue('')
+    }
+  }
+
+  const removeCustomParam = (key: string) => {
+    setCustomParams(prev => {
+      const newParams = { ...prev }
+      delete newParams[key]
+      return newParams
+    })
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && customParamKey.trim() && customParamValue.trim()) {
+      e.preventDefault()
+      addCustomParam()
+    }
+  }
 
   useEffect(() => {
     return () => {
@@ -371,8 +409,7 @@ const StreamControls: React.FC<StreamControlsProps> = ({
       
       // Construct the WHIP URL with parameters
       const [resWidth, resHeight] = resolution.split('x').map(Number)
-      const prompts = [prompt1, prompt2, prompt3].filter(p => p.trim() !== '')
-      const constructedUrl = constructWhipUrl(whipUrl, streamName, pipeline, resWidth, resHeight, prompts, streamId)
+      const constructedUrl = constructWhipUrl(whipUrl, streamName, pipeline, resWidth, resHeight, customParams, streamId)
       console.log(`Constructed WHIP URL: ${constructedUrl}`)
       
       // Send WHIP offer with retry logic
@@ -484,7 +521,7 @@ const StreamControls: React.FC<StreamControlsProps> = ({
     })
   }
   
-  // Update function to send prompts and resolution changes
+  // Update function to send custom parameters and resolution changes
   const sendUpdate = async () => {
     if (!isStreaming) {
       alert('No active stream to update')
@@ -492,25 +529,13 @@ const StreamControls: React.FC<StreamControlsProps> = ({
     }
 
     try {
-      // Prepare prompts data
-      const prompts = [prompt1, prompt2, prompt3].filter(p => p.trim() !== '')
-      let promptsData
-      
-      if (prompts.length === 0) {
-        promptsData = ""
-      } else if (prompts.length === 1) {
-        promptsData = prompts[0]
-      } else {
-        promptsData = prompts
-      }
-
       // Get current resolution
       const [resWidth, resHeight] = resolution.split('x').map(Number)
       
       const updateData: StreamUpdateData = {
         height: resHeight,
         width: resWidth,
-        prompts: promptsData
+        ...customParams
       }
 
       await sendStreamUpdate({
@@ -1265,46 +1290,6 @@ const StreamControls: React.FC<StreamControlsProps> = ({
               />
             </div>
 
-            {/* Prompts Input */}
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Prompts
-              </label>
-              <div className="space-y-2">
-                <input
-                  type="text"
-                  value={prompt1}
-                  onChange={(e) => setPrompt1(e.target.value)}
-                  placeholder="Enter first prompt"
-                  className="w-full px-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                />
-                <input
-                  type="text"
-                  value={prompt2}
-                  onChange={(e) => setPrompt2(e.target.value)}
-                  placeholder="Enter second prompt (optional)"
-                  className="w-full px-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                />
-                <input
-                  type="text"
-                  value={prompt3}
-                  onChange={(e) => setPrompt3(e.target.value)}
-                  placeholder="Enter third prompt (optional)"
-                  className="w-full px-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                />
-              </div>
-              <button
-                onClick={sendUpdate}
-                disabled={!isStreaming}
-                className="mt-3 w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
-              >
-                Update
-              </button>
-              <p className="text-xs text-gray-400 mt-1">
-                Enter prompts and click Update to send changes with current resolution
-              </p>
-            </div>
-
             {/* FPS Limit Slider */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -1338,10 +1323,14 @@ const StreamControls: React.FC<StreamControlsProps> = ({
                   className="w-full px-3 py-3 bg-black/40 border border-white/20 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-400 transition-all duration-200 appearance-none cursor-pointer disabled:opacity-50"
                   disabled={isStreaming}
                 >
-                  <option value="512x512" className="bg-gray-800">512x512 (SD)</option>
+                  <option value="512x512" className="bg-gray-800">512x512 (SD Square)</option>
+                  <option value="512x704" className="bg-gray-800">512x704 (Portrait)</option>
                   <option value="640x480" className="bg-gray-800">640x480 (VGA)</option>
+                  <option value="704x512" className="bg-gray-800">704x512 (Landscape)</option>
+                  <option value="768x768" className="bg-gray-800">768x768 (Square HD)</option>
                   <option value="854x480" className="bg-gray-800">854x480 (FWVGA)</option>
-                  <option value="1280x720" className="bg-gray-800">1280x720 (HD) - Default</option>
+                  <option value="1024x1024" className="bg-gray-800">1024x1024 (Square FHD) - Default</option>
+                  <option value="1280x720" className="bg-gray-800">1280x720 (HD)</option>
                   <option value="1920x1080" className="bg-gray-800">1920x1080 (Full HD)</option>
                   <option value="2560x1440" className="bg-gray-800">2560x1440 (QHD)</option>
                   <option value="3840x2160" className="bg-gray-800">3840x2160 (4K UHD)</option>
@@ -1354,6 +1343,83 @@ const StreamControls: React.FC<StreamControlsProps> = ({
               </div>
               <p className="text-xs text-gray-400 mt-1">
                 {isStreaming ? 'Stop stream to change resolution' : 'Select video resolution before starting stream'}
+              </p>
+            </div>
+
+            {/* Custom Parameters Container */}
+            <div className="p-4 bg-gradient-to-br from-blue-900/20 to-purple-900/20 rounded-xl border border-blue-500/20 backdrop-blur-sm">
+              <label className="block text-sm font-medium text-gray-300 mb-3">
+                Custom Parameters & Updates
+              </label>
+              
+              {/* Add Parameter Input */}
+              <div className="space-y-3 mb-4">
+                <div className="flex space-x-2">
+                  <input
+                    type="text"
+                    value={customParamKey}
+                    onChange={(e) => setCustomParamKey(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Parameter key"
+                    className="flex-1 px-3 py-2 bg-black/30 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <input
+                    type="text"
+                    value={customParamValue}
+                    onChange={(e) => setCustomParamValue(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Parameter value (string, number, or JSON)"
+                    className="flex-2 px-3 py-2 bg-black/30 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <button
+                    onClick={addCustomParam}
+                    disabled={!customParamKey.trim() || !customParamValue.trim()}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+                  >
+                    Add
+                  </button>
+                </div>
+                <p className="text-xs text-gray-400">
+                  Values will be parsed as JSON if they look like objects, arrays, booleans, or numbers. Otherwise treated as strings. Press Enter to add.
+                </p>
+              </div>
+
+              {/* Current Parameters Display */}
+              {Object.keys(customParams).length > 0 && (
+                <div className="space-y-2 mb-4">
+                  <h4 className="text-sm font-medium text-gray-300">Current Parameters:</h4>
+                  <div className="bg-black/30 border border-white/20 rounded-lg p-3 max-h-32 overflow-y-auto">
+                    {Object.entries(customParams).map(([key, value]) => (
+                      <div key={key} className="flex items-center justify-between py-1">
+                        <div className="flex-1 min-w-0">
+                          <span className="text-sm text-emerald-400 font-mono">{key}</span>
+                          <span className="text-gray-300 mx-2">:</span>
+                          <span className="text-sm text-white font-mono">
+                            {typeof value === 'string' ? `"${value}"` : JSON.stringify(value)}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => removeCustomParam(key)}
+                          className="ml-2 p-1 text-red-400 hover:text-red-300 transition-colors"
+                          title="Remove parameter"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <button
+                onClick={sendUpdate}
+                disabled={!isStreaming}
+                className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+              >
+                Update Stream
+              </button>
+              <p className="text-xs text-gray-400 mt-2 text-center">
+                Send custom parameters and current resolution to active stream
               </p>
             </div>
 

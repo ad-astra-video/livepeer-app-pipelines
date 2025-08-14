@@ -170,3 +170,11 @@ comfystream/data/models/
 comfystream/data/zilla/hostname
 comfystream/data/zilla/hosts
 comfystream/data/zilla/resolv.conf
+
+#live-video-to-video stream sample app
+live-video-to-video/data/orchestrator/
+live-video-to-video/data/gateway/
+live-video-to-video/data/models/
+live-video-to-video/data/zilla/hostname
+live-video-to-video/data/zilla/hosts
+live-video-to-video/data/zilla/resolv.conf

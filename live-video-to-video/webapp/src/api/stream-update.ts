@@ -6,7 +6,7 @@
 export interface StreamUpdateData {
   height: number
   width: number
-  prompts: string | string[]
+  [key: string]: any
 }
 
 export interface StreamUpdateRequest {
