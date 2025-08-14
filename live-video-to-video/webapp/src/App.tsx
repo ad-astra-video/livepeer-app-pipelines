@@ -43,8 +43,8 @@ function App() {
                 <Radio className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-white">Comfystream</h1>
-                <p className="text-sm text-gray-300">Livepeer Live-Video-To-Video</p>
+                <h1 className="text-xl font-bold text-white">Livepeer Live-Video-To-Video</h1>
+                <p className="text-sm text-gray-300"></p>
               </div>
             </div>
             

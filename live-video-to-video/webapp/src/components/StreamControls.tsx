@@ -69,14 +69,14 @@ const StreamControls: React.FC<StreamControlsProps> = ({
     }
     
     window.addEventListener('storage', handleStorageChange)
-    window.addEventListener('comfystream-settings-changed', handleSettingsChange as EventListener)
+    window.addEventListener('live-settings-changed', handleSettingsChange as EventListener)
     
     return () => {
       window.removeEventListener('storage', handleStorageChange)
-      window.removeEventListener('comfystream-settings-changed', handleSettingsChange as EventListener)
+      window.removeEventListener('live-settings-changed', handleSettingsChange as EventListener)
     }
   }, [])
-  const [pipeline, setPipeline] = useState('comfystream')
+  const [pipeline, setPipeline] = useState('streamdiffusion')
   const [jsonParams, setJsonParams] = useState('')
   const [videoEnabled, setVideoEnabled] = useState(true)
   const [customParams, setCustomParams] = useState<Record<string, any>>({})
@@ -84,7 +84,7 @@ const StreamControls: React.FC<StreamControlsProps> = ({
   const [customParamValue, setCustomParamValue] = useState('')
   const [audioEnabled, setAudioEnabled] = useState(true)
   const [fpsLimit, setFpsLimit] = useState(30)
-  const [resolution, setResolution] = useState('1024x1024')
+  const [resolution, setResolution] = useState('512x512')
   const [localStream, setLocalStream] = useState<MediaStream | null>(null)
   const [peerConnection, setPeerConnection] = useState<RTCPeerConnection | null>(null)
   const [currentStreamId, setCurrentStreamId] = useState<string | null>(null)

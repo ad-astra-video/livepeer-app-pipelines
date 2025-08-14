@@ -34,7 +34,7 @@ services:
       - 9997:9997
       - 1935:1935
   gateway:
-    image: adastravideo/go-livepeer:add-data-url-buf
+    image: livepeer/go-livepeer:latest
     container_name: byoc-comfystream-gateway
     volumes:
       - ./data/gateway:/data
@@ -53,7 +53,7 @@ services:
 #      should match to the mediamtx webrtcAddress in mediamtx.yml
       - LIVE_AI_WHEP_URL=https://${HOST}:8088/mediamtx/
     command: ["-gateway",
-          "-orchAddr=https://orchestrator:9995",
+          "-orchAddr=${ORCH_SERVICE_ADDR}",
           "-rtmpAddr=gateway:1937",
           "-httpAddr=gateway:5937",
           "-httpIngest=true",
@@ -68,7 +68,7 @@ services:
           "-kafkaGatewayTopic=streaming-events"]
 ### LOCAL LIVEPEER NETWORK ###
   orchestrator:
-    image: adastravideo/go-livepeer:add-data-url-buf
+    image: livepeer/go-livepeer:latest
     container_name: byoc-comfystream-orchestrator
     volumes:
       - ${AI_MODELS_DIR}:${AI_MODELS_DIR}
@@ -83,7 +83,7 @@ services:
           "-transcoder",
           "-nvidia=0",
           "-orchSecret=orch-secret",
-          "-serviceAddr=orchestrator:9995",
+          "-serviceAddr=${ORCH_SERVICE_ADDR}",
           "-v=99",
           "-network=arbitrum-one-mainnet",
           "-ethUrl=${ARB_ETH_URL}",

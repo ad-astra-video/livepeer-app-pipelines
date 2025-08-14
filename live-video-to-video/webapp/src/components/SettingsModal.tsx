@@ -15,7 +15,7 @@ export interface UrlSettings {
   kafkaEventsUrl: string
 }
 
-const STORAGE_KEY = 'comfystream-url-settings'
+const STORAGE_KEY = 'live-video-to-video-url-settings'
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave }) => {
   const [whipUrl, setWhipUrl] = useState('')
@@ -97,7 +97,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave }
     setHasChanges(false)
     
     // Dispatch custom event to notify components of settings change
-    window.dispatchEvent(new CustomEvent('comfystream-settings-changed', { 
+    window.dispatchEvent(new CustomEvent('live-settings-changed', { 
       detail: settings 
     }))
     

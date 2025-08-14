@@ -65,11 +65,11 @@ const StreamStatusSidebar: React.FC<StreamStatusSidebarProps> = ({ isOpen, onClo
       }
     }
     
-    window.addEventListener('comfystream-settings-changed', handleSettingsChange)
+    window.addEventListener('live-settings-changed', handleSettingsChange)
     window.addEventListener('storage', handleStorageChange)
     
     return () => {
-      window.removeEventListener('comfystream-settings-changed', handleSettingsChange)
+      window.removeEventListener('live-settings-changed', handleSettingsChange)
       window.removeEventListener('storage', handleStorageChange)
     }
   }, [isOpen])

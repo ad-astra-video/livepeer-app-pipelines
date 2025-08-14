@@ -2,7 +2,6 @@
  * WHIP (WebRTC-HTTP Ingestion Protocol) API functions
  * Handles all API calls related to WHIP streaming
  */
-
 export interface WhipOfferResponse {
   status: number
   answerSdp: string
@@ -26,45 +25,45 @@ export interface PipelineParams {
  * Constructs a WHIP URL with all necessary parameters
  */
 export const constructWhipUrl = (
-  baseUrl: string, 
-  streamName: string, 
-  pipeline: string, 
-  width: number, 
+  baseUrl: string,
+  streamName: string,
+  pipeline: string,
+  width: number,
   height: number,
   customParams: Record<string, any>,
   streamId?: string
 ): string => {
   let url = new URL(baseUrl)
-  
+
   // Add stream name to the path if provided
   if (streamName && streamName.trim()) {
     // Ensure stream name is URL-safe
     const safeName = streamName.trim()
     url.pathname += `/${safeName}/whip`
   }
-  
+
   // Build query parameters
   if (pipeline && pipeline.trim()) {
     url.searchParams.set('pipeline', pipeline.trim())
   }
-  
+
   // Add streamId if provided
   if (streamId && streamId.trim()) {
     url.searchParams.set('streamId', streamId.trim())
   }
-  
+
   var params: PipelineParams = {}
   if (width && height && width > 0 && height > 0) {
     params.width = width
     params.height = height
   }
-  
+
   // Add custom parameters
   Object.assign(params, customParams)
 
   // Convert the params object to a JSON string
   const paramsString = JSON.stringify(params)
-  
+
   // URL encode the JSON string and add it to the query params
   url.searchParams.set('params', paramsString)
 
@@ -75,14 +74,14 @@ export const constructWhipUrl = (
  * Sends a WHIP offer with retry logic
  */
 export const sendWhipOffer = async (
-  url: string, 
-  sdp: string, 
+  url: string,
+  sdp: string,
   maxRetries = 3
 ): Promise<WhipOfferResponse> => {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       console.log(`WHIP offer attempt ${attempt}/${maxRetries} to URL: ${url}`)
-      
+
       const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -96,7 +95,7 @@ export const sendWhipOffer = async (
         const streamId = response.headers.get('X-Stream-Id')
         const playbackUrl = response.headers.get('Livepeer-Playback-Url')
         const locationHeader = response.headers.get('Location')
-        
+
         return {
           status: response.status,
           answerSdp,
@@ -114,7 +113,7 @@ export const sendWhipOffer = async (
       const waitTime = Math.min(1000 * Math.pow(2, attempt - 1), 5000)
       console.log(`Attempt ${attempt} failed (${response.status}), retrying in ${waitTime}ms...`)
       await new Promise(resolve => setTimeout(resolve, waitTime))
-      
+
     } catch (error) {
       if (attempt === maxRetries) {
         throw error
@@ -124,7 +123,7 @@ export const sendWhipOffer = async (
       await new Promise(resolve => setTimeout(resolve, waitTime))
     }
   }
-  
+
   throw new Error('All retry attempts failed')
 }
 
@@ -134,17 +133,17 @@ export const sendWhipOffer = async (
 export const stopStream = async ({ streamId, whipUrl }: WhipStopRequest): Promise<boolean> => {
   try {
     console.log(`Stopping stream with ID: ${streamId}`)
-    
+
     const stopUrl = whipUrl.replace('/stream/start', '/stream/stop')
     const requestData = {
       "request": JSON.stringify({"stop_stream": true, "stream_id": streamId}),
       "parameters": JSON.stringify({}),
-      "capability": 'comfystream',
+      "capability": 'streamdiffusion',
       "timeout_seconds": 30
     }
-    
+
     const livepeerHeader = btoa(JSON.stringify(requestData))
-    
+
     const response = await fetch(stopUrl, {
       method: 'POST',
       headers: {
@@ -153,7 +152,7 @@ export const stopStream = async ({ streamId, whipUrl }: WhipStopRequest): Promis
       },
       body: JSON.stringify({ stream_id: streamId })
     })
-    
+
     if (response.ok) {
       console.log('Stream stop request sent successfully')
       return true

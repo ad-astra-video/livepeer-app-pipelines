@@ -1,6 +1,9 @@
+// Base URL for all endpoints (protocol, host, port)
+const baseUrl = `${window.location.protocol}//${window.location.hostname}:${window.location.port || '8088'}`;
+
 // Get default WHIP endpoint URL
 export const getDefaultWhipUrl = (): string => {
-  return `https://localhost:8088/gateway/live/video-to-video`
+  return `${baseUrl}/gateway/live/video-to-video`
 }
 
 // Get WHIP URL with streamId
@@ -17,7 +20,7 @@ export const generateStreamId = (): string => {
 
 // Get default WHEP endpoint URL  
 export const getDefaultWhepUrl = (): string => {
-  return `https://localhost:8088/mediamtx`
+  return `${baseUrl}/mediamtx`
 }
 
 // Get stream status URL
@@ -39,10 +42,10 @@ export const getStreamStatusUrl = (streamId: string, baseUrl?: string): string =
 
 // Get default data stream URL
 export const getDefaultDataStreamUrl = (): string => {
-  return `https://localhost:8088/gateway`
+  return `${baseUrl}/gateway`
 }
 
 // Get default Kafka events URL
 export const getDefaultKafkaEventsUrl = (): string => {
-  return `https://localhost:8088/kafka/events`
+  return `${baseUrl}/kafka/events`
 }

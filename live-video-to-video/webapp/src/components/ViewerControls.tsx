@@ -73,11 +73,11 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
     }
     
     window.addEventListener('storage', handleStorageChange)
-    window.addEventListener('comfystream-settings-changed', handleSettingsChange as EventListener)
+    window.addEventListener('live-settings-changed', handleSettingsChange as EventListener)
     
     return () => {
       window.removeEventListener('storage', handleStorageChange)
-      window.removeEventListener('comfystream-settings-changed', handleSettingsChange as EventListener)
+      window.removeEventListener('live-settings-changed', handleSettingsChange as EventListener)
     }
   }, [])
 
