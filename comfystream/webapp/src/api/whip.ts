@@ -20,6 +20,7 @@ export interface PipelineParams {
   width?: number
   height?: number
   prompts?: any
+  max_framerate?: number
 }
 
 /**
@@ -32,7 +33,8 @@ export const constructWhipUrl = (
   width: number, 
   height: number,
   prompts: string[],
-  streamId?: string
+  streamId?: string,
+  maxFramerate?: number
 ): string => {
   let url = new URL(baseUrl)
   
@@ -66,6 +68,11 @@ export const constructWhipUrl = (
     params.prompts = prompts[0]
   } else {
     params.prompts = prompts
+  }
+  
+  // Add max framerate if provided
+  if (maxFramerate && maxFramerate > 0) {
+    params.max_framerate = maxFramerate
   }
 
   // Convert the params object to a JSON string
