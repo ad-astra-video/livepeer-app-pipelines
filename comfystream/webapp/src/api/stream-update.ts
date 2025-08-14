@@ -7,6 +7,7 @@ export interface StreamUpdateData {
   height: number
   width: number
   prompts: string | string[]
+  max_framerate?: number
 }
 
 export interface StreamUpdateRequest {
