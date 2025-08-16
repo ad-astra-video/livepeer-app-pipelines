@@ -1,7 +1,7 @@
 
-# Comfystream - Livepeer Live Video-to-Video Processing
+# Live-Video-to-Video - Livepeer Live Video-to-Video Processing
 
-Comfystream is a real-time video processing application that enables live video-to-video transformation using AI models through the Livepeer network. It provides a complete streaming infrastructure solution with a modern local testing web interface to build and test workflows locally.
+Live-Video-to-Video is a real-time video processing application that enables live video-to-video transformation using AI models through the Livepeer network. It provides a complete streaming infrastructure solution with a modern local testing web interface to build and test workflows locally.
 
 ## 🚀 Quick Start
 
@@ -17,7 +17,7 @@ Comfystream is a real-time video processing application that enables live video-
 1. **Clone the repository** (if not already done):
    ```bash
    git clone https://github.com/ad-astra-video/livepeer-app-pipelines.git
-   cd comfystream
+   cd live-video-to-video
    ```
 
 3. **Create required directories**:
@@ -50,12 +50,11 @@ The Docker Compose setup includes:
 - **Kafka** (`localhost:9092`) - Event Streaming Platform
 - **Kafka Web UI** (`localhost:8080`) - [Kafbat web ui](https://github.com/kafbat/kafka-ui) for Kafka server
 - **Zilla** (`localhost:7114`) - [Zilla](https://github.com/aklivity/zilla) bridge for getting Kafka events over SSE, basic SSE interface at `localhost:7114/index.html`
-- **Worker** - AI processing container (comfystream) - setup in `worker/aimodels.json`
+- **Worker** - AI processing container - setup in `worker/aimodels.json`
 
 __Documentation__
 - [Livepeer Gateway](https://docs.livepeer.org/gateways/guides/gateway-overview)
 - [Livepeer Orchestrator](https://docs.livepeer.org/orchestrators/guides/get-started)
-- [Comfystream](https://comfystream.mintlify.app)
 
 ## 🛠️ Configuration
 
@@ -133,7 +132,7 @@ __Documentation__
 #### **Stream Configuration**
 - **WHIP Endpoint URL**: Configure the streaming server endpoint (default: `http://localhost:5937/live/video-to-video`)
 - **Stream Name**: Custom stream identifier
-- **Pipeline**: AI processing pipeline selection (default: comfystream)
+- **Pipeline**: AI processing pipeline selection (default: streamdiffusion)
 - **Resolution Picker**: Choose from 512x512 to 4K (3840x2160)
 - **Frame Rate Limit**: Adjustable from 10-60 FPS
 - **Real-time Updates**: Modify prompts and resolution while streaming

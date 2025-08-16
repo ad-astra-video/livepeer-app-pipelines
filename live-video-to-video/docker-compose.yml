@@ -2,7 +2,7 @@ services:
 ### webserver ###
   webserver:
     image: caddy:latest
-    container_name: byoc-comfystream-webserver
+    container_name: live-video-to-video-webserver
     ports:
       - 8088:8088
     volumes:
@@ -24,7 +24,7 @@ services:
 ###  INGEST  ###
   mediamtx:
     image: livepeerci/mediamtx
-    container_name: byoc-comfystream-mediamtx
+    container_name: live-video-to-video-mediamtx
     volumes:
       - ./mediamtx/mediamtx.yml:/mediamtx.yml
     environment:
@@ -35,7 +35,7 @@ services:
       - 1935:1935
   gateway:
     image: livepeer/go-livepeer:latest
-    container_name: byoc-comfystream-gateway
+    container_name: live-video-to-video-gateway
     volumes:
       - ./data/gateway:/data
     ports:
@@ -69,7 +69,7 @@ services:
 ### LOCAL LIVEPEER NETWORK ###
   orchestrator:
     image: livepeer/go-livepeer:latest
-    container_name: byoc-comfystream-orchestrator
+    container_name: live-video-to-video-orchestrator
     volumes:
       - ${AI_MODELS_DIR}:${AI_MODELS_DIR}
       - ./data/orchestrator:/data
@@ -96,34 +96,12 @@ services:
           "-aiVerboseLogs",
 #          "-liveAITrickleHostForRunner=172.17.0.1:9995",
           "-aiModels=/data/aimodels.json",
-          "-aiModelsDir=${AI_MODELS_DIR}",
-          "-aiRunnerImageOverrides={\"live\":{\"comfystream\":\"livepeer/comfystream:latest\"}}"]
-  ai-runner:
-    image: livepeer/comfystream:feat-trickle-api-poc
-    container_name: byoc-comfystream-ai-runner
-    command: "--api"
-    ## alternative commands for comfystream ##
-    #command: "--download-models --build-engines --api"
-    #command: "--comfyui"
-    runtime: nvidia
-    environment:
-      - VERSION=0.13.9
-    volumes:
-      - ./data/models:/workspace/ComfyUI/models
-      - ./data/output:/workspace/ComfyUI/output
-      - ./data/input:/workspace/ComfyUI/input
-    ##development examples##
-    #  - C:\dev\comfystream:/workspace/comfystream
-    #  - C:\dev\pytrickle\pytrickle:/workspace/miniconda3/envs/comfystream/lib/python3.11/site-packages/pytrickle
-    #  - C:\dev\comfystream-workspace\custom_nodes\audio_utils:/workspace/ComfyUI/custom_nodes/comfystream/nodes/audio_utils
-    #  - C:\dev\comfystream-workspace\custom_nodes\ComfyUI-Whisper:/workspace/ComfyUI/custom_nodes/ComfyUI-Whisper
-    ports:
-      - 8889:8889
-      - 8188:8188
+          "-aiModelsDir=${AI_MODELS_DIR}"]
+#          "-aiRunnerImageOverrides={\"live\":{\"streamdiffusion\":\"livepeer/ai-runner:live-app-streamdiffusion\"}}"]
 ####  Monitoring  ####
   kafka:
     image: bitnami/kafka:3.5
-    container_name: byoc-comfystream-kafka
+    container_name: live-video-to-video-kafka
     ports:
       - 9092:9092
     environment:
@@ -144,7 +122,7 @@ services:
   #kafka-sse-api setup docs https://docs.aklivity.io/zilla/latest/tutorials/sse/sse-intro.html#setup-sse-kafka-proxy
   kafka-sse-api:
     image: ghcr.io/aklivity/zilla:latest
-    container_name: byoc-comfystream-kafka-sse-api
+    container_name: live-video-to-video-kafka-sse-api
     restart: unless-stopped
     ports:
       - 7114:7114
@@ -166,12 +144,12 @@ services:
         restart: true
   kafka-ui:
     image: ghcr.io/kafbat/kafka-ui:latest
-    container_name: byoc-comfystream-kafka-ui
+    container_name: live-video-to-video-kafka-ui
     restart: unless-stopped
     ports:
       - 8080:8080
     environment:
-      KAFKA_CLUSTERS_0_NAME: byoc-comfystream
+      KAFKA_CLUSTERS_0_NAME: live-video-to-video
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
     depends_on:
       kafka:
@@ -179,7 +157,7 @@ services:
         restart: true
   kafka-init:
     image: bitnami/kafka:3.5
-    container_name: byoc-comfystream-kafka-init
+    container_name: live-video-to-video-kafka-init
     command:
         - /bin/sh
         - -c
@@ -192,4 +170,4 @@ services:
     init: true
 networks:
   default:
-    name: byoc-comfystream
+    name: live-video-to-video

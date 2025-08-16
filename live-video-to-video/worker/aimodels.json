@@ -1,14 +1,10 @@
 [
   {
-    "model_id": "comfystream",
+    "model_id": "streamdiffusion",
     "pipeline": "live-video-to-video",
     "warm": true,
-    "url": "http://byoc-comfystream-ai-runner:8889",
-    "capacity": 2,
+    "capacity": 1,
     "price_per_unit": 0,
-    "pixels_per_unit": 1,
-    "optimization_flags": {
-        "VERSION": "0.13.8"
-    }
+    "pixels_per_unit": 1
   }
 ]
