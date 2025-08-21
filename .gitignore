@@ -178,3 +178,11 @@ live-video-to-video/data/models/
 live-video-to-video/data/zilla/hostname
 live-video-to-video/data/zilla/hosts
 live-video-to-video/data/zilla/resolv.conf
+
+#live-video-to-video stream sample app
+video-analysis/data/orchestrator/
+video-analysis/data/gateway/
+video-analysis/data/models/
+video-analysis/data/zilla/hostname
+video-analysis/data/zilla/hosts
+video-analysis/data/zilla/resolv.conf
