@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Welcome to Zilla!</title>
+    <style type="text/css">
+      .row {
+        overflow: hidden;
+        padding: 10px;
+        width: 300px;
+      }
+      .col {
+        float: left;
+        width: 50%;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="col">
+      <h3>Event Source</h3>
+
+      <div class="row">
+        <label for="location">Location</label>
+        <input id="location" value="http://localhost:7114/events" style="width: 200px" />
+      </div>
+      <div class="row">
+        <button onclick="javascript:attachEventSource()">Go</button>
+      </div>
+
+      <h3>Messages</h3>
+      <div id="messages"></div>
+    </div>
+    <script>
+        async function attachEventSource() {
+          const location = document.getElementById("location");
+          const messages = document.getElementById("messages");
+
+          const printOutput = (text) => {
+            var line = document.createElement("p");
+            line.appendChild(document.createTextNode(text ?? ""));
+            messages.insertBefore(line, messages.firstChild);
+          }
+ 
+          const es = new EventSource(`${location.value}`);
+          es.onmessage = ({ data }) => {
+            printOutput(data)
+          };
+          es.onopen = ({ type }) => {
+            printOutput(type)
+          };
+          es.onerror = printOutput;
+        }
+      </script>
+  </body>
+</html>

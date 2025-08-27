@@ -179,10 +179,18 @@ live-video-to-video/data/zilla/hostname
 live-video-to-video/data/zilla/hosts
 live-video-to-video/data/zilla/resolv.conf
 
-#live-video-to-video stream sample app
+#video-analysis stream sample app
 video-analysis/data/orchestrator/
 video-analysis/data/gateway/
 video-analysis/data/models/
 video-analysis/data/zilla/hostname
 video-analysis/data/zilla/hosts
 video-analysis/data/zilla/resolv.conf
+
+#byoc-stream stream sample app
+byoc-stream/data/orchestrator/
+byoc-stream/data/gateway/
+byoc-stream/data/models/
+byoc-stream/data/zilla/hostname
+byoc-stream/data/zilla/hosts
+byoc-stream/data/zilla/resolv.conf
