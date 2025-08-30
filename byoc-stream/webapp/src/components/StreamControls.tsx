@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Video, Mic, MicOff, VideoOff, Play, Square, Upload, AlertCircle, Download, X, Wifi, WifiOff, RefreshCw, Camera, Monitor } from 'lucide-react'
-import { getDefaultStreamStartUrl, generateStreamId, getWhipUrlWithStreamId } from '../utils/urls'
+import { getDefaultStreamStartUrl, generateStreamId } from '../utils/urls'
 import { loadSettingsFromStorage } from './SettingsModal'
 import { 
   constructWhipUrl, 
@@ -27,6 +27,10 @@ interface StreamControlsProps {
   setPlaybackUrl: (playbackUrl: string | null) => void
   streamId?: string | null
   onTimeUpdate?: (currentTime: number) => void
+  // Pass URLs from start response to parent for data streaming
+  setDataUrlFromStart?: (url: string | null) => void
+  setStatusUrlFromStart?: (url: string | null) => void
+  setWhepUrlFromStart?: (url: string | null) => void
 }
 
 const StreamControls: React.FC<StreamControlsProps> = ({
@@ -38,7 +42,10 @@ const StreamControls: React.FC<StreamControlsProps> = ({
   setStreamName: setParentStreamName,
   setPlaybackUrl,
   streamId: parentStreamId,
-  onTimeUpdate
+  onTimeUpdate,
+  setDataUrlFromStart,
+  setStatusUrlFromStart,
+  setWhepUrlFromStart
 }) => {
   const [whipUrl, setWhipUrl] = useState(() => {
     const savedSettings = loadSettingsFromStorage()
@@ -81,12 +88,13 @@ const StreamControls: React.FC<StreamControlsProps> = ({
   const [pipeline, setPipeline] = useState('video-analysis')
   const [jsonParams, setJsonParams] = useState('')
   const [videoEnabled, setVideoEnabled] = useState(true)
-  const [customParams, setCustomParams] = useState<Record<string, any>>({
-    enableData: true
-  })
+  const [customParams, setCustomParams] = useState<Record<string, any>>({})
   const [customParamKey, setCustomParamKey] = useState('')
   const [customParamValue, setCustomParamValue] = useState('')
   const [audioEnabled, setAudioEnabled] = useState(true)
+  const [enableVideoIngress, setEnableVideoIngress] = useState(true)
+  const [enableVideoEgress, setEnableVideoEgress] = useState(true)
+  const [enableDataOutput, setEnableDataOutput] = useState(true)
   const [fpsLimit, setFpsLimit] = useState(30)
   const [resolution, setResolution] = useState('512x512')
   const [localStream, setLocalStream] = useState<MediaStream | null>(null)
@@ -114,6 +122,11 @@ const StreamControls: React.FC<StreamControlsProps> = ({
   const [statusData, setStatusData] = useState<any>(null)
   const [statusLoading, setStatusLoading] = useState(false)
   const [statusError, setStatusError] = useState<string | null>(null)
+  
+  // Store URLs from stream start response
+  const statusUrlRef = useRef<string | null>(null)
+  const updateUrlRef = useRef<string | null>(null)
+  const [actualWhipUrl, setActualWhipUrl] = useState<string | null>(null)
   
   // Media device selection states
   const [showMediaModal, setShowMediaModal] = useState(false)
@@ -298,16 +311,16 @@ const StreamControls: React.FC<StreamControlsProps> = ({
       const [width, height] = resolution.split('x').map(Number)
 
       const params = {
-        enable_video_ingress: true,
-        enable_video_egress: true,
-        enable_data_output: true
+        enable_video_ingress: enableVideoIngress,
+        enable_video_egress: enableVideoEgress,
+        enable_data_output: enableDataOutput
       }
 
       const req = {
         request: "{}",
         parameters: JSON.stringify(params),
         capability: "video-analysis",
-        timeout_seconds: 30
+        timeout_seconds: 120
       }
 
       const reqStr = JSON.stringify(req)
@@ -328,11 +341,36 @@ const StreamControls: React.FC<StreamControlsProps> = ({
       const urls = await startResp.json()
       console.log(urls)
 
-      // Generate a random streamId for this stream
-      const streamId = generateStreamId()
+      // Capture URLs from start response for later use
+      if (urls?.status_url && typeof urls.status_url === 'string') {
+        statusUrlRef.current = urls.status_url
+        if (setStatusUrlFromStart) setStatusUrlFromStart(urls.status_url)
+      }
+      if (urls?.data_url && typeof urls.data_url === 'string') {
+        if (setDataUrlFromStart) setDataUrlFromStart(urls.data_url)
+      }
+      if (urls?.update_url && typeof urls.update_url === 'string') {
+        updateUrlRef.current = urls.update_url
+      }
+      if (urls?.whip_url && typeof urls.whip_url === 'string') {
+        setActualWhipUrl(urls.whip_url)
+      }
+      if (urls?.whep_url && typeof urls.whep_url === 'string') {
+        if (setWhepUrlFromStart) setWhepUrlFromStart(urls.whep_url)
+      }
+
+      // Use streamId from response or generate one as fallback
+      const streamId = urls?.stream_id
       setCurrentStreamId(streamId)
       setStreamId(streamId) // Also update parent state
-      console.log(`Generated streamId: ${streamId}`)
+            
+      // If video ingress is disabled, skip WebRTC setup and WHIP request
+      if (!enableVideoIngress) {
+        console.log('Video ingress disabled, skipping WebRTC setup')
+        setIsStreaming(true)
+        setConnectionStatus('connected')
+        return
+      }
       
       // Get user media with selected devices
       
@@ -533,7 +571,7 @@ const StreamControls: React.FC<StreamControlsProps> = ({
     try {
       // Send stop request to server if we have a stream ID
       if (currentStreamId) {
-        await stopStreamApi({ streamId: currentStreamId, whipUrl })
+        await stopStreamApi({ streamId: currentStreamId, whipUrl, pipeline })
       }
     } catch (error) {
       console.error('Error sending stop request:', error)
@@ -587,6 +625,15 @@ const StreamControls: React.FC<StreamControlsProps> = ({
     setStreamId(null)
     setCurrentStreamId(null)
     setPlaybackUrl(null)
+    
+    // Reset URLs from start response
+    statusUrlRef.current = null
+    updateUrlRef.current = null
+    setActualWhipUrl(null)
+    if (setDataUrlFromStart) setDataUrlFromStart(null)
+    if (setStatusUrlFromStart) setStatusUrlFromStart(null)
+    if (setWhepUrlFromStart) setWhepUrlFromStart(null)
+    
     setLatestOffer('')
     setLatestAnswer('')
     setPublisherStats({
@@ -623,7 +670,8 @@ const StreamControls: React.FC<StreamControlsProps> = ({
       await sendStreamUpdate({
         whipUrl,
         streamName,
-        updateData
+        updateData,
+        customUpdateUrl: updateUrlRef.current || undefined
       })
       
       // You could show a success message here
@@ -675,7 +723,7 @@ const StreamControls: React.FC<StreamControlsProps> = ({
         console.log(`Fetching status for stream: ${streamIdToUse}`)
       }
       
-      const data = await fetchStreamStatus(streamIdToUse)
+      const data = await fetchStreamStatus(statusUrlRef.current || undefined)
       setStatusData(data)
     } catch (error) {
       setStatusError(error instanceof Error ? error.message : 'Failed to fetch status')
@@ -1336,10 +1384,10 @@ const StreamControls: React.FC<StreamControlsProps> = ({
               </div>
             </div>
 
-            {/* WHIP URL Input */}
+            {/* Stream Start URL Input */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
-                WHIP Endpoint URL
+                Stream Start URL
               </label>
               <div className="relative">
                 <input
@@ -1353,6 +1401,25 @@ const StreamControls: React.FC<StreamControlsProps> = ({
                 <Upload className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
               </div>
             </div>
+
+            {/* Actual WHIP Endpoint URL Display */}
+            {actualWhipUrl && (
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  WHIP Endpoint URL (from response)
+                </label>
+                <div className="relative">
+                  <input
+                    type="url"
+                    value={actualWhipUrl}
+                    className="w-full px-4 py-3 bg-black/20 border border-white/10 rounded-lg text-green-400 cursor-not-allowed"
+                    disabled={true}
+                  />
+                  <Upload className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                </div>
+                <p className="text-xs text-green-400 mt-1">Actual WHIP endpoint from stream start response</p>
+              </div>
+            )}
 
             {/* Stream Name Input */}
             <div>
@@ -1382,6 +1449,61 @@ const StreamControls: React.FC<StreamControlsProps> = ({
                 className="w-full px-4 py-3 bg-black/20 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                 disabled={isStreaming}
               />
+            </div>
+
+            {/* Stream Configuration Checkboxes */}
+            <div className="p-4 bg-gradient-to-br from-emerald-900/20 to-blue-900/20 rounded-xl border border-emerald-500/20 backdrop-blur-sm">
+              <label className="block text-sm font-medium text-gray-300 mb-3">
+                Stream Configuration
+              </label>
+              <div className="space-y-3">
+                <div className="flex items-center space-x-3">
+                  <input
+                    type="checkbox"
+                    id="enableVideoIngress"
+                    checked={enableVideoIngress}
+                    onChange={(e) => setEnableVideoIngress(e.target.checked)}
+                    disabled={isStreaming}
+                    className="w-4 h-4 text-emerald-600 bg-black/30 border-white/20 rounded focus:ring-emerald-500 focus:ring-2 disabled:opacity-50"
+                  />
+                  <label htmlFor="enableVideoIngress" className="text-sm text-gray-300 cursor-pointer">
+                    Enable Video Ingress
+                  </label>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <input
+                    type="checkbox"
+                    id="enableVideoEgress"
+                    checked={enableVideoEgress}
+                    onChange={(e) => setEnableVideoEgress(e.target.checked)}
+                    disabled={isStreaming}
+                    className="w-4 h-4 text-emerald-600 bg-black/30 border-white/20 rounded focus:ring-emerald-500 focus:ring-2 disabled:opacity-50"
+                  />
+                  <label htmlFor="enableVideoEgress" className="text-sm text-gray-300 cursor-pointer">
+                    Enable Video Egress
+                  </label>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <input
+                    type="checkbox"
+                    id="enableDataOutput"
+                    checked={enableDataOutput}
+                    onChange={(e) => setEnableDataOutput(e.target.checked)}
+                    disabled={isStreaming}
+                    className="w-4 h-4 text-emerald-600 bg-black/30 border-white/20 rounded focus:ring-emerald-500 focus:ring-2 disabled:opacity-50"
+                  />
+                  <label htmlFor="enableDataOutput" className="text-sm text-gray-300 cursor-pointer">
+                    Enable Data Output
+                  </label>
+                </div>
+              </div>
+              {!enableVideoIngress && (
+                <div className="mt-3 p-2 bg-amber-900/20 border border-amber-500/30 rounded-lg">
+                  <p className="text-xs text-amber-300">
+                    <strong>Note:</strong> When Video Ingress is disabled, no WebRTC connection will be established. The stream will start without video input.
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* FPS Limit Slider */}
@@ -1520,7 +1642,7 @@ const StreamControls: React.FC<StreamControlsProps> = ({
             {!whipUrl && (
               <div className="flex items-center space-x-2 text-amber-400 text-sm">
                 <AlertCircle className="w-4 h-4" />
-                <span>Enter a WHIP endpoint URL to start streaming</span>
+                <span>Enter a Stream Start URL to start streaming</span>
               </div>
             )}
           </div>

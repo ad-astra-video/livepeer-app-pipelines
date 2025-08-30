@@ -170,7 +170,7 @@ def update_params(params: dict):
     if "max_new_tokens" in params:
         max_new_tokens_queue.put(params["max_new_tokens"])
     
-def load_model(processor, **kwargs):
+def load_model(**kwargs):
     logger.info("Waiting for worker to finish loading model...")
     worker_ready_event.wait()   # ✅ block until worker signals ready
     logger.info("Worker is ready (model loaded)")

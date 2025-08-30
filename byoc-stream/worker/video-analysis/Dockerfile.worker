@@ -1,0 +1,48 @@
+# CUDA 12.8 (with cuDNN) on Ubuntu 24.04
+FROM nvidia/cuda:12.8.1-cudnn-runtime-ubuntu24.04
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 python3-venv python3-dev \
+    build-essential pkg-config git curl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# install uv
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh \
+    && ln -s /root/.local/bin/uv /usr/local/bin/uv
+
+# Configure uv to use venv in /opt/venv
+ENV UV_PYTHON=python3 \
+    UV_PROJECT_ENVIRONMENT=/opt/venv \
+    PATH="/opt/venv/bin:${PATH}" \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    NVIDIA_VISIBLE_DEVICES=all \
+    NVIDIA_DRIVER_CAPABILITIES=compute,utility,video
+
+WORKDIR /app
+
+# Create venv
+RUN uv venv "$UV_PROJECT_ENVIRONMENT"
+
+RUN uv pip install --upgrade pip packaging wheel setuptools && \
+    uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128 
+
+#install flash attn if needed
+#RUN apt-get install -y --no-install-recommends cuda-toolkit-12-8 && \
+#    uv pip install flash-attn --no-build-isolation
+
+# Copy dependency files first (for caching)
+COPY ./requirements.txt* ./pyproject.toml* ./
+
+RUN if [ -f requirements.txt ]; then \
+        uv pip install -r requirements.txt ; \
+    fi && \
+    if [ -f pyproject.toml ]; then \
+        uv sync --frozen --no-dev || uv sync --no-dev ; \
+    fi
+
+# Copy in worker files
+COPY . .
+
+# Default command
+CMD ["python", "/app/worker.py"]

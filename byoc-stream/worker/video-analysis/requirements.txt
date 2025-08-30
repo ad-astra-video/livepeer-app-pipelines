@@ -1,0 +1,5 @@
+git+https://github.com/livepeer/pytrickle.git@9055a3b73f68c052085fcf67e885f62dad965c58
+accelerate>=0.26.0
+bitsandbytes
+transformers
+decord

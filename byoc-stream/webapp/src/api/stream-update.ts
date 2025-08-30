@@ -10,9 +10,10 @@ export interface StreamUpdateData {
 }
 
 export interface StreamUpdateRequest {
-  whipUrl: string
-  streamName: string
+  whipUrl?: string
+  streamName?: string
   updateData: StreamUpdateData
+  customUpdateUrl?: string  // Direct update URL from start response
 }
 
 /**
@@ -21,13 +22,27 @@ export interface StreamUpdateRequest {
 export const sendStreamUpdate = async ({
   whipUrl,
   streamName,
-  updateData
+  updateData,
+  customUpdateUrl
 }: StreamUpdateRequest): Promise<boolean> => {
   try {
     console.log('Sending update:', updateData)
 
-    // Send update request - construct URL with stream name
-    const updateUrl = `${whipUrl}/${streamName}/update`
+    let updateUrl: string
+    
+    if (customUpdateUrl) {
+      // Use direct update URL from stream start response
+      updateUrl = customUpdateUrl
+      console.log(`Using direct update URL from start response: ${updateUrl}`)
+    } else {
+      // Fallback to constructed URL
+      if (!whipUrl || !streamName) {
+        throw new Error('whipUrl and streamName are required when customUpdateUrl is not provided')
+      }
+      updateUrl = `${whipUrl}/${streamName}/update`
+      console.log(`Using constructed update URL: ${updateUrl}`)
+    }
+
     const response = await fetch(updateUrl, {
       method: 'POST',
       headers: {

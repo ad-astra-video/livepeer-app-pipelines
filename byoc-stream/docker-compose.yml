@@ -93,7 +93,7 @@ services:
           "-ethUrl=${ARB_ETH_URL}",
           "-ethPassword=some-random-password",
           "-dataDir=/data",
-          "-ethOrchAddr=0x16a72bdb3017196825bc53809b87f96fbee31f6c",
+          "-ethOrchAddr=${ACTIVE_ORCH_ADDR}",
           "-pricePerUnit=0",
           "-ticketEV=1800",
           "-monitor",
@@ -113,7 +113,7 @@ services:
       - "CAPABILITY_NAME=${CAPABILITY_NAME}"
       - "CAPABILITY_DESCRIPTION=analyze video with AI"
       - "CAPABILITY_URL=http://ai-runner:8000/api"
-      - "CAPABILITY_PRICE_PER_UNIT=0"
+      - "CAPABILITY_PRICE_PER_UNIT=1000"
       - "CAPABILITY_PRICE_SCALING=1"
       - "CAPABILITY_CAPACITY=2"
 # ai-runner is launched as a managed container by the Orchestrator
@@ -127,12 +127,12 @@ services:
       - VERSION=0.13.9
       - PIPELINE=live-video-to-video
       - MODEL_ID=video-analysis
-    ##development examples##
-    #  - C:\dev\pytrickle\pytrickle:/workspace/miniconda3/envs/comfystream/lib/python3.11/site-packages/pytrickle
     ports:
       - 8000:8000
     volumes:
       - ./data/models:/root/.cache/huggingface/hub/
+      ##development examples##
+      - C:\dev\pytrickle\pytrickle:/opt/venv/lib/python3.12/site-packages/pytrickle
 ####  Monitoring  ####
   kafka:
     image: bitnami/kafka:3.5

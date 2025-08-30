@@ -23,23 +23,6 @@ export const getDefaultWhepUrl = (): string => {
   return `${baseUrl}/mediamtx`
 }
 
-// Get stream status URL
-export const getStreamStatusUrl = (streamId: string, baseUrl?: string): string => {
-  const whipBaseUrl = baseUrl || getDefaultStreamStartUrl()
-  // Extract base URL without the /live/video-to-video path if it exists
-  let cleanBaseUrl = whipBaseUrl
-  
-  // If the URL contains /live/video-to-video, use just the base part
-  if (whipBaseUrl.includes('/live/video-to-video')) {
-    cleanBaseUrl = whipBaseUrl.replace(/\/live\/video-to-video.*$/, '')
-  } else {
-    // Otherwise, assume the entire URL is the base URL
-    cleanBaseUrl = whipBaseUrl.replace(/\/$/, '') // Remove trailing slash if present
-  }
-  
-  return `${cleanBaseUrl}/live/video-to-video/${streamId}/status`
-}
-
 // Get default data stream URL
 export const getDefaultDataStreamUrl = (): string => {
   return `${baseUrl}/gateway`

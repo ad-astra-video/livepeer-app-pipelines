@@ -1,23 +1,22 @@
 /**
  * Status API functions
  */
-
-import { getStreamStatusUrl } from '../utils/urls'
 import { loadSettingsFromStorage } from '../components/SettingsModal'
 
 /**
  * Fetch stream status data
  */
-export const fetchStreamStatus = async (streamId?: string | null): Promise<any> => {
+export const fetchStreamStatus = async (customStatusUrl?: string): Promise<any> => {
   try {
-    const savedSettings = loadSettingsFromStorage()
+    let endpoint: string
     
-	if (streamId === null) {
-		throw new Error('Stream ID cannot be null')
-	}
-		
-    let endpoint = getStreamStatusUrl(streamId, savedSettings.whipUrl)
-    console.log(`Using stream-specific status URL: ${endpoint}`)
+    if (customStatusUrl) {
+      // Use direct status URL from stream start response
+      endpoint = customStatusUrl
+      console.log(`Using direct status URL from start response: ${endpoint}`)
+    } else {
+      console.log("no status url provided")
+    }
         
     const response = await fetch(endpoint)
     if (!response.ok) {

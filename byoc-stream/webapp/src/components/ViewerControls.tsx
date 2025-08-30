@@ -10,6 +10,7 @@ interface ViewerControlsProps {
   setConnectionStatus: (status: 'disconnected' | 'connecting' | 'connected' | 'error') => void
   setStreamStats: (stats: any) => void
   playbackUrl: string | null
+  whepUrlFromStart?: string | null
 }
 
 const ViewerControls: React.FC<ViewerControlsProps> = ({
@@ -17,7 +18,8 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
   setIsViewing,
   setConnectionStatus,
   setStreamStats,
-  playbackUrl
+  playbackUrl,
+  whepUrlFromStart
 }) => {
   const [whepUrl, setWhepUrl] = useState(() => {
     const savedSettings = loadSettingsFromStorage()
@@ -84,17 +86,15 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
   }, [])
 
   const startViewing = async () => {
-    if (!whepUrl) {
-      alert('Please enter a WHEP URL')
+    // Use WHEP URL from stream start response if available, otherwise use user input
+    const actualWhepUrl = whepUrlFromStart || whepUrl
+    
+    if (!actualWhepUrl) {
+      alert('Please enter a WHEP URL or start a stream first to get the WHEP endpoint')
       return
     }
 
-    if (!playbackUrl) {
-      alert('No playback URL available. Please start publishing first.')
-      return
-    }
-
-    if (!playbackUrl) {
+    if (!playbackUrl && !whepUrlFromStart) {
       alert('No playback URL available. Please start publishing first.')
       return
     }
@@ -184,9 +184,18 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
       console.log(`Updated SDP length with candidates: ${currentSdp.length}`);
 
       // Send WHEP offer with retry logic
-      // Extract the path from the playback URL and append it to the WHEP endpoint
-      const whepEndpoint = constructWhepUrl(whepUrl, playbackUrl)
-      console.log(`Constructed WHEP URL: ${whepEndpoint}`)
+      let whepEndpoint: string
+      
+      if (whepUrlFromStart) {
+        // Use WHEP URL directly from stream start response
+        whepEndpoint = whepUrlFromStart
+        console.log(`Using WHEP URL from stream start response: ${whepEndpoint}`)
+      } else {
+        // Fallback: construct WHEP URL from base URL and playback URL
+        whepEndpoint = constructWhepUrl(actualWhepUrl, playbackUrl)
+        console.log(`Constructed WHEP URL: ${whepEndpoint}`)
+      }
+      
       const response = await sendWhepOffer(whepEndpoint, currentSdp)
 
       if (response.status === 200 || response.status === 201) {
@@ -558,7 +567,7 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
               
               <button
                 onClick={isViewing ? stopViewing : startViewing}
-                disabled={!whepUrl && !isViewing}
+                disabled={!whepUrl && !whepUrlFromStart && !isViewing}
                 className={`flex items-center space-x-2 px-6 py-3 rounded-lg font-medium transition-colors ${
                   isViewing
                     ? 'bg-red-600 hover:bg-red-700 text-white'
@@ -687,10 +696,29 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
               )}
             </div>
 
-            {!whepUrl && (
+            {/* WHEP URL from Start Response Display */}
+            {whepUrlFromStart && (
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  WHEP URL (from stream start response)
+                </label>
+                <div className="relative">
+                  <input
+                    type="url"
+                    value={whepUrlFromStart}
+                    className="w-full px-4 py-3 bg-black/20 border border-white/10 rounded-lg text-green-400 cursor-not-allowed"
+                    disabled={true}
+                  />
+                  <Download className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                </div>
+                <p className="text-xs text-green-400 mt-1">Actual WHEP endpoint from stream start response</p>
+              </div>
+            )}
+
+            {!whepUrl && !whepUrlFromStart && (
               <div className="flex items-center space-x-2 text-amber-400 text-sm">
                 <AlertCircle className="w-4 h-4" />
-                <span>Enter a WHEP endpoint URL to start viewing</span>
+                <span>Enter a WHEP endpoint URL or start a stream to get the WHEP endpoint</span>
               </div>
             )}
           </div>

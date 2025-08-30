@@ -26,6 +26,11 @@ function App() {
   })
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false)
   const [urlSettings, setUrlSettings] = useState<UrlSettings | null>(null)
+  
+  // URLs from stream start response
+  const [dataUrlFromStart, setDataUrlFromStart] = useState<string | null>(null)
+  const [statusUrlFromStart, setStatusUrlFromStart] = useState<string | null>(null)
+  const [whepUrlFromStart, setWhepUrlFromStart] = useState<string | null>(null)
 
   const handleSettingsChange = (settings: UrlSettings) => {
     setUrlSettings(settings)
@@ -92,6 +97,9 @@ function App() {
               setPlaybackUrl={setPlaybackUrl}
               streamId={streamId}
               onTimeUpdate={setSourceStreamTimestamp}
+              setDataUrlFromStart={setDataUrlFromStart}
+              setStatusUrlFromStart={setStatusUrlFromStart}
+              setWhepUrlFromStart={setWhepUrlFromStart}
             />
           </div>
           
@@ -109,6 +117,7 @@ function App() {
               setConnectionStatus={setViewerConnectionStatus}
               setStreamStats={setStreamStats}
               playbackUrl={playbackUrl}
+              whepUrlFromStart={whepUrlFromStart}
             />
             
             {/* Tabbed Data View Section */}
@@ -119,6 +128,7 @@ function App() {
                 latestFrameTimestamp={latestFrameTimestamp}
                 sourceStreamTimestamp={sourceStreamTimestamp}
                 processingDelay={processingDelay}
+                dataUrlFromStart={dataUrlFromStart}
                 onDataUpdate={(timestamp, delay) => {
                   if (timestamp !== null) {
                     setLatestFrameTimestamp(timestamp);

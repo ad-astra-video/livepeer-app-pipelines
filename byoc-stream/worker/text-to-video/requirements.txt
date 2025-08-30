@@ -1,0 +1,6 @@
+git+https://github.com/livepeer/pytrickle.git@4fd9a8c66780a59d91e389dd37d3667b0336dc99
+fastvideo
+accelerate>=0.26.0
+bitsandbytes
+transformers
+decord

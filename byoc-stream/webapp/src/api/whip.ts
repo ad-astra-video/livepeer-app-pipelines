@@ -13,6 +13,7 @@ export interface WhipOfferResponse {
 export interface WhipStopRequest {
   streamId: string
   whipUrl: string
+  pipeline: string
 }
 
 export interface PipelineParams {
@@ -130,16 +131,16 @@ export const sendWhipOffer = async (
 /**
  * Sends a stop stream request
  */
-export const stopStream = async ({ streamId, whipUrl }: WhipStopRequest): Promise<boolean> => {
+export const stopStream = async ({ streamId, whipUrl, pipeline }: WhipStopRequest): Promise<boolean> => {
   try {
     console.log(`Stopping stream with ID: ${streamId}`)
 
-    const stopUrl = whipUrl.replace('/stream/start', '/stream/stop')
+    const stopUrl = whipUrl.replace('/stream/start', '/stream/'+streamId+'/stop')
     const requestData = {
-      "request": JSON.stringify({"stop_stream": true, "stream_id": streamId}),
+      "request": JSON.stringify({"stream_id": streamId}),
       "parameters": JSON.stringify({}),
-      "capability": 'streamdiffusion',
-      "timeout_seconds": 30
+      "capability": pipeline,
+      "timeout_seconds": 5
     }
 
     const livepeerHeader = btoa(JSON.stringify(requestData))

@@ -9,6 +9,7 @@ interface TabbedDataViewProps {
   latestFrameTimestamp?: number | null
   sourceStreamTimestamp?: number | null
   processingDelay?: number | null
+  dataUrlFromStart?: string | null
   onDataUpdate?: (timestamp: number | null, delay: number | null) => void
 }
 
@@ -18,6 +19,7 @@ const TabbedDataView: React.FC<TabbedDataViewProps> = ({
   latestFrameTimestamp = null,
   sourceStreamTimestamp = null,
   processingDelay = null,
+  dataUrlFromStart = null,
   onDataUpdate
 }) => {
   const [activeTab, setActiveTab] = useState<'events' | 'data'>('events')
@@ -108,6 +110,7 @@ const TabbedDataView: React.FC<TabbedDataViewProps> = ({
           <DataStream 
             streamName={streamName}
             isStreaming={isStreaming}
+            dataUrlFromStart={dataUrlFromStart}
             onTimestampUpdate={(timestamp, delay) => {
               if (onDataUpdate) {
                 onDataUpdate(timestamp, delay);

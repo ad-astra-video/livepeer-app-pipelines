@@ -15,6 +15,7 @@ interface DataStreamProps {
   isStreaming?: boolean
   autoStart?: boolean
   maxLogs?: number
+  dataUrlFromStart?: string | null
   onTimestampUpdate?: (timestamp: number | null, delaySeconds: number | null) => void
 }
 
@@ -23,6 +24,7 @@ const DataStream: React.FC<DataStreamProps> = ({
   isStreaming = false,
   autoStart = false,
   maxLogs = 1000,
+  dataUrlFromStart = null,
   onTimestampUpdate
 }) => {
   const [dataUrl, setDataUrl] = useState(() => {
@@ -103,8 +105,19 @@ const DataStream: React.FC<DataStreamProps> = ({
       setConnectionStatus('connecting')
       setManuallyDisconnected(false) // Reset manual disconnect flag
       
-      // Create SSE connection to data stream endpoint
-      const sseUrl = `${dataUrl}/live/video-to-video/${streamName}/data`
+      // Use data URL from start response if available, otherwise fall back to settings
+      let sseUrl: string
+      
+      if (dataUrlFromStart) {
+        // Use data_url directly from start response without appending anything
+        sseUrl = dataUrlFromStart
+        console.log(`Using direct data URL from start response: ${sseUrl}`)
+      } else {
+        // Fallback to constructing URL from settings
+        sseUrl = `${dataUrl}/live/video-to-video/${streamName}/data`
+        console.log(`Using constructed data URL from settings: ${sseUrl}`)
+      }
+      
       console.log(`Connecting to data stream: ${sseUrl}`)
       
       const eventSource = new EventSource(sseUrl)
@@ -343,32 +356,24 @@ const DataStream: React.FC<DataStreamProps> = ({
         </div>
 
         {/* Configuration Inputs */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-1 gap-4 mb-4">
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
-              Data Stream Base URL
+              Data Stream URL {dataUrlFromStart && '(from stream start)'}
             </label>
             <input
               type="text"
-              value={dataUrl}
-              onChange={(e) => setDataUrl(e.target.value)}
-              placeholder="http://localhost:7114"
-              className="w-full px-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              disabled={isConnected}
+              value={dataUrlFromStart || dataUrl}
+              onChange={(e) => !dataUrlFromStart && setDataUrl(e.target.value)}
+              placeholder="http://localhost:7114 or full SSE URL"
+              className={`w-full px-4 py-2 bg-black/20 border border-white/10 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                dataUrlFromStart ? 'text-green-400 cursor-not-allowed' : 'text-white'
+              }`}
+              disabled={isConnected || !!dataUrlFromStart}
             />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Stream Name
-            </label>
-            <input
-              type="text"
-              value={streamName || ''}
-              placeholder="Stream name from video session"
-              className="w-full px-4 py-2 bg-black/20 border border-white/10 rounded-lg text-gray-400 placeholder-gray-500 cursor-not-allowed"
-              disabled={true}
-            />
+            {dataUrlFromStart && (
+              <p className="text-xs text-green-400 mt-1">Using URL from stream start response</p>
+            )}
           </div>
         </div>
 
