@@ -304,8 +304,6 @@ const StreamControls: React.FC<StreamControlsProps> = ({
       return
     }
 
-   
-
     try {
       setConnectionStatus('connecting')
       const [width, height] = resolution.split('x').map(Number)
@@ -324,15 +322,18 @@ const StreamControls: React.FC<StreamControlsProps> = ({
       }
 
       const reqStr = JSON.stringify(req)
-      let formData = new FormData()
-      formData.append("params", JSON.stringify(params))
+      let startReq = {
+        params: JSON.stringify(params)
+      }
+      
       // Start the stream
       const startResp = await fetch(whipUrl, {
         method: 'POST',
         headers: {
+          "Content-Type": "application/json",
           "Livepeer": btoa(reqStr)
         },
-        body: formData
+        body: JSON.stringify(startReq)
       })
 
       if (!startResp.ok) {

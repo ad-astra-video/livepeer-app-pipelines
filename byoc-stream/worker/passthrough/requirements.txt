@@ -1,0 +1,2 @@
+git+https://github.com/livepeer/pytrickle.git@a51bacdab9dcb8ef50fc4d69549ddfae09ef9b79
+
