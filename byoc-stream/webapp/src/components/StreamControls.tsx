@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, useMemo } from 'react'
 import { Video, Mic, MicOff, VideoOff, Play, Square, Upload, AlertCircle, Download, X, Wifi, WifiOff, RefreshCw, Camera, Monitor } from 'lucide-react'
 import { getDefaultStreamStartUrl, generateStreamId } from '../utils/urls'
 import { loadSettingsFromStorage } from './SettingsModal'
@@ -95,6 +95,8 @@ const StreamControls: React.FC<StreamControlsProps> = ({
   const [enableVideoIngress, setEnableVideoIngress] = useState(true)
   const [enableVideoEgress, setEnableVideoEgress] = useState(true)
   const [enableDataOutput, setEnableDataOutput] = useState(true)
+  // Input type toggle: WHIP (WebRTC) or RTMP
+  const [inputType, setInputType] = useState<'whip' | 'rtmp'>('whip')
   const [fpsLimit, setFpsLimit] = useState(30)
   const [resolution, setResolution] = useState('512x512')
   const [localStream, setLocalStream] = useState<MediaStream | null>(null)
@@ -127,6 +129,7 @@ const StreamControls: React.FC<StreamControlsProps> = ({
   const statusUrlRef = useRef<string | null>(null)
   const updateUrlRef = useRef<string | null>(null)
   const [actualWhipUrl, setActualWhipUrl] = useState<string | null>(null)
+  const [rtmpUrlFromStart, setRtmpUrlFromStart] = useState<string | null>(null)
   
   // Media device selection states
   const [showMediaModal, setShowMediaModal] = useState(false)
@@ -359,15 +362,18 @@ const StreamControls: React.FC<StreamControlsProps> = ({
       if (urls?.whep_url && typeof urls.whep_url === 'string') {
         if (setWhepUrlFromStart) setWhepUrlFromStart(urls.whep_url)
       }
+      if (urls?.rtmp_url && typeof urls.rtmp_url === 'string') {
+        setRtmpUrlFromStart(urls.rtmp_url)
+      }
 
       // Use streamId from response or generate one as fallback
       const streamId = urls?.stream_id
       setCurrentStreamId(streamId)
       setStreamId(streamId) // Also update parent state
             
-      // If video ingress is disabled, skip WebRTC setup and WHIP request
-      if (!enableVideoIngress) {
-        console.log('Video ingress disabled, skipping WebRTC setup')
+      // If RTMP input selected or video ingress is disabled, skip WebRTC setup and WHIP request
+      if (inputType === 'rtmp' || !enableVideoIngress) {
+        console.log('Skipping WebRTC/WHIP setup (RTMP mode or ingress disabled)')
         setIsStreaming(true)
         setConnectionStatus('connected')
         return
@@ -631,6 +637,7 @@ const StreamControls: React.FC<StreamControlsProps> = ({
     statusUrlRef.current = null
     updateUrlRef.current = null
     setActualWhipUrl(null)
+  setRtmpUrlFromStart(null)
     if (setDataUrlFromStart) setDataUrlFromStart(null)
     if (setStatusUrlFromStart) setStatusUrlFromStart(null)
     if (setWhepUrlFromStart) setWhepUrlFromStart(null)
@@ -1015,6 +1022,10 @@ const StreamControls: React.FC<StreamControlsProps> = ({
               }
             }}
           />
+          {/* RTMP Instruction Overlay */}
+          {isStreaming && inputType === 'rtmp' && (
+            <RtmpOverlay rtmpUrl={rtmpUrlFromStart} />
+          )}
           {!localStream && (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="text-center">
@@ -1220,6 +1231,37 @@ const StreamControls: React.FC<StreamControlsProps> = ({
 
             {/* Stream Configuration Inputs */}
           <div className="space-y-4">
+            {/* Input Type Toggle */}
+            <div className="p-4 bg-gradient-to-br from-black/30 to-black/10 rounded-lg border border-white/20 backdrop-blur-sm">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold text-white flex items-center">
+                  <Camera className="w-5 h-5 mr-2 text-emerald-400" />
+                  Input Type
+                </h3>
+              </div>
+              <div className="inline-flex rounded-lg overflow-hidden border border-white/20">
+                <button
+                  type="button"
+                  onClick={() => setInputType('whip')}
+                  className={`px-4 py-2 text-sm font-medium ${inputType === 'whip' ? 'bg-emerald-600 text-white' : 'bg-black/40 text-gray-300 hover:bg-white/10'}`}
+                  disabled={isStreaming}
+                >
+                  WHIP (WebRTC)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInputType('rtmp')}
+                  className={`px-4 py-2 text-sm font-medium ${inputType === 'rtmp' ? 'bg-emerald-600 text-white' : 'bg-black/40 text-gray-300 hover:bg-white/10'}`}
+                  disabled={isStreaming}
+                >
+                  RTMP
+                </button>
+              </div>
+              {inputType === 'rtmp' && (
+                <p className="mt-2 text-xs text-gray-400">In RTMP mode, the app won’t create a WebRTC connection. Start your encoder with the RTMP URL shown above after starting the stream.</p>
+              )}
+            </div>
+
             {/* Media Device Selection */}
             <div className="p-4 bg-gradient-to-br from-black/30 to-black/10 rounded-lg border border-white/20 backdrop-blur-sm">
               <div className="flex items-center justify-between mb-4">
@@ -1909,3 +1951,47 @@ const StreamControls: React.FC<StreamControlsProps> = ({
 }
 
 export default StreamControls
+
+// Lightweight subcomponent to keep render clean
+const RtmpOverlay: React.FC<{ rtmpUrl: string | null }> = ({ rtmpUrl }) => {
+  const { base, key } = useMemo(() => {
+    if (!rtmpUrl) return { base: '', key: '' }
+    try {
+      const u = new URL(rtmpUrl)
+      const segments = u.pathname.split('/').filter(Boolean)
+      if (segments.length === 0) {
+        return { base: `${u.protocol}//${u.host}/`, key: '' }
+      }
+      const streamKey = segments[segments.length - 1]
+      const prefix = segments.slice(0, -1).join('/')
+      const basePath = prefix ? `/${prefix}/` : '/'
+      return { base: `${u.protocol}//${u.host}${basePath}`, key: streamKey }
+    } catch {
+      // Fallback string split if URL parsing fails
+      const qsIdx = rtmpUrl.indexOf('?')
+      const clean = qsIdx >= 0 ? rtmpUrl.slice(0, qsIdx) : rtmpUrl
+      const lastSlash = clean.lastIndexOf('/')
+      if (lastSlash > 0) {
+        return { base: clean.slice(0, lastSlash + 1), key: clean.slice(lastSlash + 1) }
+      }
+      return { base: clean, key: '' }
+    }
+  }, [rtmpUrl])
+
+  return (
+    <div className="absolute inset-0 z-10 flex items-center justify-center bg-black p-4">
+      <div className="text-center max-w-3xl">
+        <p className="text-lg md:text-xl font-semibold text-white">Start RTMP stream</p>
+        {rtmpUrl ? (
+          <>
+            <p className="mt-2 text-sm md:text-base text-emerald-300 font-mono break-all">{base}</p>
+            <p className="mt-1 text-sm md:text-base text-emerald-300 font-mono break-all">{key}</p>
+          </>
+        ) : (
+          <p className="mt-2 text-sm md:text-base text-emerald-300">Waiting for RTMP URL from server...</p>
+        )}
+        <p className="mt-3 text-xs text-gray-300">Use your encoder (OBS, ffmpeg, etc.) with the base URL and stream key above.</p>
+      </div>
+    </div>
+  )
+}

@@ -51,7 +51,7 @@ services:
 #      input LIVE_AI_MIN_SEG_DUR as duration string (e.g. 1s)
       - LIVE_AI_MIN_SEG_DUR=1s
       - LIVE_AI_NAT_IP=${HOST_IP}
-      - LIVE_AI_PLAYBACK_HOST=rtmp://mediamtx:1935
+      - LIVE_AI_PLAYBACK_HOST=rtmp://${HOST}:1935
 #      should match to the mediamtx webrtcAddress in mediamtx.yml
       - LIVE_AI_WHEP_URL=https://${HOST}:8088/mediamtx/
     command: ["-gateway",
@@ -69,6 +69,9 @@ services:
           "-monitor",
           "-kafkaBootstrapServers=kafka:9092",
           "-kafkaGatewayTopic=streaming-events"]
+    networks:
+      default:
+        ipv4_address: 172.28.0.50
 ### LOCAL LIVEPEER NETWORK ###
   orchestrator:
     #image: adastravideo/go-livepeer:data-url-seg-writer-opt
@@ -116,23 +119,18 @@ services:
       - "CAPABILITY_PRICE_PER_UNIT=1000"
       - "CAPABILITY_PRICE_SCALING=1"
       - "CAPABILITY_CAPACITY=2"
-# ai-runner is launched as a managed container by the Orchestrator
-# uncomment this service to run standalone and update aimodels.json to add  url: http://ai-runner:8000
   ai-runner:
     image: ${RUNNER_IMAGE}
     container_name: byoc-${CAPABILITY_NAME}-runner
-    ## alternative commands for comfystream ##
     runtime: nvidia
     environment:
       - VERSION=0.13.9
-      - PIPELINE=live-video-to-video
-      - MODEL_ID=video-analysis
     ports:
       - 8000:8000
     volumes:
       - ./data/models:/root/.cache/huggingface/hub/
       ##development examples##
-      - C:\dev\pytrickle\pytrickle:/opt/venv/lib/python3.12/site-packages/pytrickle
+      #- C:\dev\pytrickle\pytrickle:/opt/venv/lib/python3.12/site-packages/pytrickle
 ####  Monitoring  ####
   kafka:
     image: bitnami/kafka:3.5
@@ -204,3 +202,7 @@ services:
 networks:
   default:
     name: byoc-${CAPABILITY_NAME}
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16

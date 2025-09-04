@@ -74,7 +74,7 @@ authInternalUsers:
     # if the IP is localhost.
   - user: any
     pass:
-    ips: ['127.0.0.1', '::1']
+    ips: ['127.0.0.1', '::1', '172.28.0.50']
     permissions:
       - action: api
       - action: metrics
@@ -643,7 +643,7 @@ pathDefaults:
   #   a regular expression.
   # * MTX_SOURCE_TYPE: source type
   # * MTX_SOURCE_ID: source ID
-  runOnReady: curl http://mediamtx:5937/stream/$MTX_PATH/start -F source_id=$MTX_SOURCE_ID -F source_type=$MTX_SOURCE_TYPE -F params=$MTX_QUERY
+  runOnReady: curl -X POST --trace - http://gateway:5937/ai/stream/$MTX_PATH/rtmp -F source_id=$MTX_SOURCE_ID -F source_type=$MTX_SOURCE_TYPE
   # Restart the command if it exits.
   runOnReadyRestart: no
   # Command to run when the stream is not available anymore.
