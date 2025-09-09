@@ -96,8 +96,8 @@ services:
           "-aiVerboseLogs",
 #          "-liveAITrickleHostForRunner=172.17.0.1:9995",
           "-aiModels=/data/aimodels.json",
-          "-aiModelsDir=${AI_MODELS_DIR}"]
-#          "-aiRunnerImageOverrides={\"live\":{\"streamdiffusion\":\"livepeer/ai-runner:live-app-streamdiffusion\"}}"]
+          "-aiModelsDir=${AI_MODELS_DIR}",
+          "-aiRunnerImageOverrides={\"live\":{\"${CAPABILITY_NAME}\":\"${RUNNER_IMAGE}\"}}"]
 ####  Monitoring  ####
   kafka:
     image: bitnami/kafka:3.5
@@ -123,7 +123,6 @@ services:
   kafka-sse-api:
     image: ghcr.io/aklivity/zilla:latest
     container_name: live-video-to-video-kafka-sse-api
-    restart: unless-stopped
     ports:
       - 7114:7114
     healthcheck:
@@ -145,7 +144,6 @@ services:
   kafka-ui:
     image: ghcr.io/kafbat/kafka-ui:latest
     container_name: live-video-to-video-kafka-ui
-    restart: unless-stopped
     ports:
       - 8080:8080
     environment:
