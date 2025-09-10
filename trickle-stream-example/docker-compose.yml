@@ -1,0 +1,23 @@
+services:
+  worker:
+    build:
+      context: ./worker/.
+      dockerfile: Dockerfile.worker
+    container_name: byoc-trickle-stream-example-worker
+    environment:
+      - ORCH_URL=https://192.168.10.61:9995
+      - ORCH_SECRET=orch-secret
+      - CAPABILITY_NAME=trickle-stream-example
+      - CAPABILITY_DESCRIPTION=Flip video upside down using pytrickle
+      - CAPABILITY_URL=http://192.168.10.61:7777
+      - CAPABILITY_PRICE_PER_UNIT=0
+      - CAPABILITY_PRICE_SCALING=1
+      - CAPABILITY_CAPACITY=1
+    ports:
+      - 7777:7777
+
+networks:
+  default:
+    name: byoc-trickle-stream-example
+
+

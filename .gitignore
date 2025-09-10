@@ -51,6 +51,8 @@ web_modules/
 # Optional npm cache directory
 .npm
 
+comfystream/webapp/dist_tmp/
+
 # Optional eslint cache
 .eslintcache
 

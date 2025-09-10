@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { Play, Square, Monitor, AlertCircle, Download, X, Wifi, WifiOff, RefreshCw } from 'lucide-react'
+import { Play, Square, Monitor, AlertCircle, Download, X, Wifi, WifiOff, RefreshCw, ChevronDown, ChevronRight } from 'lucide-react'
 import { getDefaultWhepUrl } from '../utils/urls'
 import { loadSettingsFromStorage } from './SettingsModal'
 import { constructWhepUrl, sendWhepOffer } from '../api'
@@ -19,9 +19,18 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
   setStreamStats,
   playbackUrl
 }) => {
+  const WHEP_SECTION_KEY = 'comfystream.viewer.whep.expand'
   const [whepUrl, setWhepUrl] = useState(() => {
     const savedSettings = loadSettingsFromStorage()
     return savedSettings.whepUrl
+  })
+  const [showWhepSection, setShowWhepSection] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem(WHEP_SECTION_KEY)
+      return stored ? stored === 'true' : true
+    } catch {
+      return true
+    }
   })
   const [latestOffer, setLatestOffer] = useState<string>('')
   const [latestAnswer, setLatestAnswer] = useState<string>('')
@@ -58,6 +67,10 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
       }
     }
   }, [peerConnection])
+
+  useEffect(() => {
+    try { localStorage.setItem(WHEP_SECTION_KEY, String(showWhepSection)) } catch {}
+  }, [showWhepSection])
 
   // Listen for storage changes to update URL from settings
   useEffect(() => {
@@ -653,43 +666,54 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
             </div>
           )}
 
-          {/* WHEP URL Input */}
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                WHEP Endpoint Base URL
-              </label>
-              <p className="text-xs text-gray-400 mb-2">
-                The playback URL path from the WHIP response will be appended to this base URL
-              </p>
-              <div className="relative">
-                <input
-                  type="url"
-                  value={whepUrl}
-                  onChange={(e) => setWhepUrl(e.target.value)}
-                  placeholder={getDefaultWhepUrl()}
-                  className="w-full px-4 py-3 bg-black/20 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                  disabled={isViewing}
-                />
-                <Download className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-              </div>
-              
-              {/* Show constructed WHEP URL preview */}
-              {playbackUrl && whepUrl && (
-                <div className="mt-2 p-2 bg-emerald-900/20 border border-emerald-500/30 rounded-lg">
-                  <div className="text-xs text-emerald-400 font-medium mb-1">Final WHEP URL:</div>
-                  <div className="text-xs text-gray-300 font-mono break-all">
-                    {constructWhepUrl(whepUrl, playbackUrl)}
-                  </div>
-                </div>
+          {/* WHEP URL Input (collapsible) */}
+          <div className="p-4 bg-gradient-to-br from-black/30 to-black/10 rounded-lg border border-white/20 backdrop-blur-sm">
+            <button
+              type="button"
+              onClick={() => setShowWhepSection(v => !v)}
+              className="flex items-center text-left text-sm font-semibold text-white mb-2"
+            >
+              {showWhepSection ? (
+                <ChevronDown className="w-5 h-5 mr-2 text-emerald-400" />
+              ) : (
+                <ChevronRight className="w-5 h-5 mr-2 text-emerald-400" />
               )}
-            </div>
+              WHEP Endpoint Base URL
+            </button>
+            {showWhepSection && (
+              <>
+                <p className="text-xs text-gray-400 mb-2">
+                  The playback URL path from the WHIP response will be appended to this base URL
+                </p>
+                <div className="relative">
+                  <input
+                    type="url"
+                    value={whepUrl}
+                    onChange={(e) => setWhepUrl(e.target.value)}
+                    placeholder={getDefaultWhepUrl()}
+                    className="w-full px-4 py-3 bg-black/20 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                    disabled={isViewing}
+                  />
+                  <Download className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                </div>
 
-            {!whepUrl && (
-              <div className="flex items-center space-x-2 text-amber-400 text-sm">
-                <AlertCircle className="w-4 h-4" />
-                <span>Enter a WHEP endpoint URL to start viewing</span>
-              </div>
+                {/* Show constructed WHEP URL preview */}
+                {playbackUrl && whepUrl && (
+                  <div className="mt-2 p-2 bg-emerald-900/20 border border-emerald-500/30 rounded-lg">
+                    <div className="text-xs text-emerald-400 font-medium mb-1">Final WHEP URL:</div>
+                    <div className="text-xs text-gray-300 font-mono break-all">
+                      {constructWhepUrl(whepUrl, playbackUrl)}
+                    </div>
+                  </div>
+                )}
+
+                {!whepUrl && (
+                  <div className="mt-2 flex items-center space-x-2 text-amber-400 text-sm">
+                    <AlertCircle className="w-4 h-4" />
+                    <span>Enter a WHEP endpoint URL to start viewing</span>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
