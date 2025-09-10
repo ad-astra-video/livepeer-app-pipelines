@@ -311,22 +311,31 @@ const StreamControls: React.FC<StreamControlsProps> = ({
       setConnectionStatus('connecting')
       const [width, height] = resolution.split('x').map(Number)
 
+      // Start params should contain height, width, and all custom parameter key/values
       const params = {
+        height,
+        width,
+        ...customParams,
+      }
+
+      const reqParams = {
         enable_video_ingress: enableVideoIngress,
         enable_video_egress: enableVideoEgress,
         enable_data_output: enableDataOutput
       }
-
       const req = {
         request: "{}",
-        parameters: JSON.stringify(params),
+        parameters: JSON.stringify(reqParams),
         capability: "video-analysis",
         timeout_seconds: 120
       }
-
       const reqStr = JSON.stringify(req)
+
       let startReq = {
-        params: JSON.stringify(params)
+        stream_name: streamName,
+        params: JSON.stringify(params),
+        stream_id: "",
+        rtmp_output: "",
       }
       
       // Start the stream
@@ -670,8 +679,6 @@ const StreamControls: React.FC<StreamControlsProps> = ({
       const [resWidth, resHeight] = resolution.split('x').map(Number)
       
       const updateData: StreamUpdateData = {
-        height: resHeight,
-        width: resWidth,
         ...customParams
       }
 

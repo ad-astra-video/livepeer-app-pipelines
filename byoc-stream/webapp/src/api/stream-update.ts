@@ -4,8 +4,6 @@
  */
 
 export interface StreamUpdateData {
-  height: number
-  width: number
   [key: string]: any
 }
 
