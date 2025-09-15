@@ -4,7 +4,6 @@ import { loadSettingsFromStorage } from './SettingsModal'
 
 interface DataLog {
   id: string
-  timestamp: number
   type: string
   data: any
   expanded?: boolean
@@ -16,7 +15,6 @@ interface DataStreamProps {
   autoStart?: boolean
   maxLogs?: number
   dataUrlFromStart?: string | null
-  onTimestampUpdate?: (timestamp: number | null, delaySeconds: number | null) => void
 }
 
 const DataStream: React.FC<DataStreamProps> = ({
@@ -25,7 +23,6 @@ const DataStream: React.FC<DataStreamProps> = ({
   autoStart = false,
   maxLogs = 1000,
   dataUrlFromStart = null,
-  onTimestampUpdate
 }) => {
   const [dataUrl, setDataUrl] = useState(() => {
     const savedSettings = loadSettingsFromStorage()
@@ -144,25 +141,8 @@ const DataStream: React.FC<DataStreamProps> = ({
           const data = JSON.parse(event.data.trim())
           console.log('Parsed data:', data)
           
-          // Extract frame timestamp and delay from worker data
-          if (data.timestamp_seconds !== undefined && onTimestampUpdate) {
-            const delaySeconds = data.delay_seconds !== undefined ? data.delay_seconds : null
-            onTimestampUpdate(data.timestamp_seconds, delaySeconds)
-          }
-          
-          // Parse timestamp - handle both string and number formats
-          let parsedTimestamp = Date.now()
-          if (data.timestamp) {
-            if (typeof data.timestamp === 'string') {
-              parsedTimestamp = parseInt(data.timestamp, 10)
-            } else if (typeof data.timestamp === 'number') {
-              parsedTimestamp = data.timestamp
-            }
-          }
-          
           const log: DataLog = {
             id: `data-${logCounterRef.current++}`,
-            timestamp: parsedTimestamp,
             type: data.type || 'data',
             data: data,
             expanded: true
@@ -180,7 +160,6 @@ const DataStream: React.FC<DataStreamProps> = ({
           // Create a log entry even if parsing fails
           const log: DataLog = {
             id: `data-${logCounterRef.current++}`,
-            timestamp: Date.now(),
             type: 'raw',
             data: { raw: event.data, error: error.message },
             expanded: true
@@ -198,9 +177,7 @@ const DataStream: React.FC<DataStreamProps> = ({
         console.error('SSE readyState:', eventSource.readyState)
         setIsConnected(false)
         setConnectionStatus('error')
-        if (onTimestampUpdate) {
-          onTimestampUpdate(null, null)
-        }
+  // Removed timestamp update on error
         if (eventSourceRef.current) {
           eventSourceRef.current.close()
           eventSourceRef.current = null
@@ -221,9 +198,7 @@ const DataStream: React.FC<DataStreamProps> = ({
     setIsConnected(false)
     setConnectionStatus('disconnected')
     setManuallyDisconnected(true) // Mark as manually disconnected
-    if (onTimestampUpdate) {
-      onTimestampUpdate(null, null)
-    }
+  // Removed timestamp update on disconnect
   }
 
   const clearLogs = () => {
@@ -271,24 +246,7 @@ const DataStream: React.FC<DataStreamProps> = ({
     )
   })
 
-  const formatTimestamp = (timestamp: number) => {
-    try {
-      if (!timestamp || isNaN(timestamp)) {
-        return new Date().toLocaleTimeString()
-      }
-      
-      const date = new Date(timestamp)
-      
-      if (isNaN(date.getTime())) {
-        return new Date().toLocaleTimeString()
-      }
-      
-      return date.toLocaleTimeString()
-    } catch (error) {
-      console.error('Error formatting timestamp:', error)
-      return new Date().toLocaleTimeString()
-    }
-  }
+  // Removed timestamp formatting
 
   const formatValue = (value: any) => {
     if (typeof value === 'string') {
@@ -493,9 +451,7 @@ const DataStream: React.FC<DataStreamProps> = ({
                           {log.type}
                         </span>
                       </div>
-                      <span className="text-xs text-gray-400 font-mono">
-                        {formatTimestamp(log.timestamp)}
-                      </span>
+                      {/* Removed timestamp display */}
                       <span className="px-2 py-1 bg-blue-600/20 text-blue-300 rounded text-xs">
                         data
                       </span>

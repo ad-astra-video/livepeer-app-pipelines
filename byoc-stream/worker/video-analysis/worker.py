@@ -5,7 +5,7 @@ import logging
 import time
 from torchvision import transforms
 from copy import deepcopy
-import multiprocessing as mp
+import torch.multiprocessing as mp
 from PIL import Image, ImageDraw, ImageFont
 
 # Configure logging
@@ -19,7 +19,8 @@ processor = None
 to_pil = transforms.ToPILImage()
 
 # --- Queues for inter-process communication ---
-frame_queue = mp.Queue(maxsize=1)
+frame_queue_length = 7
+frame_queue = mp.Queue(maxsize=frame_queue_length)
 result_queue = mp.Queue(maxsize=5)
 worker_ready_event = mp.Event()
 current_timestamp = mp.Value("d", 0.0)
@@ -27,12 +28,11 @@ current_timestamp = mp.Value("d", 0.0)
 user_prompt_queue = mp.Queue(maxsize=1)
 history_length_queue = mp.Queue(maxsize=1)
 max_new_tokens_queue = mp.Queue(maxsize=1)
-wait = 100
 
-def chat_worker(frame_q, result_q, user_prompt_q, history_length_q, max_new_tokens_q, ready_event: mp.Event):
+def chat_worker(frames_queue_length, frame_q, result_q, user_prompt_q, history_length_q, max_new_tokens_q, ready_event: mp.Event):
     
     import torch
-    from transformers import AutoModel, AutoTokenizer
+    from transformers import AutoModel, AutoTokenizer, BitsAndBytesConfig
     from copy import deepcopy
     import logging
     from queue import Empty
@@ -64,11 +64,24 @@ def chat_worker(frame_q, result_q, user_prompt_q, history_length_q, max_new_toke
         except Empty:
             return current
     
-    model_name_or_path = "openbmb/MiniCPM-V-4"
+    model_name_or_path = "openbmb/MiniCPM-V-4_5-int4"
+    # Quantization configuration https://github.com/OpenSQZ/MiniCPM-V-CookBook/blob/main/quantization/bnb/minicpm-v4_5_bnb_quantize.md
+    #quantization_config = BitsAndBytesConfig(
+    #    load_in_4bit=True,
+    #    load_in_8bit=False,
+    #    bnb_4bit_compute_dtype=torch.float16,
+    #    bnb_4bit_quant_storage=torch.uint8,
+    #    bnb_4bit_quant_type="nf4",
+    #    bnb_4bit_use_double_quant=True,
+    #    llm_int8_enable_fp32_cpu_offload=False,
+    #    llm_int8_has_fp16_weight=False,
+    #    llm_int8_skip_modules=["out_proj", "kv_proj", "lm_head"],
+    #    llm_int8_threshold=6.0
+    #)
     model = AutoModel.from_pretrained(
         model_name_or_path,
         trust_remote_code=True,
-        torch_dtype=torch.bfloat16,
+        #quantization_config=quantization_config,
         attn_implementation="sdpa"
     ).eval().cuda()
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path, trust_remote_code=True, use_fast=True)
@@ -87,22 +100,32 @@ def chat_worker(frame_q, result_q, user_prompt_q, history_length_q, max_new_toke
     
     history = []
     while True:
-        frame = frame_q.get()
-        if frame is None:
-            break
-        img_tensor = frame.tensor.squeeze(0).permute(2, 0, 1)
-        img = to_pil(img_tensor)
-        
         #set params
         max_new_tokens = check_for_update(max_new_tokens_q, max_new_tokens)
         history_length = check_for_update(history_length_q, history_length)
         user_prompt = check_for_update(user_prompt_q, user_prompt)
         
-        msg_template = [{"role": "user", "content": [img, user_prompt]}]
+        frames_prompt = []
+        frames_ts = []
+        for f in range(frame_queue_length):
+            frame = frame_q.get()
+            if frame is None:
+                break
+            frames_ts.append(frame.timestamp)
+            img_tensor = frame.tensor.squeeze(0).permute(2, 0, 1)
+            img = to_pil(img_tensor)
+            
+            frames_prompt.append(img)
+        msg_template = [{"role": "user", "content": [frames_prompt, user_prompt]}]
         msgs = history + msg_template
         
         try:
+            #start = time.time()
+            #chat_str = tokenizer.apply_chat_template(msgs,tokenize=False,add_generation_promt=True)
+            #tokenized = tokenizer(chat_str, return_tensors="pt")
+            #tokenizer_time = time.time() - start
             start = time.time()
+            #result = model.generate(**tokenized, max_new_tokens=max_new_tokens, use_cache=True, temporal_ids=[frames_ts])
             result = model.chat(msgs=msgs, image=img, tokenizer=tokenizer, use_cache=True, max_new_tokens=max_new_tokens)
             inference_time = time.time() - start
             
@@ -129,20 +152,14 @@ async def forward_results():
             await processor.send_data(result)
 
 async def process_video(frame: VideoFrame) -> VideoFrame:
-    global wait
     current_timestamp.value = frame.timestamp
     try:
         # drain stale frames, no op if worker pulled the frame
-        while not frame_queue.empty():
-            try:
-                frame_queue.get_nowait()
-            except Exception:
-                break
+        
+        if frame_queue.qsize() == frame_queue_length:
+            frame_queue.get()
         #put latest frame
-        if not wait:
-            frame_queue.put_nowait(frame)
-        else:
-            wait -= 1
+        frame_queue.put_nowait(frame)
         
     except mp.queues.Full:
         logger.debug("Worker busy, skipping frame")
@@ -186,7 +203,7 @@ if __name__ == "__main__":
     logger.info("Starting chat worker process")
     worker_process = mp.Process(
         target=chat_worker,
-        args=(frame_queue, result_queue, user_prompt_queue, history_length_queue, max_new_tokens_queue, worker_ready_event),
+        args=(frame_queue_length, frame_queue, result_queue, user_prompt_queue, history_length_queue, max_new_tokens_queue, worker_ready_event),
         daemon=True,
     )
     worker_process.start()
