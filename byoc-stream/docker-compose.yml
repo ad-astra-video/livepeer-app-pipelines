@@ -36,7 +36,7 @@ services:
       - 1935:1935
   gateway:
     #image: adastravideo/go-livepeer:data-url-seg-writer-opt
-    image: adastravideo/go-livepeer:byoc-streaming
+    image: adastravideo/go-livepeer:byoc-streaming-v2
     container_name: byoc-${CAPABILITY_NAME}-gateway
     volumes:
       - ./data/gateway:/data
@@ -75,7 +75,7 @@ services:
 ### LOCAL LIVEPEER NETWORK ###
   orchestrator:
     #image: adastravideo/go-livepeer:data-url-seg-writer-opt
-    image: adastravideo/go-livepeer:byoc-streaming
+    image: adastravideo/go-livepeer:byoc-streaming-v2
     container_name: byoc-${CAPABILITY_NAME}-orchestrator
     volumes:
       - ${AI_MODELS_DIR}:${AI_MODELS_DIR}

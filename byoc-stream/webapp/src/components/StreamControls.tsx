@@ -326,7 +326,7 @@ const StreamControls: React.FC<StreamControlsProps> = ({
       const req = {
         request: "{}",
         parameters: JSON.stringify(reqParams),
-        capability: "video-analysis",
+        capability: pipeline,
         timeout_seconds: 120
       }
       const reqStr = JSON.stringify(req)

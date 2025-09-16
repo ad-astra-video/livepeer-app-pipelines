@@ -19,7 +19,7 @@ processor = None
 to_pil = transforms.ToPILImage()
 
 # --- Queues for inter-process communication ---
-frame_queue_length = 3
+frame_queue_length = 2
 frame_queue = mp.Queue(maxsize=frame_queue_length)
 result_queue = mp.Queue(maxsize=5)
 worker_ready_event = mp.Event()
@@ -47,7 +47,7 @@ def chat_worker(frames_queue_length, frame_q, result_q, user_prompt_q, history_l
     to_pil = transforms.ToPILImage()
     
     #starting params
-    history_length = 2
+    history_length = 0
     max_new_tokens = 200
     user_prompt = """
     You are an expert video analysis provider that balances detail and broad understanding of video provided.
