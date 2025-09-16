@@ -15,7 +15,7 @@ export interface UrlSettings {
   kafkaEventsUrl: string
 }
 
-const STORAGE_KEY = 'live-video-to-video-url-settings'
+const STORAGE_KEY = 'livepeer-ai-video-streaming-url-settings'
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave }) => {
   const [whipUrl, setWhipUrl] = useState('')

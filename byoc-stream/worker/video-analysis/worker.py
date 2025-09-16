@@ -19,7 +19,7 @@ processor = None
 to_pil = transforms.ToPILImage()
 
 # --- Queues for inter-process communication ---
-frame_queue_length = 7
+frame_queue_length = 3
 frame_queue = mp.Queue(maxsize=frame_queue_length)
 result_queue = mp.Queue(maxsize=5)
 worker_ready_event = mp.Event()
@@ -91,7 +91,7 @@ def chat_worker(frames_queue_length, frame_q, result_q, user_prompt_q, history_l
     try:
         green_img = Image.new("RGB", (224, 224), color=(0, 255, 0))  # solid green image
         dummy_msgs = [{"role": "user", "content": [green_img, "Warmup run."]}]
-        model.chat(msgs=dummy_msgs, image=green_img, tokenizer=tokenizer, max_new_tokens=max_new_tokens)
+        model.chat(msgs=dummy_msgs, image=green_img, tokenizer=tokenizer, max_new_tokens=max_new_tokens, enable_thinking=False)
         logger.info("Warmup inference complete")
     except Exception as e:
         logger.warning(f"Warmup failed: {e}")

@@ -1,6 +1,5 @@
-git+https://github.com/livepeer/pytrickle.git@6e099179d9099091db602ccb28a869ec075ecef5
+git+https://github.com/livepeer/pytrickle.git@725390b6d7fa85e594b057c3197f55c902c534a0
 accelerate>=0.26.0
 bitsandbytes
 transformers
 decord
-autoawq
