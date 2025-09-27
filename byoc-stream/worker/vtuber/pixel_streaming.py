@@ -138,58 +138,57 @@ class PixelStreamingClient:
         answer = await self.pc.createAnswer()
         await self.pc.setLocalDescription(answer)
         logger.info(f"Created WebRTC answer:\nType: {answer.type}\nSDP:\n{answer.sdp}")
-        # Send answer back (match offer's flat sdp string format)
+        # Send answer back (flat SDP string to match offer shape)
         await self.send_message({
             "type": "answer",
-            "sdp": answer.sdp,
+            "sdp": answer.sdp
         })
     
     async def handle_ice_candidate(self, message):
         candidate_data = message.get("candidate")
         logger.info(f"Handling ICE candidate data: {candidate_data}")
-
-        # Expect dict with keys: candidate, sdpMid or sdpMLineIndex
-        if not candidate_data or not candidate_data.get("candidate"):
-            logger.warning("ICE candidate message missing required 'candidate' field")
-            return
-
-        if candidate_data.get("sdpMid") is None and candidate_data.get("sdpMLineIndex") is None:
-            logger.error("ICE candidate missing both sdpMid and sdpMLineIndex; cannot add candidate")
-            return
-
-        # Defer until remote description is set
-        if not self.pc.remoteDescription:
-            self.pending_candidates.append(candidate_data)
-            logger.debug("Queued remote ICE candidate (waiting for remoteDescription)")
-            return
-
-        try:
-            await self.pc.addIceCandidate(candidate_data)
-            logger.debug("Added remote ICE candidate to RTCPeerConnection")
-        except Exception as e:
-            logger.error(f"Failed to add ICE candidate: {e}")
+        
+        if candidate_data and candidate_data.get("candidate"):
+            try:
+                # Parse the SDP candidate string manually
+                parsed = await self._parse_ice_candidate(candidate_data["candidate"])
+                
+                # Create RTCIceCandidate with correct parameter order: 
+                # (component, foundation, ip, port, priority, protocol, type, ...)
+                ice_candidate = RTCIceCandidate(
+                    component=parsed['component'],
+                    foundation=parsed['foundation'],
+                    ip=parsed['ip'],
+                    port=parsed['port'],
+                    priority=parsed['priority'],
+                    protocol=parsed['protocol'],
+                    type=parsed['type'],
+                    sdpMid=candidate_data["sdpMid"],
+                    sdpMLineIndex=candidate_data["sdpMLineIndex"]
+                )
+                
+                if not self.pc.remoteDescription:
+                    self.pending_candidates.append(ice_candidate)
+                else:
+                    await self.pc.addIceCandidate(ice_candidate)
+            except Exception as e:
+                logger.error(f"Failed to parse ICE candidate: {e}")
+                logger.error(f"Candidate string: {candidate_data['candidate']}")
 
     async def on_ice_candidate(self, candidate):
         logger.info(f"Generated ICE candidate: {candidate}")
-        # aiortc calls with None at the end of gathering; don't send in that case
-        if candidate is None:
-            return
-
-        # Serialize local ICE candidate to JSON
-        candidate_dict = {
-            "candidate": getattr(candidate, "candidate", None),
-            "sdpMid": getattr(candidate, "sdpMid", None),
-            "sdpMLineIndex": getattr(candidate, "sdpMLineIndex", None),
-        }
-
-        if candidate_dict["sdpMid"] is None and candidate_dict["sdpMLineIndex"] is None:
-            logger.warning("Local ICE candidate missing both sdpMid and sdpMLineIndex; dropping")
-            return
-
-        await self.send_message({
-            "type": "iceCandidate",
-            "candidate": candidate_dict,
-        })
+        if candidate is not None:
+            # Convert RTCIceCandidate object to proper format for WebSocket
+            candidate_dict = {
+                "candidate": candidate.candidate,
+                "sdpMid": candidate.sdpMid,
+                "sdpMLineIndex": candidate.sdpMLineIndex
+            }
+            
+            await self.websocket.send_json({
+                "type": "iceCandidate",
+                "candidate": candidate_dict
+            })
 
     def on_ice_gathering_state_change(self):
         state = getattr(self.pc, "iceGatheringState", None)
@@ -231,20 +230,24 @@ class PixelStreamingClient:
             self.video_track = track
             # Start processing video frames
             asyncio.create_task(self.process_video_frames())
-        
-    async def process_video_frames(self):
-        """Process incoming video frames"""
-        if not self.video_track:
+        elif track.kind == "audio":
+            self.audio_track = track
+            # Start processing audio frames
+            asyncio.create_task(self.process_audio_frames())
+
+    async def process_audio_frames(self):
+        """Process incoming audio frames"""
+        if not self.audio_track:
             return
             
         try:
             while True:
-                frame = await self.video_track.recv()
+                frame = await self.audio_track.recv()
                 if self.frame_callback:
                     await self.frame_callback(frame)
                     
         except Exception as e:
-            logger.error(f"Error processing video: {e}")
+            logger.error(f"Error processing audio: {e}")
 
     async def process_video_frames(self):
         """Process incoming video frames"""
