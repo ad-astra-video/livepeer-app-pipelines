@@ -86,13 +86,13 @@ async def param_updates(data):
     if "audio" in data and "audio_format" in data:
         params["audio"] = data["audio"]
         audio_bytes = base64.b64decode(data["audio"])
-        folder = os.environ.get("AUDIO_FILE_FOLDER", "/data/audio")
+        folder = "/opt/embody/sessions"
         os.makedirs(folder, exist_ok=True)
         filename = f"{folder}/{int(time.time()*1_000_000)}.{data['audio_format']}"
         with open(filename, "wb") as f:
             f.write(audio_bytes)
-        await send_command(f"TTS_BYOB_{path}")
-        logger.info(f"sent audio file to game: {path}")
+        await send_command(f"TTS_BYOB_{filename}")
+        logger.info(f"sent audio file to game: {filename}")
 
 
 # ------------------ Pixel Streaming Connection ------------------ #
@@ -100,7 +100,7 @@ async def param_updates(data):
 async def connect_to_pixel_streaming():
     """Connect to the Pixel Streaming signaling server."""
     global client
-    signaling_url = os.environ.get("SIGNALING_WEBSERVER_URL", "ws://localhost:8080")
+    signaling_url = os.environ.get("SIGNALING_WEBSERVER_URL", "ws://vtuber-unreal-signaling:8080")
     streamer_id = os.environ.get("STREAMER_ID", "")
 
     client = PixelStreamingClient(signaling_url, streamer_id, pixel_streaming_frame_callback)
