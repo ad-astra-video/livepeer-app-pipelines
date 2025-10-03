@@ -8,43 +8,39 @@ export interface StreamUpdateData {
 }
 
 export interface StreamUpdateRequest {
-  whipUrl?: string
-  streamName?: string
+  updateUrl: string  // Update URL from start response
+  streamId: string
+  pipeline: string
   updateData: StreamUpdateData
-  customUpdateUrl?: string  // Direct update URL from start response
 }
 
 /**
  * Sends an update request to modify stream parameters
  */
 export const sendStreamUpdate = async ({
-  whipUrl,
-  streamName,
-  updateData,
-  customUpdateUrl
+  updateUrl,
+  streamId,
+  pipeline,
+  updateData
 }: StreamUpdateRequest): Promise<boolean> => {
   try {
     console.log('Sending update:', updateData)
+    console.log(`Using update URL: ${updateUrl}`)
 
-    let updateUrl: string
-    
-    if (customUpdateUrl) {
-      // Use direct update URL from stream start response
-      updateUrl = customUpdateUrl
-      console.log(`Using direct update URL from start response: ${updateUrl}`)
-    } else {
-      // Fallback to constructed URL
-      if (!whipUrl || !streamName) {
-        throw new Error('whipUrl and streamName are required when customUpdateUrl is not provided')
-      }
-      updateUrl = `${whipUrl}/${streamName}/update`
-      console.log(`Using constructed update URL: ${updateUrl}`)
+    const requestData = {
+      "request": JSON.stringify({"stream_id": streamId}),
+      "parameters": JSON.stringify({}),
+      "capability": pipeline,
+      "timeout_seconds": 5
     }
+
+    const livepeerHeader = btoa(JSON.stringify(requestData))
 
     const response = await fetch(updateUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Livepeer': livepeerHeader
       },
       body: JSON.stringify(updateData)
     })

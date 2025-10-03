@@ -674,6 +674,16 @@ const StreamControls: React.FC<StreamControlsProps> = ({
       return
     }
 
+    if (!updateUrlRef.current) {
+      alert('Update URL not available from stream start')
+      return
+    }
+
+    if (!currentStreamId) {
+      alert('Stream ID not available')
+      return
+    }
+
     try {
       // Get current resolution
       const [resWidth, resHeight] = resolution.split('x').map(Number)
@@ -682,11 +692,12 @@ const StreamControls: React.FC<StreamControlsProps> = ({
         ...customParams
       }
 
+      // Use the update URL from the stream start response
       await sendStreamUpdate({
-        whipUrl,
-        streamName,
-        updateData,
-        customUpdateUrl: updateUrlRef.current || undefined
+        updateUrl: updateUrlRef.current,
+        streamId: currentStreamId,
+        pipeline: pipeline,
+        updateData
       })
       
       // You could show a success message here

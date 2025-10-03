@@ -60,7 +60,7 @@ services:
           "-rtmpAddr=gateway:1937",
           "-httpAddr=gateway:5937",
           "-httpIngest=true",
-          "-v=9",
+          "-v=99",
           "-network=arbitrum-one-mainnet",
           "-blockPollingInterval=10",
           "-ethUrl=${ARB_ETH_URL}",
@@ -80,13 +80,13 @@ services:
     volumes:
       - ${AI_MODELS_DIR}:${AI_MODELS_DIR}
       - ./data/orchestrator:/data
-      - ./worker/aimodels.json:/data/aimodels.json
+      #- ./worker/aimodels.json:/data/aimodels.json
       - /var/run/docker.sock:/var/run/docker.sock
     runtime: nvidia
     ports:
       - 9995:9995
     command: ["-orchestrator",
-          "-aiWorker",
+          #"-aiWorker",
           "-transcoder",
           "-nvidia=0",
           "-orchSecret=${ORCH_SECRET}",
@@ -102,8 +102,8 @@ services:
           "-monitor",
           "-aiVerboseLogs",
           #"-liveAITrickleHostForRunner=localhost:9995",
-          "-aiModels=/data/aimodels.json",
-          "-aiModelsDir=${AI_MODELS_DIR}",
+          #"-aiModels=/data/aimodels.json",
+          #"-aiModelsDir=${AI_MODELS_DIR}",
           "-aiRunnerImageOverrides={\"live\":{\"${CAPABILITY_NAME}\":\"${RUNNER_IMAGE}\"}}"]
   register-worker:
     build:
@@ -124,7 +124,10 @@ services:
     container_name: byoc-${CAPABILITY_NAME}-runner
     runtime: nvidia
     environment:
-      - VERSION=0.13.9
+      VERSION: 0.13.9
+    #use this to limit the ephemeral port range used by webrtc if needed
+    #sysctls:
+    #    net.ipv4.ip_local_port_range: "44000 44100"
     ports:
       - 8000:8000
     volumes:
