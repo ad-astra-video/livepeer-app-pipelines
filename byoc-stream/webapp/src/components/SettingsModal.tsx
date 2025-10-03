@@ -13,6 +13,7 @@ export interface UrlSettings {
   whepUrl: string
   dataStreamUrl: string
   kafkaEventsUrl: string
+  defaultPipeline: string
 }
 
 const STORAGE_KEY = 'livepeer-ai-video-streaming-url-settings'
@@ -22,6 +23,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave }
   const [whepUrl, setWhepUrl] = useState('')
   const [dataStreamUrl, setDataStreamUrl] = useState('')
   const [kafkaEventsUrl, setKafkaEventsUrl] = useState('')
+  const [defaultPipeline, setDefaultPipeline] = useState('')
   const [hasChanges, setHasChanges] = useState(false)
 
   // Load settings from localStorage on mount
@@ -31,6 +33,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave }
     setWhepUrl(savedSettings.whepUrl)
     setDataStreamUrl(savedSettings.dataStreamUrl)
     setKafkaEventsUrl(savedSettings.kafkaEventsUrl)
+    setDefaultPipeline(savedSettings.defaultPipeline)
   }, [isOpen])
 
   const loadSettingsFromStorage = (): UrlSettings => {
@@ -42,7 +45,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave }
           whipUrl: parsed.whipUrl || getDefaultStreamStartUrl(),
           whepUrl: parsed.whepUrl || getDefaultWhepUrl(),
           dataStreamUrl: parsed.dataStreamUrl || getDefaultDataStreamUrl(),
-          kafkaEventsUrl: parsed.kafkaEventsUrl || getDefaultKafkaEventsUrl()
+          kafkaEventsUrl: parsed.kafkaEventsUrl || getDefaultKafkaEventsUrl(),
+          defaultPipeline: parsed.defaultPipeline || 'video-analysis'
         }
       }
     } catch (error) {
@@ -53,7 +57,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave }
       whipUrl: getDefaultStreamStartUrl(),
       whepUrl: getDefaultWhepUrl(),
       dataStreamUrl: getDefaultDataStreamUrl(),
-      kafkaEventsUrl: getDefaultKafkaEventsUrl()
+      kafkaEventsUrl: getDefaultKafkaEventsUrl(),
+      defaultPipeline: 'video-analysis'
     }
   }
 
@@ -85,12 +90,18 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave }
     setHasChanges(true)
   }
 
+  const handleDefaultPipelineChange = (value: string) => {
+    setDefaultPipeline(value)
+    setHasChanges(true)
+  }
+
   const handleSave = () => {
     const settings: UrlSettings = { 
       whipUrl, 
       whepUrl, 
       dataStreamUrl, 
-      kafkaEventsUrl 
+      kafkaEventsUrl,
+      defaultPipeline
     }
     saveSettingsToStorage(settings)
     onSave(settings)
@@ -109,12 +120,14 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave }
       whipUrl: getDefaultStreamStartUrl(),
       whepUrl: getDefaultWhepUrl(),
       dataStreamUrl: getDefaultDataStreamUrl(),
-      kafkaEventsUrl: getDefaultKafkaEventsUrl()
+      kafkaEventsUrl: getDefaultKafkaEventsUrl(),
+      defaultPipeline: 'video-analysis'
     }
     setWhipUrl(defaults.whipUrl)
     setWhepUrl(defaults.whepUrl)
     setDataStreamUrl(defaults.dataStreamUrl)
     setKafkaEventsUrl(defaults.kafkaEventsUrl)
+    setDefaultPipeline(defaults.defaultPipeline)
     setHasChanges(true)
   }
 
@@ -125,6 +138,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave }
     setWhepUrl(savedSettings.whepUrl)
     setDataStreamUrl(savedSettings.dataStreamUrl)
     setKafkaEventsUrl(savedSettings.kafkaEventsUrl)
+    setDefaultPipeline(savedSettings.defaultPipeline)
     setHasChanges(false)
     onClose()
   }
@@ -208,8 +222,24 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave }
               />
             </div>
 
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Default Pipeline
+              </label>
+              <input
+                type="text"
+                value={defaultPipeline}
+                onChange={(e) => handleDefaultPipelineChange(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                placeholder="video-analysis"
+              />
+              <p className="mt-1 text-xs text-gray-400">
+                Default pipeline to use when starting a stream (e.g., video-analysis, vtuber, passthrough)
+              </p>
+            </div>
+
             <div className="text-xs text-gray-400">
-              <p>These URLs will be saved to your browser's local storage and used as defaults for the URL inputs in the stream controls and data streaming components.</p>
+              <p>These settings will be saved to your browser's local storage and used as defaults for the URL inputs in the stream controls and data streaming components.</p>
             </div>
           </div>
 
@@ -259,7 +289,8 @@ export const loadSettingsFromStorage = (): UrlSettings => {
         whipUrl: parsed.whipUrl || getDefaultStreamStartUrl(),
         whepUrl: parsed.whepUrl || getDefaultWhepUrl(),
         dataStreamUrl: parsed.dataStreamUrl || getDefaultDataStreamUrl(),
-        kafkaEventsUrl: parsed.kafkaEventsUrl || getDefaultKafkaEventsUrl()
+        kafkaEventsUrl: parsed.kafkaEventsUrl || getDefaultKafkaEventsUrl(),
+        defaultPipeline: parsed.defaultPipeline || 'video-analysis'
       }
     }
   } catch (error) {
@@ -270,6 +301,7 @@ export const loadSettingsFromStorage = (): UrlSettings => {
     whipUrl: getDefaultStreamStartUrl(),
     whepUrl: getDefaultWhepUrl(),
     dataStreamUrl: getDefaultDataStreamUrl(),
-    kafkaEventsUrl: getDefaultKafkaEventsUrl()
+    kafkaEventsUrl: getDefaultKafkaEventsUrl(),
+    defaultPipeline: 'video-analysis'
   }
 }

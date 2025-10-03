@@ -69,11 +69,15 @@ const StreamControls: React.FC<StreamControlsProps> = ({
     const handleStorageChange = () => {
       const savedSettings = loadSettingsFromStorage()
       setWhipUrl(savedSettings.whipUrl)
+      setPipeline(savedSettings.defaultPipeline)
     }
     
     const handleSettingsChange = (event: CustomEvent) => {
       if (event.detail?.whipUrl) {
         setWhipUrl(event.detail.whipUrl)
+      }
+      if (event.detail?.defaultPipeline) {
+        setPipeline(event.detail.defaultPipeline)
       }
     }
     
@@ -85,7 +89,10 @@ const StreamControls: React.FC<StreamControlsProps> = ({
       window.removeEventListener('live-settings-changed', handleSettingsChange as EventListener)
     }
   }, [])
-  const [pipeline, setPipeline] = useState('video-analysis')
+  const [pipeline, setPipeline] = useState(() => {
+    const savedSettings = loadSettingsFromStorage()
+    return savedSettings.defaultPipeline
+  })
   const [jsonParams, setJsonParams] = useState('')
   const [videoEnabled, setVideoEnabled] = useState(true)
   const [customParams, setCustomParams] = useState<Record<string, any>>({})
