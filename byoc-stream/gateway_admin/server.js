@@ -1,0 +1,380 @@
+const fs = require('fs');
+const path = require('path');
+const express = require('express');
+const session = require('express-session');
+const SQLiteStore = require('connect-sqlite3')(session);
+const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
+
+const {
+  ensureAdminUser,
+  findUserByUsername,
+  createUser,
+  listUsers,
+  getUserById,
+  updateUserRole,
+  countAdmins,
+  listPoolEntries,
+  addPoolEntry,
+  setPoolEntryActive,
+  deletePoolEntry,
+  getPoolEntryByAddress,
+  listApiKeys,
+  addApiKey,
+  isValidApiKey
+} = require('./db');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+const ADMIN_FILE = path.join(__dirname, '.admin');
+
+const syncAdminCredentials = () => {
+  ensureAdminUser(ADMIN_FILE, (password) => bcrypt.hashSync(password, 10));
+};
+
+syncAdminCredentials();
+
+fs.watchFile(ADMIN_FILE, { interval: 1000 }, (curr, prev) => {
+  if (curr.mtimeMs === prev.mtimeMs && curr.size === prev.size) {
+    return;
+  }
+  try {
+    syncAdminCredentials();
+    console.log('Admin credentials synced from .admin');
+  } catch (err) {
+    console.error('Failed to sync admin credentials:', err);
+  }
+});
+
+if (!fs.existsSync(path.join(__dirname, 'views'))) {
+  fs.mkdirSync(path.join(__dirname, 'views'), { recursive: true });
+}
+
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
+
+app.use(express.urlencoded({ extended: false }));
+app.use(express.json());
+
+app.use(
+  session({
+    store: new SQLiteStore({ db: 'sessions.db', dir: __dirname }),
+    secret: process.env.SESSION_SECRET || 'change-this-secret',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      maxAge: 1000 * 60 * 60
+    }
+  })
+);
+
+const WRITE_ROLES = new Set(['admin', 'read-write']);
+
+app.use((req, res, next) => {
+  const user = req.session.user;
+  const role = user ? user.role : null;
+  const isAdmin = role === 'admin';
+  const canWrite = role && WRITE_ROLES.has(role);
+  res.locals.currentUser = user;
+  res.locals.isAdmin = Boolean(isAdmin);
+  res.locals.canWrite = Boolean(canWrite);
+  res.locals.isReadOnly = Boolean(role === 'read-only' || !canWrite);
+  res.locals.flash = req.session.flash;
+  delete req.session.flash;
+  next();
+});
+
+function generateStreamId(length = 10) {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  const bytes = crypto.randomBytes(length);
+  let result = '';
+  for (let i = 0; i < length; i += 1) {
+    result += alphabet[bytes[i] % alphabet.length];
+  }
+  return result;
+}
+
+function requireAuth(req, res, next) {
+  if (!req.session.user) {
+    return res.redirect('/login');
+  }
+  next();
+}
+
+function requireAdmin(req, res, next) {
+  if (!req.session.user || req.session.user.role !== 'admin') {
+    if (!req.session.user) {
+      return res.redirect('/login');
+    }
+    if (req.accepts('json') && !req.accepts('html')) {
+      return res.status(403).json({ error: 'Admin privileges required.' });
+    }
+    setFlash(req, 'error', 'Admin privileges required.');
+    return res.redirect('/');
+  }
+  next();
+}
+
+function hasWriteAccess(user) {
+  return Boolean(user && WRITE_ROLES.has(user.role));
+}
+
+function requireWriteAccess(req, res, next) {
+  if (!hasWriteAccess(req.session.user)) {
+    if (!req.session.user) {
+      return res.redirect('/login');
+    }
+    if (req.accepts('json') && !req.accepts('html')) {
+      return res.status(403).json({ error: 'Write access required.' });
+    }
+    setFlash(req, 'error', 'Write access required.');
+    return res.redirect('/');
+  }
+  next();
+}
+
+function setFlash(req, type, message) {
+  req.session.flash = { type, message };
+}
+
+app.get('/login', (req, res) => {
+  if (req.session.user) {
+    return res.redirect('/');
+  }
+  res.render('login');
+});
+
+app.post('/login', async (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) {
+    setFlash(req, 'error', 'Username and password are required.');
+    return res.redirect('/login');
+  }
+  const user = findUserByUsername(username.trim());
+  if (!user) {
+    setFlash(req, 'error', 'Invalid credentials.');
+    return res.redirect('/login');
+  }
+  const matches = await bcrypt.compare(password, user.password_hash);
+  if (!matches) {
+    setFlash(req, 'error', 'Invalid credentials.');
+    return res.redirect('/login');
+  }
+  const allowedRoles = ['admin', 'read-write', 'read-only'];
+  const normalizedRole = allowedRoles.includes(user.role) ? user.role : 'read-only';
+  req.session.user = { id: user.id, username: user.username, role: normalizedRole };
+  setFlash(req, 'success', `Welcome back, ${user.username}!`);
+  res.redirect('/');
+});
+
+app.get('/signup', (req, res) => {
+  res.render('signup');
+});
+
+app.post('/signup', async (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) {
+    setFlash(req, 'error', 'Username and password are required.');
+    return res.redirect('/signup');
+  }
+  const existing = findUserByUsername(username.trim());
+  if (existing) {
+    setFlash(req, 'error', 'Username already taken.');
+    return res.redirect('/signup');
+  }
+  const hash = await bcrypt.hash(password, 10);
+  createUser(username.trim(), hash, 'read-only');
+  setFlash(req, 'success', 'Account created with read-only access. Log in now.');
+  res.redirect('/login');
+});
+
+app.post('/logout', (req, res) => {
+  req.session.destroy(() => {
+    res.redirect('/login');
+  });
+});
+
+app.get('/', requireAuth, (req, res) => {
+  const poolEntries = listPoolEntries();
+  const apiKeys = listApiKeys();
+  const canWrite = hasWriteAccess(req.session.user);
+  res.render('dashboard', {
+    poolEntries,
+    apiKeys,
+    canManage: canWrite,
+    activePage: 'dashboard',
+    currentUser: req.session.user
+  });
+});
+
+app.post('/pool', requireAuth, requireWriteAccess, (req, res) => {
+  const { address } = req.body;
+  if (!address) {
+    setFlash(req, 'error', 'Address is required.');
+    return res.redirect('/');
+  }
+  try {
+    const result = addPoolEntry(address.trim(), req.session.user.id);
+    if (result.changes === 0) {
+      const existing = getPoolEntryByAddress(address.trim());
+      if (existing && existing.is_active === 0) {
+        setPoolEntryActive(existing.id, true);
+        setFlash(req, 'success', 'Existing pool entry re-enabled.');
+      } else {
+        setFlash(req, 'error', 'Address already exists in the pool.');
+      }
+    } else {
+      setFlash(req, 'success', 'Pool entry added.');
+    }
+  } catch (err) {
+    setFlash(req, 'error', 'Could not add address (maybe already exists).');
+  }
+  res.redirect('/');
+});
+
+app.post('/pool/:id/disable', requireAuth, requireWriteAccess, (req, res) => {
+  const entryId = Number(req.params.id);
+  if (!Number.isInteger(entryId)) {
+    setFlash(req, 'error', 'Invalid pool entry.');
+    return res.redirect('/');
+  }
+  const result = setPoolEntryActive(entryId, false);
+  if (result.changes === 0) {
+    setFlash(req, 'error', 'Pool entry not found.');
+  } else {
+    setFlash(req, 'success', 'Pool entry disabled.');
+  }
+  res.redirect('/');
+});
+
+app.post('/pool/:id/enable', requireAuth, requireWriteAccess, (req, res) => {
+  const entryId = Number(req.params.id);
+  if (!Number.isInteger(entryId)) {
+    setFlash(req, 'error', 'Invalid pool entry.');
+    return res.redirect('/');
+  }
+  const result = setPoolEntryActive(entryId, true);
+  if (result.changes === 0) {
+    setFlash(req, 'error', 'Pool entry not found.');
+  } else {
+    setFlash(req, 'success', 'Pool entry enabled.');
+  }
+  res.redirect('/');
+});
+
+app.post('/pool/:id/delete', requireAuth, requireWriteAccess, (req, res) => {
+  const entryId = Number(req.params.id);
+  if (!Number.isInteger(entryId)) {
+    setFlash(req, 'error', 'Invalid pool entry.');
+    return res.redirect('/');
+  }
+  const result = deletePoolEntry(entryId);
+  if (result.changes === 0) {
+    setFlash(req, 'error', 'Pool entry not found.');
+  } else {
+    setFlash(req, 'success', 'Pool entry removed.');
+  }
+  res.redirect('/');
+});
+
+app.post('/keys', requireAuth, requireWriteAccess, (req, res) => {
+  const { label, apiKey } = req.body;
+  if (!apiKey) {
+    setFlash(req, 'error', 'API key value is required.');
+    return res.redirect('/');
+  }
+  try {
+    const result = addApiKey(label ? label.trim() : null, apiKey.trim(), req.session.user.id);
+    if (result.changes === 0) {
+      setFlash(req, 'error', 'API key already exists.');
+    } else {
+      setFlash(req, 'success', 'API key saved.');
+    }
+  } catch (err) {
+    setFlash(req, 'error', 'Could not save key (maybe already exists).');
+  }
+  res.redirect('/');
+});
+
+app.get('/users', requireAuth, requireAdmin, (req, res) => {
+  const users = listUsers();
+  res.render('users', {
+    users,
+    activePage: 'users',
+    currentUser: req.session.user
+  });
+});
+
+app.post('/users/:id/role', requireAuth, requireAdmin, (req, res) => {
+  const userId = Number(req.params.id);
+  const requestedRole = typeof req.body.role === 'string' ? req.body.role.trim().toLowerCase() : '';
+  const allowedRoles = ['admin', 'read-write', 'read-only'];
+
+  if (!Number.isInteger(userId)) {
+    setFlash(req, 'error', 'Invalid user.');
+    return res.redirect('/users');
+  }
+
+  if (!allowedRoles.includes(requestedRole)) {
+    setFlash(req, 'error', 'Unsupported role selection.');
+    return res.redirect('/users');
+  }
+
+  const targetUser = getUserById(userId);
+  if (!targetUser) {
+    setFlash(req, 'error', 'User not found.');
+    return res.redirect('/users');
+  }
+
+  if (targetUser.role === requestedRole) {
+    setFlash(req, 'success', 'No changes were needed.');
+    return res.redirect('/users');
+  }
+
+  if (targetUser.role === 'admin' && requestedRole !== 'admin') {
+    const totalAdmins = countAdmins();
+    if (totalAdmins <= 1) {
+      setFlash(req, 'error', 'Cannot remove the last admin user.');
+      return res.redirect('/users');
+    }
+  }
+
+  updateUserRole(userId, requestedRole);
+
+  if (req.session.user && req.session.user.id === userId) {
+    req.session.user.role = requestedRole;
+  }
+
+  setFlash(req, 'success', 'User role updated.');
+  res.redirect('/users');
+});
+
+app.get('/pool', (req, res) => {
+  const poolEntries = listPoolEntries({ includeInactive: false }).map((entry) => ({
+    address: entry.address,
+    score: entry.score != null ? entry.score.toString() : '0'
+  }));
+  res.json(poolEntries);
+});
+
+app.post('/auth', (req, res) => {
+  const { stream } = req.body || {};
+  if (!stream) {
+    return res.status(400).json({ valid: false, error: 'Missing stream field.' });
+  }
+  const valid = isValidApiKey(stream.toString());
+  if (!valid) {
+    return res.status(401).json({ valid: false });
+  }
+  return res.json({ valid: true, stream_id: generateStreamId(10) });
+});
+
+app.use((err, req, res, next) => {
+  console.error(err);
+  res.status(500).render('error', { error: err });
+});
+
+app.listen(PORT, () => {
+  console.log(`Gateway Admin listening on port ${PORT}`);
+});

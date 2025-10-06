@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= title %> | Gateway Admin</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: "Roboto", "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      body {
+        margin: 0;
+        padding: 0;
+        min-height: 100vh;
+        background: #121212;
+        color: #e0e0e0;
+        display: flex;
+        flex-direction: column;
+      }
+      header {
+        background: #1f1f1f;
+        padding: 1rem 2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid #262626;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+      }
+      header h1 {
+        margin: 0;
+        font-size: 1.45rem;
+        letter-spacing: 0.01em;
+      }
+      header nav {
+        flex: 1;
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 1.5rem;
+      }
+      .nav-links {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+      }
+      .nav-links a {
+        color: #a7f3d0;
+        font-weight: 600;
+        padding: 0.35rem 0.75rem;
+        border-radius: 999px;
+        transition: background 0.2s ease, color 0.2s ease;
+      }
+      .nav-links a:hover {
+        background: rgba(34, 197, 94, 0.12);
+      }
+      .nav-links a.active {
+        background: rgba(34, 197, 94, 0.2);
+        color: #22c55e;
+      }
+      .nav-account {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        color: #b3b3b3;
+      }
+      .nav-account strong {
+        color: #ffffff;
+      }
+      .role-label {
+        font-size: 0.85rem;
+        font-weight: 600;
+      }
+      .role-label--admin {
+        color: #22c55e;
+      }
+      .role-label--write {
+        color: #4ade80;
+      }
+      .role-label--read {
+        color: #9ca3af;
+      }
+      a, a:visited {
+        color: #66bb6a;
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+      .muted {
+        color: #9ca3af;
+        font-size: 0.95rem;
+      }
+      main {
+        flex: 1;
+        width: min(960px, 100%);
+        margin: 2rem auto;
+        padding: 0 1.5rem 3rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+      }
+      .card {
+        background: #1c1c1c;
+        border-radius: 12px;
+        padding: 1.75rem;
+        border: 1px solid #262626;
+        box-shadow: 0 18px 36px rgba(0, 0, 0, 0.35);
+      }
+      .card h2 {
+        margin-top: 0;
+        font-size: 1.25rem;
+        font-weight: 600;
+      }
+      label {
+        display: block;
+        margin-bottom: 0.4rem;
+        font-weight: 600;
+      }
+      input {
+        width: 100%;
+        padding: 0.7rem 0.85rem;
+        margin-bottom: 1rem;
+        border-radius: 10px;
+        border: 1px solid #303030;
+        background: #181818;
+        color: inherit;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      }
+      input:focus {
+        outline: none;
+        border-color: #22c55e;
+        box-shadow: 0 0 0 1px #22c55e;
+      }
+      select {
+        width: 100%;
+        padding: 0.7rem 0.85rem;
+        margin-bottom: 1rem;
+        border-radius: 10px;
+        border: 1px solid #303030;
+        background: #181818;
+        color: inherit;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      }
+      select:focus {
+        outline: none;
+        border-color: #22c55e;
+        box-shadow: 0 0 0 1px #22c55e;
+      }
+      input:disabled,
+      select:disabled {
+        background: #1a1a1a;
+        color: #5f5f5f;
+        cursor: not-allowed;
+        border-color: #2a2a2a;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.35rem;
+        padding: 0.65rem 1.3rem;
+        border-radius: 999px;
+        border: none;
+        background: #22c55e;
+        color: #062814;
+        font-weight: 600;
+        font-size: 0.95rem;
+        letter-spacing: 0.01em;
+        cursor: pointer;
+        transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease;
+      }
+      .btn:hover {
+        background: #16a34a;
+        box-shadow: 0 8px 20px rgba(22, 163, 74, 0.35);
+      }
+      .btn:active {
+        transform: translateY(1px);
+      }
+      .btn:disabled,
+      .btn[disabled] {
+        background: #2a2a2a;
+        color: #7a7a7a;
+        box-shadow: none;
+        cursor: not-allowed;
+      }
+      .btn-outline {
+        background: transparent;
+        color: #9be5a9;
+        border: 1px solid #3ca55c;
+      }
+      .btn-outline:hover {
+        background: rgba(34, 197, 94, 0.12);
+      }
+      .btn-outline:disabled,
+      .btn-outline[disabled] {
+        border-color: #2f2f2f;
+        color: #666666;
+        background: transparent;
+      }
+      .btn-danger {
+        background: #ef4444;
+        color: #fff;
+      }
+      .btn-danger:hover {
+        background: #dc2626;
+        box-shadow: 0 8px 20px rgba(220, 38, 38, 0.35);
+      }
+      .btn-danger:disabled,
+      .btn-danger[disabled] {
+        background: #402424;
+        color: #9f7f7f;
+      }
+      .btn-small {
+        padding: 0.45rem 1rem;
+        font-size: 0.85rem;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 1.25rem;
+        background: #181818;
+        border-radius: 12px;
+        overflow: hidden;
+      }
+      thead {
+        background: #1f1f1f;
+      }
+      th, td {
+        padding: 0.9rem 1rem;
+        border-bottom: 1px solid #262626;
+        text-align: left;
+      }
+      tbody tr:hover {
+        background: rgba(34, 197, 94, 0.08);
+      }
+      tbody tr.self {
+        background: rgba(34, 197, 94, 0.12);
+      }
+      tbody tr.self:hover {
+        background: rgba(34, 197, 94, 0.2);
+      }
+      code {
+        background: rgba(34, 197, 94, 0.12);
+        padding: 0.15rem 0.4rem;
+        border-radius: 6px;
+        font-size: 0.95rem;
+      }
+      .flash {
+        padding: 0.85rem 1rem;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+        border: 1px solid transparent;
+      }
+      .flash-success {
+        background: rgba(34, 197, 94, 0.18);
+        color: #a3f7b5;
+        border-color: rgba(34, 197, 94, 0.28);
+      }
+      .flash-error {
+        background: rgba(239, 68, 68, 0.18);
+        color: #fecaca;
+        border-color: rgba(239, 68, 68, 0.28);
+      }
+      .notice {
+        border-radius: 12px;
+        padding: 1.1rem 1.4rem;
+        border: 1px solid rgba(34, 197, 94, 0.25);
+        background: rgba(34, 197, 94, 0.12);
+        color: #bbf7d0;
+      }
+      .notice p {
+        margin: 0;
+      }
+      .notice strong {
+        color: #22c55e;
+      }
+      form.inline {
+        display: inline-flex;
+        align-items: center;
+        margin-right: 0.5rem;
+      }
+      form.inline:last-of-type {
+        margin-right: 0;
+      }
+      form.inline select {
+        margin: 0 0.75rem 0 0;
+        width: auto;
+        min-width: 9rem;
+      }
+      form.inline button {
+        margin: 0;
+      }
+      .nav-account form.inline {
+        margin-right: 0;
+      }
+      footer {
+        text-align: center;
+        padding: 2rem;
+        color: #7f8c8d;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Gateway Admin</h1>
+      <nav>
+        <% if (currentUser) { %>
+          <% const roleValue = currentUser.role || 'read-only'; %>
+          <% const adminView = (typeof isAdmin !== 'undefined') ? isAdmin : (roleValue === 'admin'); %>
+          <% const writeView = (typeof canWrite !== 'undefined') ? canWrite : (roleValue === 'admin' || roleValue === 'read-write'); %>
+          <% const roleDisplay = roleValue === 'admin' ? 'Admin' : (roleValue === 'read-write' ? 'Read-write' : 'Read-only'); %>
+          <% const roleClass = roleValue === 'admin' ? 'role-label--admin' : (roleValue === 'read-write' ? 'role-label--write' : 'role-label--read'); %>
+          <div class="nav-links">
+            <a href="/" class="<%= activePage === 'dashboard' ? 'active' : '' %>">Dashboard</a>
+            <% if (adminView) { %>
+              <a href="/users" class="<%= activePage === 'users' ? 'active' : '' %>">Users</a>
+            <% } %>
+          </div>
+          <div class="nav-account">
+            <span>Signed in as <strong><%= currentUser.username %></strong> <span class="role-label <%= roleClass %>">(<%= roleDisplay %>)</span></span>
+            <form class="inline" action="/logout" method="post">
+              <button class="btn btn-outline btn-small" type="submit">Log out</button>
+            </form>
+          </div>
+        <% } else { %>
+          <a href="/login">Log in</a>
+          <a href="/signup">Sign up</a>
+        <% } %>
+      </nav>
+    </header>
+    <main>

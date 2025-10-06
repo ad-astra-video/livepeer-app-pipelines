@@ -1,0 +1,52 @@
+<%- include('partials/header', { title: 'Users', currentUser, activePage: 'users' }) %>
+<%- include('partials/flash', { flash }) %>
+
+<div class="card">
+  <h2>User management</h2>
+  <p class="muted">Promote collaborators to admin, grant them read-write control, or keep them read-only. Changes apply immediately.</p>
+  <% if (users.length === 0) { %>
+    <p>No users found yet.</p>
+  <% } else { %>
+    <table>
+      <thead>
+        <tr>
+          <th>User</th>
+          <th>Role</th>
+          <th>Created</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% users.forEach(function(user) { %>
+          <% const normalizedRole = user.role === 'admin' ? 'Admin' : (user.role === 'read-write' ? 'Read-write' : 'Read-only'); %>
+          <% const isSelf = currentUser && currentUser.id === user.id; %>
+          <tr class="<%= isSelf ? 'self' : '' %>">
+            <td>
+              <strong><%= user.username %></strong>
+              <% if (isSelf) { %>
+                <% const selfRoleClass = user.role === 'admin' ? 'role-label--admin' : (user.role === 'read-write' ? 'role-label--write' : 'role-label--read'); %>
+                <span class="role-label <%= selfRoleClass %>">You</span>
+              <% } %>
+            </td>
+            <td><%= normalizedRole %></td>
+            <td><%= new Date(user.created_at).toLocaleString() %></td>
+            <td>
+              <form class="inline" method="post" action="/users/<%= user.id %>/role">
+                <select name="role">
+                  <option value="admin" <%= user.role === 'admin' ? 'selected' : '' %>>Admin</option>
+                  <option value="read-write" <%= user.role === 'read-write' ? 'selected' : '' %>>Read-write</option>
+                  <option value="read-only" <%= user.role === 'read-only' ? 'selected' : '' %>>Read-only</option>
+                </select>
+                <button class="btn btn-small" type="submit">Update</button>
+              </form>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</div>
+
+<p class="muted">Reminder: There must always be at least one admin. Read-write accounts can edit pool entries and keys, while read-only accounts are limited to viewing.</p>
+
+<%- include('partials/footer') %>

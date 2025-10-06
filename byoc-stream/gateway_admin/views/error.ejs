@@ -1,0 +1,6 @@
+<%- include('partials/header', { title: 'Error', currentUser }) %>
+<div class="card">
+  <h2>Something went wrong</h2>
+  <p><%= error && error.message ? error.message : 'Unexpected error occurred.' %></p>
+</div>
+<%- include('partials/footer') %>
