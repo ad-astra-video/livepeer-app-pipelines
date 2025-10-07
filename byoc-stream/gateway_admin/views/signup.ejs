@@ -2,7 +2,7 @@
 <%- include('partials/flash', { flash }) %>
 <div class="card">
   <h2>Create your account</h2>
-  <form method="post" action="/signup">
+  <form method="post" action="/admin/signup">
     <label for="username">Username</label>
     <input id="username" name="username" type="text" required />
     <label for="password">Password</label>
@@ -10,6 +10,6 @@
     <button class="btn" type="submit">Sign up</button>
   </form>
   <p class="muted">New accounts start in read-only mode. Ask an admin to upgrade you to read-write or admin access if needed.</p>
-  <p>Already registered? <a href="/login">Log in</a>.</p>
+  <p>Already registered? <a href="/admin/login">Log in</a>.</p>
 </div>
 <%- include('partials/footer') %>

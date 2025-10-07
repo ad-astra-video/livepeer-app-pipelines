@@ -31,7 +31,7 @@
             <td><%= normalizedRole %></td>
             <td><%= new Date(user.created_at).toLocaleString() %></td>
             <td>
-              <form class="inline" method="post" action="/users/<%= user.id %>/role">
+              <form class="inline" method="post" action="/admin/users/<%= user.id %>/role">
                 <select name="role">
                   <option value="admin" <%= user.role === 'admin' ? 'selected' : '' %>>Admin</option>
                   <option value="read-write" <%= user.role === 'read-write' ? 'selected' : '' %>>Read-write</option>

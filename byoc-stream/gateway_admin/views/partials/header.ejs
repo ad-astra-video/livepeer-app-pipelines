@@ -314,9 +314,9 @@
           <% const roleDisplay = roleValue === 'admin' ? 'Admin' : (roleValue === 'read-write' ? 'Read-write' : 'Read-only'); %>
           <% const roleClass = roleValue === 'admin' ? 'role-label--admin' : (roleValue === 'read-write' ? 'role-label--write' : 'role-label--read'); %>
           <div class="nav-links">
-            <a href="/" class="<%= activePage === 'dashboard' ? 'active' : '' %>">Dashboard</a>
+            <a href="/admin/dashboard" class="<%= activePage === 'dashboard' ? 'active' : '' %>">Dashboard</a>
             <% if (adminView) { %>
-              <a href="/users" class="<%= activePage === 'users' ? 'active' : '' %>">Users</a>
+              <a href="/admin/users" class="<%= activePage === 'users' ? 'active' : '' %>">Users</a>
             <% } %>
           </div>
           <div class="nav-account">
@@ -324,13 +324,13 @@
               <% if (writeView) { %>
                 <button class="btn btn-outline btn-small" type="button" id="openSettingsButton">Settings</button>
               <% } %>
-            <form class="inline" action="/logout" method="post">
+            <form class="inline" action="/admin/logout" method="post">
               <button class="btn btn-outline btn-small" type="submit">Log out</button>
             </form>
           </div>
         <% } else { %>
-          <a href="/login">Log in</a>
-          <a href="/signup">Sign up</a>
+          <a href="/admin/login">Log in</a>
+          <a href="/admin/signup">Sign up</a>
         <% } %>
       </nav>
     </header>

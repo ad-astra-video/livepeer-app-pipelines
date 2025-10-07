@@ -9,7 +9,7 @@
 <div class="modal-backdrop" id="settingsModal">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="settingsModalTitle">
     <h2 id="settingsModalTitle">Settings</h2>
-    <form method="post" action="/settings">
+    <form method="post" action="/admin/settings">
       <label for="arbitrumRpcUrl">Arbitrum RPC URL</label>
       <input id="arbitrumRpcUrl" name="arbitrumRpcUrl" type="text" placeholder="https://arb1.example.com" value="<%= currentSettings.arbitrum_rpc_url || '' %>" <%= canManage ? '' : 'disabled' %> />
       <label for="graphApiKey">Graph API key</label>
@@ -23,7 +23,7 @@
 </div>
 <div class="card">
   <h2>Pool entries</h2>
-  <form method="post" action="/pool">
+  <form method="post" action="/admin/pool">
     <label for="address">Stream URL</label>
     <input id="address" name="address" type="url" placeholder="https://example.com/stream" <%= canManage ? '' : 'disabled' %> required />
     <button class="btn" type="submit" <%= canManage ? '' : 'disabled' %>>Add to pool</button>
@@ -81,10 +81,10 @@
             <td><%= entry.score %></td>
             <td><%= entry.is_active ? 'Active' : 'Disabled' %></td>
             <td>
-              <form class="inline" method="post" action="/pool/<%= entry.id %>/<%= entry.is_active ? 'disable' : 'enable' %>">
+              <form class="inline" method="post" action="/admin/pool/<%= entry.id %>/<%= entry.is_active ? 'disable' : 'enable' %>">
                 <button class="btn btn-outline btn-small" type="submit" <%= canManage ? '' : 'disabled' %>><%= entry.is_active ? 'Disable' : 'Enable' %></button>
               </form>
-              <form class="inline" method="post" action="/pool/<%= entry.id %>/delete" onsubmit="return confirm('Remove this pool entry?');">
+              <form class="inline" method="post" action="/admin/pool/<%= entry.id %>/delete" onsubmit="return confirm('Remove this pool entry?');">
                 <button class="btn btn-danger btn-small" type="submit" <%= canManage ? '' : 'disabled' %>>Remove</button>
               </form>
             </td>
@@ -97,7 +97,7 @@
 
 <div class="card">
   <h2>Access keys</h2>
-  <form method="post" action="/keys">
+  <form method="post" action="/admin/keys">
     <label for="label">Label</label>
     <input id="label" name="label" type="text" placeholder="optional label" <%= canManage ? '' : 'disabled' %> />
     <label for="apiKey">Key value</label>

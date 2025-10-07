@@ -2,13 +2,13 @@
 <%- include('partials/flash', { flash }) %>
 <div class="card">
   <h2>Log in</h2>
-  <form method="post" action="/login">
+  <form method="post" action="/admin/login">
     <label for="username">Username</label>
     <input id="username" name="username" type="text" required />
     <label for="password">Password</label>
     <input id="password" name="password" type="password" required />
     <button class="btn" type="submit">Log in</button>
   </form>
-  <p>Need an account? <a href="/signup">Sign up instead</a>.</p>
+  <p>Need an account? <a href="/admin/signup">Sign up instead</a>.</p>
 </div>
 <%- include('partials/footer') %>
