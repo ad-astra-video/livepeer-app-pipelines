@@ -199,6 +199,10 @@ app.post('/logout', (req, res) => {
 });
 
 app.get('/', requireAuth, (req, res) => {
+  res.redirect('/dashboard');
+});
+
+app.get('/dashboard', requireAuth, (req, res) => {
   const poolEntries = listPoolEntries();
   const apiKeys = listApiKeys();
   const canWrite = hasWriteAccess(req.session.user);
