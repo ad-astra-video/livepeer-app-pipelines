@@ -40,6 +40,19 @@ https://{$HOST}:8088 {
 		}
 	}
 
+	handle /admin/* {
+		header {
+			Access-Control-Allow-Origin *
+			Access-Control-Allow-Methods "GET, HEAD, POST, OPTIONS"
+			Access-Control-Allow-Headers *
+		}
+
+		@options method OPTIONS
+		respond @options 204
+
+		reverse_proxy https://byoc-{$CAPABILITY_NAME}-gateway-admin:3000
+	}
+
 	handle_path /mediamtx/* {
 		header {
 			Access-Control-Allow-Origin *
