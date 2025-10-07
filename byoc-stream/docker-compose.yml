@@ -34,6 +34,13 @@ services:
       - 8890:8890
       - 9997:9997
       - 1935:1935
+  gateway_admin:
+    image: node:20
+    working_dir: /app
+    volumes:
+      - ./gateway_admin:/app
+      - ./gateway_admin/db:/app/db
+    command: sh -c "npm install && npm start"
   gateway:
     #image: adastravideo/go-livepeer:data-url-seg-writer-opt
     image: adastravideo/go-livepeer:byoc-streaming-v2

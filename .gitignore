@@ -138,6 +138,7 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
+db/
 #voice cloning sample app exclusions
 not-updated/voice-cloning/worker/
 not-updated/voice-cloning/data/orchestrator/
