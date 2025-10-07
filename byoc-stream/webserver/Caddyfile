@@ -50,7 +50,7 @@ https://{$HOST}:8088 {
 		@options method OPTIONS
 		respond @options 204
 
-		reverse_proxy https://byoc-{$CAPABILITY_NAME}-gateway-admin:3000
+		reverse_proxy http://byoc-{$CAPABILITY_NAME}-gateway-admin:3000
 	}
 
 	handle_path /mediamtx/* {
