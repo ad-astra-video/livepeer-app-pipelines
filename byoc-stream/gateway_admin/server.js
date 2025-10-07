@@ -7,6 +7,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 
 const {
+  dataDir,
   ensureAdminUser,
   findUserByUsername,
   createUser,
@@ -21,7 +22,9 @@ const {
   getPoolEntryByAddress,
   listApiKeys,
   addApiKey,
-  isValidApiKey
+  isValidApiKey,
+  getSettings,
+  updateSettings
 } = require('./db');
 
 const app = express();
@@ -58,7 +61,7 @@ app.use(express.json());
 
 app.use(
   session({
-    store: new SQLiteStore({ db: 'sessions.db', dir: __dirname }),
+  store: new SQLiteStore({ db: 'sessions.db', dir: dataDir }),
     secret: process.env.SESSION_SECRET || 'change-this-secret',
     resave: false,
     saveUninitialized: false,
@@ -199,13 +202,24 @@ app.get('/', requireAuth, (req, res) => {
   const poolEntries = listPoolEntries();
   const apiKeys = listApiKeys();
   const canWrite = hasWriteAccess(req.session.user);
+  const settings = getSettings();
   res.render('dashboard', {
     poolEntries,
     apiKeys,
     canManage: canWrite,
     activePage: 'dashboard',
-    currentUser: req.session.user
+    currentUser: req.session.user,
+    settings
   });
+});
+
+app.post('/settings', requireAuth, requireWriteAccess, (req, res) => {
+  const arbitrumRpcUrl = typeof req.body.arbitrumRpcUrl === 'string' ? req.body.arbitrumRpcUrl.trim() : '';
+  const graphApiKey = typeof req.body.graphApiKey === 'string' ? req.body.graphApiKey.trim() : '';
+
+  updateSettings({ arbitrumRpcUrl, graphApiKey });
+  setFlash(req, 'success', 'Settings saved.');
+  res.redirect('/');
 });
 
 app.post('/pool', requireAuth, requireWriteAccess, (req, res) => {

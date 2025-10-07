@@ -2,7 +2,12 @@ const fs = require('fs');
 const path = require('path');
 const Database = require('better-sqlite3');
 
-const dbPath = path.join(__dirname, 'sqlite.db');
+const dataDir = path.join(__dirname, 'db');
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir, { recursive: true });
+}
+
+const dbPath = path.join(dataDir, 'sqlite.db');
 const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
 
@@ -33,6 +38,12 @@ db.exec(`
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (created_by) REFERENCES users (id)
   );
+
+  CREATE TABLE IF NOT EXISTS settings (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    arbitrum_rpc_url TEXT DEFAULT '',
+    graph_api_key TEXT DEFAULT ''
+  );
 `);
 
 const poolColumns = db.prepare('PRAGMA table_info(pool_entries)').all();
@@ -42,6 +53,11 @@ if (!hasIsActiveColumn) {
 }
 
 db.prepare("UPDATE users SET role = 'read-only' WHERE role NOT IN ('admin', 'read-only', 'read-write')").run();
+
+const settingsRow = db.prepare('SELECT id FROM settings WHERE id = 1').get();
+if (!settingsRow) {
+  db.prepare("INSERT INTO settings (id, arbitrum_rpc_url, graph_api_key) VALUES (1, '', '')").run();
+}
 
 function parseAdminCredentials(adminFile) {
   const defaultSpec = 'admin:admin123';
@@ -143,8 +159,23 @@ function isValidApiKey(apiKey) {
   return Boolean(db.prepare('SELECT id FROM api_keys WHERE api_key = ?').get(apiKey));
 }
 
+function getSettings() {
+  return (
+    db
+      .prepare('SELECT arbitrum_rpc_url, graph_api_key FROM settings WHERE id = 1')
+      .get() || { arbitrum_rpc_url: '', graph_api_key: '' }
+  );
+}
+
+function updateSettings({ arbitrumRpcUrl, graphApiKey }) {
+  return db
+    .prepare('UPDATE settings SET arbitrum_rpc_url = ?, graph_api_key = ? WHERE id = 1')
+    .run(arbitrumRpcUrl, graphApiKey);
+}
+
 module.exports = {
   db,
+  dataDir,
   ensureAdminUser,
   findUserByUsername,
   createUser,
@@ -159,5 +190,7 @@ module.exports = {
   getPoolEntryByAddress,
   listApiKeys,
   addApiKey,
-  isValidApiKey
+  isValidApiKey,
+  getSettings,
+  updateSettings
 };

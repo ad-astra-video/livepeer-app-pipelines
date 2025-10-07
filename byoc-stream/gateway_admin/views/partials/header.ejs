@@ -321,6 +321,9 @@
           </div>
           <div class="nav-account">
             <span>Signed in as <strong><%= currentUser.username %></strong> <span class="role-label <%= roleClass %>">(<%= roleDisplay %>)</span></span>
+              <% if (writeView) { %>
+                <button class="btn btn-outline btn-small" type="button" id="openSettingsButton">Settings</button>
+              <% } %>
             <form class="inline" action="/logout" method="post">
               <button class="btn btn-outline btn-small" type="submit">Log out</button>
             </form>

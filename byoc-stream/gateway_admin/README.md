@@ -6,8 +6,9 @@ Server-rendered Node.js admin panel for managing stream pool entries and API key
 
 - Server-rendered dashboard with forms for managing pool URLs and API keys
 - Enable/disable/remove pool entries directly from the dashboard
+- Settings modal to store Arbitrum RPC endpoint and Graph API key in SQLite
 - Admin-only user management tab for promoting/demoting accounts (admin, read-write, read-only)
-- SQLite persistence (`sqlite.db` within the project directory)
+- SQLite persistence stored in `db/sqlite.db`
 - User accounts with a default admin credential loaded from `.admin`
 - Session-based authentication with login, logout, and sign-up flows
 - JSON API endpoints
@@ -40,6 +41,8 @@ The server defaults to `http://localhost:3000`.
 ### Default admin user
 
 The `.admin` file contains `username:password`. On launch the application reads this file and provisions synchronised admin credentials. Edits to `.admin` are watched at runtime—saving the file immediately updates the admin username/password without restarting the server. If the file is removed, it will be recreated with the default `admin:admin123` pair.
+
+SQLite artefacts (application DB and session store) live under `gateway_admin/db/`. Add this folder to your backup/volume strategy if you want persistent state outside the container.
 
 ### Roles and permissions
 
