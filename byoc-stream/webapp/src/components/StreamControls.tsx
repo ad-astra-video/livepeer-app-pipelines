@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react'
-import { Video, Mic, MicOff, VideoOff, Play, Square, Upload, AlertCircle, Download, X, Wifi, WifiOff, RefreshCw, Camera, Monitor, ChevronDown, Trash2, Tag } from 'lucide-react'
+import { Video, Mic, MicOff, VideoOff, Play, Square, Upload, AlertCircle, Download, X, Wifi, WifiOff, RefreshCw, Camera, Monitor, ChevronDown } from 'lucide-react'
 import { getDefaultStreamStartUrl, generateStreamId } from '../utils/urls'
 import { loadSettingsFromStorage } from './SettingsModal'
 import ErrorModal from './ErrorModal'
@@ -99,6 +99,9 @@ const StreamControls: React.FC<StreamControlsProps> = ({
     const savedSettings = loadSettingsFromStorage()
     return savedSettings.defaultPipeline
   })
+  const [savedPipelines, setSavedPipelines] = useState<string[]>([])
+  const [showPipelineDropdown, setShowPipelineDropdown] = useState(false)
+  const pipelineDropdownRef = useRef<HTMLDivElement>(null)
   const [jsonParams, setJsonParams] = useState('')
   const [videoEnabled, setVideoEnabled] = useState(true)
   const [customParams, setCustomParams] = useState<Record<string, any>>({})
@@ -194,42 +197,31 @@ const StreamControls: React.FC<StreamControlsProps> = ({
   
   const handlePipelineChange = (newValue: string) => {
     setPipeline(newValue)
-  }
-  
-  // Save pipeline to saved list and settings after successful stream start
-  const savePipelineAfterSuccess = (pipelineValue: string) => {
-    if (!pipelineValue.trim()) return
     
-    // Add to saved pipelines if not already in list
-    if (!savedPipelines.includes(pipelineValue.trim())) {
-      const updatedPipelines = [pipelineValue.trim(), ...savedPipelines]
+    // Add to saved pipelines if not empty and not already in list
+    if (newValue.trim() && !savedPipelines.includes(newValue.trim())) {
+      const updatedPipelines = [newValue.trim(), ...savedPipelines]
       setSavedPipelines(updatedPipelines)
       savePipelinesToStorage(updatedPipelines)
     }
     
-    // Save as default pipeline in settings
-    const currentSettings = loadSettingsFromStorage()
-    const updatedSettings = {
-      ...currentSettings,
-      defaultPipeline: pipelineValue.trim()
-    }
-    try {
-      localStorage.setItem('livepeer-ai-video-streaming-url-settings', JSON.stringify(updatedSettings))
-    } catch (error) {
-      console.warn('Failed to save default pipeline:', error)
+    // Save as default pipeline in settings (so it persists)
+    if (newValue.trim()) {
+      const currentSettings = loadSettingsFromStorage()
+      const updatedSettings = {
+        ...currentSettings,
+        defaultPipeline: newValue.trim()
+      }
+      try {
+        localStorage.setItem('livepeer-ai-video-streaming-url-settings', JSON.stringify(updatedSettings))
+      } catch (error) {
+        console.warn('Failed to save default pipeline:', error)
+      }
     }
   }
   
   const selectPipeline = (pipelineValue: string) => {
     handlePipelineChange(pipelineValue)
-    setShowPipelineDropdown(false)
-  }
-  
-  const clearAllPipelines = () => {
-    // Reset to default pipelines
-    const defaultPipelines = ['comfystream', 'video-analysis', 'vtuber', 'passthrough', 'noop']
-    setSavedPipelines(defaultPipelines)
-    savePipelinesToStorage(defaultPipelines)
     setShowPipelineDropdown(false)
   }
 
@@ -330,6 +322,26 @@ const StreamControls: React.FC<StreamControlsProps> = ({
   // Load media devices on component mount
   useEffect(() => {
     loadMediaDevices()
+  }, [])
+  
+  // Load saved pipelines on component mount
+  useEffect(() => {
+    const pipelines = loadPipelinesFromStorage()
+    setSavedPipelines(pipelines)
+  }, [])
+  
+  // Handle outside click to close pipeline dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (pipelineDropdownRef.current && !pipelineDropdownRef.current.contains(event.target as Node)) {
+        setShowPipelineDropdown(false)
+      }
+    }
+    
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
   }, [])
 
   // Track current time of the video relative to when WebRTC connection was established
@@ -1616,8 +1628,8 @@ const StreamControls: React.FC<StreamControlsProps> = ({
               />
             </div>
 
-            {/* Pipeline Input */}
-            <div>
+            {/* Pipeline Input with Dropdown */}
+            <div className="relative" ref={pipelineDropdownRef}>
               <label className="block text-sm font-medium text-gray-300 mb-2">
                 Pipeline
               </label>
@@ -1645,18 +1657,6 @@ const StreamControls: React.FC<StreamControlsProps> = ({
               {/* Dropdown List */}
               {showPipelineDropdown && savedPipelines.length > 0 && (
                 <div className="absolute z-10 w-full mt-1 bg-slate-800 border border-white/20 rounded-lg shadow-xl max-h-60 overflow-y-auto">
-                  {/* Reset to Default Button */}
-                  <div className="border-b border-white/10">
-                    <button
-                      type="button"
-                      onClick={clearAllPipelines}
-                      className="w-full px-4 py-2.5 text-left text-sm text-orange-400 hover:bg-orange-900/30 transition-colors flex items-center"
-                      title="Reset to default pipelines"
-                    >
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Reset to Default List
-                    </button>
-                  </div>
                   {savedPipelines.map((savedPipeline, index) => (
                     <button
                       key={index}
