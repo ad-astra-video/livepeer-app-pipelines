@@ -317,10 +317,14 @@ app.post('/admin/keys', requireAuth, requireWriteAccess, (req, res) => {
 
 app.get('/admin/users', requireAuth, requireAdmin, (req, res) => {
   const users = listUsers();
+  const canWrite = hasWriteAccess(req.session.user);
+  const settings = getSettings();
   res.render('users', {
     users,
     activePage: 'users',
-    currentUser: req.session.user
+    currentUser: req.session.user,
+    canManage: canWrite,
+    settings
   });
 });
 
