@@ -1,0 +1,73 @@
+<% const currentSettings = settings || { arbitrum_rpc_url: '', graph_api_key: '' }; %>
+<div class="modal-backdrop" id="settingsModal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="settingsModalTitle">
+    <h2 id="settingsModalTitle">Settings</h2>
+    <form method="post" action="/admin/settings">
+      <label for="arbitrumRpcUrl">Arbitrum RPC URL</label>
+      <input 
+        id="arbitrumRpcUrl" 
+        name="arbitrumRpcUrl" 
+        type="text" 
+        placeholder="https://arb1.example.com" 
+        value="<%= currentSettings.arbitrum_rpc_url || '' %>" 
+        <%= canManage ? '' : 'disabled' %> 
+      />
+      
+      <label for="graphApiKey">Graph API key</label>
+      <input 
+        id="graphApiKey" 
+        name="graphApiKey" 
+        type="text" 
+        placeholder="graph-key" 
+        value="<%= currentSettings.graph_api_key || '' %>" 
+        <%= canManage ? '' : 'disabled' %> 
+      />
+      
+      <div class="modal-actions">
+        <button class="btn btn-secondary" type="button" data-close-modal>Cancel</button>
+        <button class="btn" type="submit" <%= canManage ? '' : 'disabled' %>>Save settings</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  (function () {
+    const modal = document.getElementById('settingsModal');
+    if (!modal) {
+      return;
+    }
+    const openButton = document.getElementById('openSettingsButton');
+    const closeButtons = modal.querySelectorAll('[data-close-modal]');
+    
+    const hideModal = () => {
+      modal.classList.remove('active');
+    };
+    
+    const showModal = () => {
+      modal.classList.add('active');
+      const firstInput = modal.querySelector('input:not([disabled])');
+      if (firstInput) {
+        firstInput.focus();
+      }
+    };
+    
+    if (openButton) {
+      openButton.addEventListener('click', showModal);
+    }
+    
+    closeButtons.forEach((btn) => btn.addEventListener('click', hideModal));
+    
+    modal.addEventListener('click', (event) => {
+      if (event.target === modal) {
+        hideModal();
+      }
+    });
+    
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && modal.classList.contains('active')) {
+        hideModal();
+      }
+    });
+  })();
+</script>

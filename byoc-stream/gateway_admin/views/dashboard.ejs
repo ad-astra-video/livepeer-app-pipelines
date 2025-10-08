@@ -1,29 +1,14 @@
 <%- include('partials/header', { title: 'Dashboard', currentUser, activePage: 'dashboard' }) %>
 <%- include('partials/flash', { flash }) %>
-<% const currentSettings = settings || { arbitrum_rpc_url: '', graph_api_key: '' }; %>
 <% if (!canManage) { %>
   <div class="notice">
     <p><strong>Read-only mode:</strong> You can browse pool entries and API keys, but only admins or read-write users can make changes.</p>
   </div>
 <% } %>
-<div class="modal-backdrop" id="settingsModal">
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="settingsModalTitle">
-    <h2 id="settingsModalTitle">Settings</h2>
-    <form method="post" action="/settings">
-      <label for="arbitrumRpcUrl">Arbitrum RPC URL</label>
-      <input id="arbitrumRpcUrl" name="arbitrumRpcUrl" type="text" placeholder="https://arb1.example.com" value="<%= currentSettings.arbitrum_rpc_url || '' %>" <%= canManage ? '' : 'disabled' %> />
-      <label for="graphApiKey">Graph API key</label>
-      <input id="graphApiKey" name="graphApiKey" type="text" placeholder="graph-key" value="<%= currentSettings.graph_api_key || '' %>" <%= canManage ? '' : 'disabled' %> />
-      <div class="modal-actions">
-        <button class="btn btn-secondary" type="button" data-close-modal>Cancel</button>
-        <button class="btn" type="submit" <%= canManage ? '' : 'disabled' %>>Save settings</button>
-      </div>
-    </form>
-  </div>
-</div>
+<%- include('partials/settings-modal', { settings, canManage }) %>
 <div class="card">
   <h2>Pool entries</h2>
-  <form method="post" action="/pool">
+  <form method="post" action="/admin/pool">
     <label for="address">Stream URL</label>
     <input id="address" name="address" type="url" placeholder="https://example.com/stream" <%= canManage ? '' : 'disabled' %> required />
     <button class="btn" type="submit" <%= canManage ? '' : 'disabled' %>>Add to pool</button>
@@ -44,47 +29,13 @@
         <% poolEntries.forEach(function(entry) { %>
           <tr>
             <td><%= entry.address %></td>
-    <script>
-      (function () {
-        const modal = document.getElementById('settingsModal');
-        if (!modal) {
-          return;
-        }
-        const openButton = document.getElementById('openSettingsButton');
-        const closeButtons = modal.querySelectorAll('[data-close-modal]');
-        const hideModal = () => {
-          modal.classList.remove('active');
-        };
-        const showModal = () => {
-          modal.classList.add('active');
-          const firstInput = modal.querySelector('input:not([disabled])');
-          if (firstInput) {
-            firstInput.focus();
-          }
-        };
-        if (openButton) {
-          openButton.addEventListener('click', showModal);
-        }
-        closeButtons.forEach((btn) => btn.addEventListener('click', hideModal));
-        modal.addEventListener('click', (event) => {
-          if (event.target === modal) {
-            hideModal();
-          }
-        });
-        document.addEventListener('keydown', (event) => {
-          if (event.key === 'Escape' && modal.classList.contains('active')) {
-            hideModal();
-          }
-        });
-      })();
-    </script>
             <td><%= entry.score %></td>
             <td><%= entry.is_active ? 'Active' : 'Disabled' %></td>
             <td>
-              <form class="inline" method="post" action="/pool/<%= entry.id %>/<%= entry.is_active ? 'disable' : 'enable' %>">
+              <form class="inline" method="post" action="/admin/pool/<%= entry.id %>/<%= entry.is_active ? 'disable' : 'enable' %>">
                 <button class="btn btn-outline btn-small" type="submit" <%= canManage ? '' : 'disabled' %>><%= entry.is_active ? 'Disable' : 'Enable' %></button>
               </form>
-              <form class="inline" method="post" action="/pool/<%= entry.id %>/delete" onsubmit="return confirm('Remove this pool entry?');">
+              <form class="inline" method="post" action="/admin/pool/<%= entry.id %>/delete" onsubmit="return confirm('Remove this pool entry?');">
                 <button class="btn btn-danger btn-small" type="submit" <%= canManage ? '' : 'disabled' %>>Remove</button>
               </form>
             </td>
@@ -97,7 +48,7 @@
 
 <div class="card">
   <h2>Access keys</h2>
-  <form method="post" action="/keys">
+  <form method="post" action="/admin/keys">
     <label for="label">Label</label>
     <input id="label" name="label" type="text" placeholder="optional label" <%= canManage ? '' : 'disabled' %> />
     <label for="apiKey">Key value</label>
@@ -112,7 +63,9 @@
         <tr>
           <th>Label</th>
           <th>Key</th>
+          <th>Status</th>
           <th>Added</th>
+          <th>Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -120,7 +73,16 @@
           <tr>
             <td><%= key.label || '—' %></td>
             <td><code><%= key.api_key %></code></td>
+            <td><%= key.is_active ? 'Active' : 'Disabled' %></td>
             <td><%= new Date(key.created_at).toLocaleString() %></td>
+            <td>
+              <form class="inline" method="post" action="/admin/keys/<%= key.id %>/<%= key.is_active ? 'disable' : 'enable' %>">
+                <button class="btn btn-outline btn-small" type="submit" <%= canManage ? '' : 'disabled' %>><%= key.is_active ? 'Disable' : 'Enable' %></button>
+              </form>
+              <form class="inline" method="post" action="/admin/keys/<%= key.id %>/delete" onsubmit="return confirm('Remove this API key? This action cannot be undone.');">
+                <button class="btn btn-danger btn-small" type="submit" <%= canManage ? '' : 'disabled' %>>Remove</button>
+              </form>
+            </td>
           </tr>
         <% }) %>
       </tbody>
@@ -128,18 +90,18 @@
   <% } %>
   <p>
     Clients can validate a key by sending
-    <code>POST /auth</code> with body <code>{"stream":"YOUR_KEY"}</code>.
+    <code>POST /admin/auth</code> with body <code>{"stream":"YOUR_KEY"}</code>.
   </p>
 </div>
 
 <div class="card">
   <h2>API references</h2>
   <p>
-    <strong>Pool list</strong>: <code>GET /pool</code> → JSON array like
+    <strong>Pool list</strong>: <code>GET /admin/pool</code> → JSON array like
     <code>[{"address":"url","score":"0"}]</code>
   </p>
   <p>
-    <strong>Key validation</strong>: <code>POST /auth</code> with JSON
+    <strong>Key validation</strong>: <code>POST /admin/auth</code> with JSON
     <code>{"stream":"API_KEY"}</code> → <code>{"valid":true,"stream_id":"XXXXXXXXXX"}</code>
   </p>
 </div>

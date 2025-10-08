@@ -1,5 +1,6 @@
 <%- include('partials/header', { title: 'Users', currentUser, activePage: 'users' }) %>
 <%- include('partials/flash', { flash }) %>
+<%- include('partials/settings-modal', { settings, canManage }) %>
 
 <div class="card">
   <h2>User management</h2>
@@ -31,7 +32,7 @@
             <td><%= normalizedRole %></td>
             <td><%= new Date(user.created_at).toLocaleString() %></td>
             <td>
-              <form class="inline" method="post" action="/users/<%= user.id %>/role">
+              <form class="inline" method="post" action="/admin/users/<%= user.id %>/role">
                 <select name="role">
                   <option value="admin" <%= user.role === 'admin' ? 'selected' : '' %>>Admin</option>
                   <option value="read-write" <%= user.role === 'read-write' ? 'selected' : '' %>>Read-write</option>
