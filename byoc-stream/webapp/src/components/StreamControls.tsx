@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react'
-import { Video, Mic, MicOff, VideoOff, Play, Square, Upload, AlertCircle, Download, X, Wifi, WifiOff, RefreshCw, Camera, Monitor } from 'lucide-react'
+import { Video, Mic, MicOff, VideoOff, Play, Square, Upload, AlertCircle, Download, X, Wifi, WifiOff, RefreshCw, Camera, Monitor, ChevronDown } from 'lucide-react'
 import { getDefaultStreamStartUrl, generateStreamId } from '../utils/urls'
 import { loadSettingsFromStorage } from './SettingsModal'
 import ErrorModal from './ErrorModal'
@@ -97,6 +97,9 @@ const StreamControls: React.FC<StreamControlsProps> = ({
     const savedSettings = loadSettingsFromStorage()
     return savedSettings.defaultPipeline
   })
+  const [savedPipelines, setSavedPipelines] = useState<string[]>([])
+  const [showPipelineDropdown, setShowPipelineDropdown] = useState(false)
+  const pipelineDropdownRef = useRef<HTMLDivElement>(null)
   const [jsonParams, setJsonParams] = useState('')
   const [videoEnabled, setVideoEnabled] = useState(true)
   const [customParams, setCustomParams] = useState<Record<string, any>>({})
@@ -163,6 +166,60 @@ const StreamControls: React.FC<StreamControlsProps> = ({
     frameCount: 0
   })
 
+  // Pipeline management functions
+  const PIPELINES_STORAGE_KEY = 'livepeer-ai-saved-pipelines'
+  
+  const loadPipelinesFromStorage = (): string[] => {
+    try {
+      const saved = localStorage.getItem(PIPELINES_STORAGE_KEY)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        return Array.isArray(parsed) ? parsed : []
+      }
+    } catch (error) {
+      console.warn('Failed to load pipelines from localStorage:', error)
+    }
+    return ['comfystream', 'video-analysis', 'vtuber', 'passthrough', 'noop']
+  }
+  
+  const savePipelinesToStorage = (pipelines: string[]) => {
+    try {
+      localStorage.setItem(PIPELINES_STORAGE_KEY, JSON.stringify(pipelines))
+    } catch (error) {
+      console.warn('Failed to save pipelines to localStorage:', error)
+    }
+  }
+  
+  const handlePipelineChange = (newValue: string) => {
+    setPipeline(newValue)
+    
+    // Add to saved pipelines if not empty and not already in list
+    if (newValue.trim() && !savedPipelines.includes(newValue.trim())) {
+      const updatedPipelines = [newValue.trim(), ...savedPipelines]
+      setSavedPipelines(updatedPipelines)
+      savePipelinesToStorage(updatedPipelines)
+    }
+    
+    // Save as default pipeline in settings (so it persists)
+    if (newValue.trim()) {
+      const currentSettings = loadSettingsFromStorage()
+      const updatedSettings = {
+        ...currentSettings,
+        defaultPipeline: newValue.trim()
+      }
+      try {
+        localStorage.setItem('livepeer-ai-video-streaming-url-settings', JSON.stringify(updatedSettings))
+      } catch (error) {
+        console.warn('Failed to save default pipeline:', error)
+      }
+    }
+  }
+  
+  const selectPipeline = (pipelineValue: string) => {
+    handlePipelineChange(pipelineValue)
+    setShowPipelineDropdown(false)
+  }
+
   // Helper functions for custom parameters
   const addCustomParam = () => {
     if (customParamKey.trim() && customParamValue.trim()) {
@@ -221,6 +278,26 @@ const StreamControls: React.FC<StreamControlsProps> = ({
   // Load media devices on component mount
   useEffect(() => {
     loadMediaDevices()
+  }, [])
+  
+  // Load saved pipelines on component mount
+  useEffect(() => {
+    const pipelines = loadPipelinesFromStorage()
+    setSavedPipelines(pipelines)
+  }, [])
+  
+  // Handle outside click to close pipeline dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (pipelineDropdownRef.current && !pipelineDropdownRef.current.contains(event.target as Node)) {
+        setShowPipelineDropdown(false)
+      }
+    }
+    
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
   }, [])
 
   // Track current time of the video relative to when WebRTC connection was established
@@ -1539,19 +1616,51 @@ const StreamControls: React.FC<StreamControlsProps> = ({
               />
             </div>
 
-            {/* Pipeline Input */}
-            <div>
+            {/* Pipeline Input with Dropdown */}
+            <div className="relative" ref={pipelineDropdownRef}>
               <label className="block text-sm font-medium text-gray-300 mb-2">
                 Pipeline
               </label>
-              <input
-                type="text"
-                value={pipeline}
-                onChange={(e) => setPipeline(e.target.value)}
-                placeholder="Default: noop"
-                className="w-full px-4 py-3 bg-black/20 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                disabled={isStreaming}
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  value={pipeline}
+                  onChange={(e) => handlePipelineChange(e.target.value)}
+                  onFocus={() => setShowPipelineDropdown(true)}
+                  placeholder="Default: noop"
+                  className="w-full px-4 py-3 pr-10 bg-black/20 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  disabled={isStreaming}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPipelineDropdown(!showPipelineDropdown)}
+                  disabled={isStreaming}
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1.5 text-gray-400 hover:text-white transition-colors disabled:opacity-50"
+                  title="Show saved pipelines"
+                >
+                  <ChevronDown className="w-5 h-5" />
+                </button>
+              </div>
+              
+              {/* Dropdown List */}
+              {showPipelineDropdown && savedPipelines.length > 0 && (
+                <div className="absolute z-10 w-full mt-1 bg-slate-800 border border-white/20 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+                  {savedPipelines.map((savedPipeline, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => selectPipeline(savedPipeline)}
+                      className={`w-full px-4 py-2.5 text-left text-sm transition-colors ${
+                        pipeline === savedPipeline
+                          ? 'bg-emerald-600 text-white'
+                          : 'text-gray-300 hover:bg-slate-700'
+                      }`}
+                    >
+                      {savedPipeline}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Stream Configuration Checkboxes */}
