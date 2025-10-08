@@ -23,6 +23,9 @@ const {
   listApiKeys,
   addApiKey,
   isValidApiKey,
+  setApiKeyActive,
+  deleteApiKey,
+  getApiKeyById,
   getSettings,
   updateSettings
 } = require('./db');
@@ -315,6 +318,66 @@ app.post('/admin/keys', requireAuth, requireWriteAccess, (req, res) => {
   res.redirect('/admin/dashboard');
 });
 
+app.post('/admin/keys/:id/disable', requireAuth, requireWriteAccess, (req, res) => {
+  const keyId = Number(req.params.id);
+  if (!Number.isInteger(keyId)) {
+    setFlash(req, 'error', 'Invalid key ID.');
+    return res.redirect('/admin/dashboard');
+  }
+  
+  try {
+    const result = setApiKeyActive(keyId, false);
+    if (result.changes === 0) {
+      setFlash(req, 'error', 'API key not found.');
+    } else {
+      setFlash(req, 'success', 'API key disabled.');
+    }
+  } catch (err) {
+    setFlash(req, 'error', 'Could not disable API key.');
+  }
+  res.redirect('/admin/dashboard');
+});
+
+app.post('/admin/keys/:id/enable', requireAuth, requireWriteAccess, (req, res) => {
+  const keyId = Number(req.params.id);
+  if (!Number.isInteger(keyId)) {
+    setFlash(req, 'error', 'Invalid key ID.');
+    return res.redirect('/admin/dashboard');
+  }
+  
+  try {
+    const result = setApiKeyActive(keyId, true);
+    if (result.changes === 0) {
+      setFlash(req, 'error', 'API key not found.');
+    } else {
+      setFlash(req, 'success', 'API key enabled.');
+    }
+  } catch (err) {
+    setFlash(req, 'error', 'Could not enable API key.');
+  }
+  res.redirect('/admin/dashboard');
+});
+
+app.post('/admin/keys/:id/delete', requireAuth, requireWriteAccess, (req, res) => {
+  const keyId = Number(req.params.id);
+  if (!Number.isInteger(keyId)) {
+    setFlash(req, 'error', 'Invalid key ID.');
+    return res.redirect('/admin/dashboard');
+  }
+  
+  try {
+    const result = deleteApiKey(keyId);
+    if (result.changes === 0) {
+      setFlash(req, 'error', 'API key not found.');
+    } else {
+      setFlash(req, 'success', 'API key removed.');
+    }
+  } catch (err) {
+    setFlash(req, 'error', 'Could not remove API key.');
+  }
+  res.redirect('/admin/dashboard');
+});
+
 app.get('/admin/users', requireAuth, requireAdmin, (req, res) => {
   const users = listUsers();
   const canWrite = hasWriteAccess(req.session.user);
@@ -380,6 +443,18 @@ app.get('/admin/pool', (req, res) => {
   res.json(poolEntries);
 });
 
+app.post('/auth', (req, res) => {
+  const { stream } = req.body || {};
+  if (!stream) {
+    return res.status(400).json({ valid: false, error: 'Missing stream field.' });
+  }
+  const valid = isValidApiKey(stream.toString());
+  if (!valid) {
+    return res.status(403).json({ valid: false });
+  }
+  return res.json({ valid: true, stream_id: generateStreamId(10) });
+});
+
 app.post('/admin/auth', (req, res) => {
   const { stream } = req.body || {};
   if (!stream) {
@@ -387,7 +462,7 @@ app.post('/admin/auth', (req, res) => {
   }
   const valid = isValidApiKey(stream.toString());
   if (!valid) {
-    return res.status(401).json({ valid: false });
+    return res.status(403).json({ valid: false });
   }
   return res.json({ valid: true, stream_id: generateStreamId(10) });
 });

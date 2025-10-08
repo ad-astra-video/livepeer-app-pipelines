@@ -24,6 +24,7 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     label TEXT,
     api_key TEXT NOT NULL UNIQUE,
+    is_active INTEGER NOT NULL DEFAULT 1,
     created_by INTEGER,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (created_by) REFERENCES users (id)
@@ -50,6 +51,12 @@ const poolColumns = db.prepare('PRAGMA table_info(pool_entries)').all();
 const hasIsActiveColumn = poolColumns.some((col) => col.name === 'is_active');
 if (!hasIsActiveColumn) {
   db.exec('ALTER TABLE pool_entries ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1;');
+}
+
+const apiKeyColumns = db.prepare('PRAGMA table_info(api_keys)').all();
+const hasApiKeyIsActiveColumn = apiKeyColumns.some((col) => col.name === 'is_active');
+if (!hasApiKeyIsActiveColumn) {
+  db.exec('ALTER TABLE api_keys ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1;');
 }
 
 db.prepare("UPDATE users SET role = 'read-only' WHERE role NOT IN ('admin', 'read-only', 'read-write')").run();
@@ -148,7 +155,7 @@ function getPoolEntryByAddress(address) {
 }
 
 function listApiKeys() {
-  return db.prepare('SELECT id, label, api_key, created_at FROM api_keys ORDER BY id DESC').all();
+  return db.prepare('SELECT id, label, api_key, is_active, created_at FROM api_keys ORDER BY id DESC').all();
 }
 
 function addApiKey(label, apiKey, userId) {
@@ -156,7 +163,19 @@ function addApiKey(label, apiKey, userId) {
 }
 
 function isValidApiKey(apiKey) {
-  return Boolean(db.prepare('SELECT id FROM api_keys WHERE api_key = ?').get(apiKey));
+  return Boolean(db.prepare('SELECT id FROM api_keys WHERE api_key = ? AND is_active = 1').get(apiKey));
+}
+
+function setApiKeyActive(keyId, isActive) {
+  return db.prepare('UPDATE api_keys SET is_active = ? WHERE id = ?').run(isActive ? 1 : 0, keyId);
+}
+
+function deleteApiKey(keyId) {
+  return db.prepare('DELETE FROM api_keys WHERE id = ?').run(keyId);
+}
+
+function getApiKeyById(keyId) {
+  return db.prepare('SELECT * FROM api_keys WHERE id = ?').get(keyId);
 }
 
 function getSettings() {
@@ -191,6 +210,9 @@ module.exports = {
   listApiKeys,
   addApiKey,
   isValidApiKey,
+  setApiKeyActive,
+  deleteApiKey,
+  getApiKeyById,
   getSettings,
   updateSettings
 };

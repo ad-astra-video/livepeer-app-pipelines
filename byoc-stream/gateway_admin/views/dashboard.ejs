@@ -63,7 +63,9 @@
         <tr>
           <th>Label</th>
           <th>Key</th>
+          <th>Status</th>
           <th>Added</th>
+          <th>Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -71,7 +73,16 @@
           <tr>
             <td><%= key.label || '—' %></td>
             <td><code><%= key.api_key %></code></td>
+            <td><%= key.is_active ? 'Active' : 'Disabled' %></td>
             <td><%= new Date(key.created_at).toLocaleString() %></td>
+            <td>
+              <form class="inline" method="post" action="/admin/keys/<%= key.id %>/<%= key.is_active ? 'disable' : 'enable' %>">
+                <button class="btn btn-outline btn-small" type="submit" <%= canManage ? '' : 'disabled' %>><%= key.is_active ? 'Disable' : 'Enable' %></button>
+              </form>
+              <form class="inline" method="post" action="/admin/keys/<%= key.id %>/delete" onsubmit="return confirm('Remove this API key? This action cannot be undone.');">
+                <button class="btn btn-danger btn-small" type="submit" <%= canManage ? '' : 'disabled' %>>Remove</button>
+              </form>
+            </td>
           </tr>
         <% }) %>
       </tbody>
@@ -79,18 +90,18 @@
   <% } %>
   <p>
     Clients can validate a key by sending
-    <code>POST /auth</code> with body <code>{"stream":"YOUR_KEY"}</code>.
+    <code>POST /admin/auth</code> with body <code>{"stream":"YOUR_KEY"}</code>.
   </p>
 </div>
 
 <div class="card">
   <h2>API references</h2>
   <p>
-    <strong>Pool list</strong>: <code>GET /pool</code> → JSON array like
+    <strong>Pool list</strong>: <code>GET /admin/pool</code> → JSON array like
     <code>[{"address":"url","score":"0"}]</code>
   </p>
   <p>
-    <strong>Key validation</strong>: <code>POST /auth</code> with JSON
+    <strong>Key validation</strong>: <code>POST /admin/auth</code> with JSON
     <code>{"stream":"API_KEY"}</code> → <code>{"valid":true,"stream_id":"XXXXXXXXXX"}</code>
   </p>
 </div>
