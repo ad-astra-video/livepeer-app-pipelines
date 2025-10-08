@@ -438,7 +438,7 @@ app.post('/admin/users/:id/role', requireAuth, requireAdmin, (req, res) => {
 app.get('/admin/pool', (req, res) => {
   const poolEntries = listPoolEntries({ includeInactive: false }).map((entry) => ({
     address: entry.address,
-    score: entry.score != null ? entry.score.toString() : '0'
+    score: entry.score != null ? entry.score : 0
   }));
   res.json(poolEntries);
 });
