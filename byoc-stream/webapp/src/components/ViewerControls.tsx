@@ -11,6 +11,8 @@ interface ViewerControlsProps {
   setStreamStats: (stats: any) => void
   playbackUrl: string | null
   whepUrlFromStart?: string | null
+  // Error message for header display
+  setErrorMessage?: (message: string | null) => void
 }
 
 const ViewerControls: React.FC<ViewerControlsProps> = ({
@@ -19,7 +21,8 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
   setConnectionStatus,
   setStreamStats,
   playbackUrl,
-  whepUrlFromStart
+  whepUrlFromStart,
+  setErrorMessage
 }) => {
   const [whepUrl, setWhepUrl] = useState(() => {
     const savedSettings = loadSettingsFromStorage()
@@ -233,10 +236,18 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
     } catch (error) {
       console.error('Error starting viewer:', error)
       setConnectionStatus('error')
+      if (setErrorMessage) {
+        setErrorMessage(error instanceof Error ? error.message : String(error))
+      }
     }
   }
 
   const stopViewing = () => {
+    // Clear any previous error when stopping
+    if (setErrorMessage) {
+      setErrorMessage(null)
+    }
+    
     // Clear stats collection interval
     if (statsIntervalRef.current) {
       clearInterval(statsIntervalRef.current)

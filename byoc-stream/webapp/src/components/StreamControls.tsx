@@ -31,6 +31,8 @@ interface StreamControlsProps {
   setDataUrlFromStart?: (url: string | null) => void
   setStatusUrlFromStart?: (url: string | null) => void
   setWhepUrlFromStart?: (url: string | null) => void
+  // Error message for header display
+  setErrorMessage?: (message: string | null) => void
 }
 
 const StreamControls: React.FC<StreamControlsProps> = ({
@@ -45,7 +47,8 @@ const StreamControls: React.FC<StreamControlsProps> = ({
   onTimeUpdate,
   setDataUrlFromStart,
   setStatusUrlFromStart,
-  setWhepUrlFromStart
+  setWhepUrlFromStart,
+  setErrorMessage
 }) => {
   const [whipUrl, setWhipUrl] = useState(() => {
     const savedSettings = loadSettingsFromStorage()
@@ -584,6 +587,9 @@ const StreamControls: React.FC<StreamControlsProps> = ({
     } catch (error) {
       console.error('Error starting stream:', error)
       setConnectionStatus('error')
+      if (setErrorMessage) {
+        setErrorMessage(error instanceof Error ? error.message : String(error))
+      }
       if (localStream) {
         localStream.getTracks().forEach(track => track.stop())
       }
@@ -598,6 +604,14 @@ const StreamControls: React.FC<StreamControlsProps> = ({
       }
     } catch (error) {
       console.error('Error sending stop request:', error)
+      if (setErrorMessage) {
+        setErrorMessage(error instanceof Error ? error.message : String(error))
+      }
+    }
+    
+    // Clear any previous error when stopping
+    if (setErrorMessage) {
+      setErrorMessage(null)
     }
     
     // Clear stats collection interval

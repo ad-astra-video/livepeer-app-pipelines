@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { Video, Mic, MicOff, VideoOff, Play, Square, Settings, Radio, Monitor } from 'lucide-react'
+import { Video, Mic, MicOff, VideoOff, Play, Square, Settings, Radio, Monitor, AlertTriangle } from 'lucide-react'
 import StreamControls from './components/StreamControls'
 import ViewerControls from './components/ViewerControls'
 import ConnectionStatus from './components/ConnectionStatus'
@@ -14,6 +14,12 @@ function App() {
   const [streamId, setStreamId] = useState<string | null>(null)
   const [streamName, setStreamName] = useState<string | null>(null)
   const [playbackUrl, setPlaybackUrl] = useState<string | null>(null)
+  
+  // Error state
+  const [streamErrorMessage, setStreamErrorMessage] = useState<string | null>(null)
+  const [viewerErrorMessage, setViewerErrorMessage] = useState<string | null>(null)
+  const [showErrorTooltip, setShowErrorTooltip] = useState(false)
+  
   const [latestFrameTimestamp, setLatestFrameTimestamp] = useState<number | null>(null)
   const [processingDelay, setProcessingDelay] = useState<number | null>(null)
   const [sourceStreamTimestamp, setSourceStreamTimestamp] = useState<number | null>(null)
@@ -65,6 +71,37 @@ function App() {
                 <span className="text-sm text-gray-300">Viewer:</span>
                 <ConnectionStatus status={viewerConnectionStatus} />
               </div>
+              {/* Error Icon with Tooltip */}
+              {(streamErrorMessage || viewerErrorMessage) && (
+                <div className="relative">
+                  <button 
+                    className="p-2 text-amber-400 hover:text-amber-300 transition-colors"
+                    title="Show Error Details"
+                    onMouseEnter={() => setShowErrorTooltip(true)}
+                    onMouseLeave={() => setShowErrorTooltip(false)}
+                  >
+                    <AlertTriangle className="w-5 h-5" />
+                  </button>
+                  
+                  {showErrorTooltip && (
+                    <div className="absolute right-0 top-full mt-2 w-72 bg-black/90 backdrop-blur-sm text-white text-xs p-3 rounded-lg border border-amber-500/30 z-50 shadow-xl">
+                      <h4 className="text-amber-400 font-medium mb-2">Error Details</h4>
+                      {streamErrorMessage && (
+                        <div className="mb-2">
+                          <p className="text-amber-300 font-medium">Stream Error:</p>
+                          <p className="text-white/80 break-all">{streamErrorMessage}</p>
+                        </div>
+                      )}
+                      {viewerErrorMessage && (
+                        <div>
+                          <p className="text-amber-300 font-medium">Viewer Error:</p>
+                          <p className="text-white/80 break-all">{viewerErrorMessage}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
               <button
                 onClick={handleOpenSettings}
                 className="p-2 text-gray-400 hover:text-white transition-colors"
@@ -100,6 +137,7 @@ function App() {
               setDataUrlFromStart={setDataUrlFromStart}
               setStatusUrlFromStart={setStatusUrlFromStart}
               setWhepUrlFromStart={setWhepUrlFromStart}
+              setErrorMessage={setStreamErrorMessage}
             />
           </div>
           
@@ -118,6 +156,7 @@ function App() {
               setStreamStats={setStreamStats}
               playbackUrl={playbackUrl}
               whepUrlFromStart={whepUrlFromStart}
+              setErrorMessage={setViewerErrorMessage}
             />
             
             {/* Tabbed Data View Section */}

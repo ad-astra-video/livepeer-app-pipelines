@@ -1,5 +1,4 @@
-git+https://github.com/livepeer/pytrickle.git@6e099179d9099091db602ccb28a869ec075ecef5
-accelerate>=0.26.0
-bitsandbytes
-transformers
+git+https://github.com/livepeer/pytrickle.git
+lmdeploy
+requests
 decord

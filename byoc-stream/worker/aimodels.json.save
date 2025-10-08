@@ -2,7 +2,7 @@
   {
     "model_id": "video-analysis",
     "pipeline": "live-video-to-video",
-    "url": "http://ai-runner:8000",
+    "url": "http://172.17.0.1:8000",
     "warm": true,
     "capacity": 1,
     "price_per_unit": 0,
