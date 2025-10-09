@@ -20,7 +20,7 @@ https://{$HOST}:8088 {
 		@options method OPTIONS
 		respond @options 204
 
-		reverse_proxy http://byoc-{$CAPABILITY_NAME}-ai-runner:8037
+		reverse_proxy http://byoc-{$CAPABILITY_NAME}-runner:8000
 	}
 
 	handle_path /orchestrator/* {

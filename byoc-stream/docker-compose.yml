@@ -122,7 +122,7 @@ services:
       - "ORCH_SECRET=${ORCH_SECRET}"
       - "CAPABILITY_NAME=${CAPABILITY_NAME}"
       - "CAPABILITY_DESCRIPTION=analyze video with AI"
-      - "CAPABILITY_URL=http://ai-runner:8000/api"
+      - "CAPABILITY_URL=${AI_RUNNER_URL}"
       - "CAPABILITY_PRICE_PER_UNIT=1000"
       - "CAPABILITY_PRICE_SCALING=1"
       - "CAPABILITY_CAPACITY=2"
@@ -139,6 +139,7 @@ services:
       - 8000:8000
     volumes:
       - ./data/models:/root/.cache/huggingface/hub/
+      - ./data/models:/app/DeepLiveCam/models
       ##development examples##
       #- C:\dev\pytrickle\pytrickle:/opt/venv/lib/python3.12/site-packages/pytrickle
 ####  Monitoring  ####
