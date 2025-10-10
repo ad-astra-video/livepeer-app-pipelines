@@ -1,3 +1,6 @@
 [submodule "byoc-stream/worker/deep-live-cam/detect"]
 	path = byoc-stream/worker/deep-live-cam/detect
 	url = https://github.com/RUFFY-369/DeepfakeBench.git
+[submodule "byoc-stream/worker/deep-live-cam/c2pa-service"]
+	path = byoc-stream/worker/deep-live-cam/c2pa-service
+	url = https://github.com/JJassonn69/hackathon-project.git
