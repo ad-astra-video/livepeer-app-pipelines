@@ -10,6 +10,7 @@ import torch
 import cv2
 import numpy as np
 import os
+import sys
 from pytrickle import StreamProcessor
 from pytrickle.frames import VideoFrame
 from pytrickle.frame_skipper import FrameSkipConfig
@@ -17,6 +18,10 @@ from nodes import DeepLiveCamNode
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+detect_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "detect")
+sys.path.append(detect_path)
+from minimal_xception_infer import detect_deepfake_from_frame
 
 # Global state
 ready = False
@@ -28,7 +33,7 @@ source_image_tensor = None
 execution_provider = "CUDAExecutionProvider"
 many_faces = False
 mouth_mask = False
-
+do_deep_fake = True
 
 #async def load_model(**kwargs):
 """Initialize processor state - called during model loading phase."""
@@ -38,8 +43,8 @@ mouth_mask = False
 
 # Set processor variables from kwargs or use defaults
 #execution_provider = "CPUExecutionProvider" #kwargs.get('execution_provider', 'CPUExecutionProvider')
-many_faces = False #kwargs.get('many_faces', False)
-mouth_mask = False #kwargs.get('mouth_mask', False)
+#many_faces = False #kwargs.get('many_faces', False)
+#mouth_mask = False #kwargs.get('mouth_mask', False)
 source_image_path = "/app/doug.jpeg" #kwargs.get('source_image_path', "/app/doug.jpeg")
 
 def load_source_image(image_path):
@@ -151,10 +156,17 @@ async def on_stream_stop():
     background_task_started = False  # Reset flag for next stream
     logger.info("All background tasks cleaned up")
 
+async def process_detect_deep_fake(result_numpy):
+    detect_deepfake_from_frame(frame)
+
 async def process_video(frame: VideoFrame) -> VideoFrame:
     """Apply face swapping using DeepLiveCamNode."""
-    global ready, deep_live_cam_node, source_image_tensor, execution_provider, many_faces, mouth_mask
+    global ready, deep_live_cam_node, source_image_tensor, execution_provider, many_faces, mouth_mask, do_deep_fake
     
+    if not do_deep_fake:
+        logger.info("returning original frame, no deep fake")
+        return frame
+
     # Check if we're ready and have required components
     if not ready or deep_live_cam_node is None:
         logger.warning("DeepLiveCamNode not ready, returning original frame")
@@ -185,6 +197,10 @@ async def process_video(frame: VideoFrame) -> VideoFrame:
         # Convert back to original frame tensor format
         final_tensor = restore_frame_tensor_format(result_tensor, frame_tensor)
         logger.debug("sending back processed frame shape=" + str(final_tensor.shape))
+
+        deep_fake_result = await detect_deepfake_from_frame(frame)
+        await processor.send_data(deep_fake_result)
+
         return frame.replace_tensor(final_tensor)
         
     except Exception as e:
@@ -252,7 +268,7 @@ def restore_frame_tensor_format(result_tensor, original_tensor):
 
 async def update_params(params: dict):
     """Update face swapping parameters."""
-    global execution_provider, many_faces, mouth_mask, source_image_tensor
+    global execution_provider, many_faces, mouth_mask, source_image_tensor, do_deep_fake
     
     if "execution_provider" in params:
         old = execution_provider
@@ -279,6 +295,12 @@ async def update_params(params: dict):
             logger.info(f"Source image updated: {source_image_path}")
         else:
             logger.error(f"Invalid source image path: {source_image_path}")
+
+    if "do_deep_fake" in params:
+        old = do_deep_fake
+        do_deep_fake = bool(params["do_deep_fake"])
+        if old != do_deep_fake:
+            logger.info(f"do deep fake: {old} → {do_deep_fake}")
 
 # Create and run StreamProcessor
 if __name__ == "__main__":

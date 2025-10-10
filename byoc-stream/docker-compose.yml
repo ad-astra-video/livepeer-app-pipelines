@@ -140,6 +140,7 @@ services:
     volumes:
       - ./data/models:/root/.cache/huggingface/hub/
       - ./data/models:/app/DeepLiveCam/models
+      - ./data/models:/app/detect/training/pretrained
       ##development examples##
       #- C:\dev\pytrickle\pytrickle:/opt/venv/lib/python3.12/site-packages/pytrickle
 ####  Monitoring  ####
@@ -210,6 +211,27 @@ services:
         condition: service_healthy
         restart: true
     init: true
+  c2pa-video-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./outputs:/app/outputs
+      - ./certs:/app/certs
+      - ./temp:/app/temp
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=INFO
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 networks:
   default:
     name: byoc-${CAPABILITY_NAME}

@@ -410,7 +410,7 @@ class DeepLiveCamNode:
         # Convert all results to tensor at once
         result_tensor = torch.from_numpy(result_stacked).to(device)
         
-        return (result_tensor,)
+        return (result_tensor, result_stacked)
 
 # Node class mappings
 NODE_CLASS_MAPPINGS = {

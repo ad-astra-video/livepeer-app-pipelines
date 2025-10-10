@@ -1,0 +1,37 @@
+[
+  {
+    "segment_id": 0,
+    "score": 0.05,
+    "model": "deepfake_detector_v1",
+    "confidence": 0.95,
+    "notes": "Low deepfake probability - authentic"
+  },
+  {
+    "segment_id": 1,
+    "score": 0.03,
+    "model": "deepfake_detector_v1",
+    "confidence": 0.97,
+    "notes": "Very low probability - authentic"
+  },
+  {
+    "segment_id": 2,
+    "score": 0.85,
+    "model": "deepfake_detector_v1",
+    "confidence": 0.90,
+    "notes": "HIGH deepfake probability - flagged as suspicious"
+  },
+  {
+    "segment_id": 3,
+    "score": 0.12,
+    "model": "deepfake_detector_v1",
+    "confidence": 0.88,
+    "notes": "Low probability - authentic"
+  },
+  {
+    "segment_id": 4,
+    "score": 0.08,
+    "model": "deepfake_detector_v1",
+    "confidence": 0.92,
+    "notes": "Low probability - authentic"
+  }
+]

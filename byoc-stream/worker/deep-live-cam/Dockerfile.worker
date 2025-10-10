@@ -42,6 +42,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1 \
     libglib2.0-0 \
     python3-tk \
+    cmake \
  && rm -rf /var/lib/apt/lists/*
 
 # Copy dependency files first (for caching)
@@ -56,5 +57,8 @@ RUN if [ -f requirements.txt ]; then \
  
 # Copy in worker files
 COPY . .
+
+#RUN uv pip install -r /app/detect/requirements.txt
+
 # Default command
 CMD ["python", "/app/worker.py"]

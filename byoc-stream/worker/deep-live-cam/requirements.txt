@@ -21,3 +21,17 @@ protobuf==4.23.2
 # Install via conda: conda install -c conda-forge cudnn=8.9.7
 
 git+https://github.com/livepeer/pytrickle.git
+
+#detct
+facenet_pytorch
+simplejson
+fvcore
+efficientnet_pytorch
+kornia
+timm
+loralib
+transformers
+einops
+dlib
+imgaug
+lmdb
