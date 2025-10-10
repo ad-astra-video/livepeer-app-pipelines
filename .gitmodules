@@ -1,0 +1,3 @@
+[submodule "byoc-stream/worker/deep-live-cam/detect"]
+	path = byoc-stream/worker/deep-live-cam/detect
+	url = https://github.com/RUFFY-369/DeepfakeBench.git
