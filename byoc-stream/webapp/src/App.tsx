@@ -84,7 +84,7 @@ function App() {
                   </button>
                   
                   {showErrorTooltip && (
-                    <div className="absolute right-0 top-full mt-2 w-72 bg-black/90 backdrop-blur-sm text-white text-xs p-3 rounded-lg border border-amber-500/30 z-50 shadow-xl">
+                    <div className="absolute right-0 top-full mt-2 w-72 bg-black/90 backdrop-blur-sm text-white text-xs p-3 rounded-lg border border-amber-500/30 z-[9999] shadow-xl">
                       <h4 className="text-amber-400 font-medium mb-2">Error Details</h4>
                       {streamErrorMessage && (
                         <div className="mb-2">
