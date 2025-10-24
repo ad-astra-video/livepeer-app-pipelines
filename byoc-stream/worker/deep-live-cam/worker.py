@@ -34,7 +34,7 @@ execution_provider = "CUDAExecutionProvider"
 many_faces = False
 mouth_mask = False
 do_deep_fake = True
-
+detect_lock = asyncio.Lock()
 #async def load_model(**kwargs):
 """Initialize processor state - called during model loading phase."""
 #global ready, processor, deep_live_cam_node, source_image_tensor, execution_provider, many_faces, mouth_mask
@@ -133,6 +133,21 @@ async def send_periodic_status():
     except Exception as e:
         logger.error(f"Error in background status task: {e}")
 
+async def process_deepfake_detection(frame_data):
+    global processor, detect_lock
+    try:
+        # Run the blocking deepfake detection in a separate thread
+        async with detect_lock:
+            deep_fake_result = await asyncio.to_thread(detect_deepfake_from_frame, frame_data)
+        
+            if processor:
+                await processor.send_data(deep_fake_result)
+                logger.debug("Sent deepfake detection result")
+            else:
+                logger.warning("Processor not available for sending deepfake detection result")
+    except Exception as e:
+        logger.error(f"Error in deepfake detection task: {e}")
+
 async def on_stream_start():
     """Called when stream starts - initialize resources."""
     global background_task_started
@@ -155,9 +170,6 @@ async def on_stream_stop():
     background_tasks.clear()
     background_task_started = False  # Reset flag for next stream
     logger.info("All background tasks cleaned up")
-
-async def process_detect_deep_fake(result_numpy):
-    detect_deepfake_from_frame(frame)
 
 async def process_video(frame: VideoFrame) -> VideoFrame:
     """Apply face swapping using DeepLiveCamNode."""
@@ -198,8 +210,10 @@ async def process_video(frame: VideoFrame) -> VideoFrame:
         final_tensor = restore_frame_tensor_format(result_tensor, frame_tensor)
         logger.debug("sending back processed frame shape=" + str(final_tensor.shape))
 
-        deep_fake_result = await detect_deepfake_from_frame(frame)
-        await processor.send_data(deep_fake_result)
+        # Run deepfake detection in separate thread to avoid blocking
+        # Only start detection if no other detection is in progress
+        if not detect_lock.locked():
+            asyncio.create_task(process_deepfake_detection(result_tuple[1]))
 
         return frame.replace_tensor(final_tensor)
         

@@ -171,7 +171,7 @@ class DeepLiveCamNode:
         self.last_source_face = None
         
         # Ensure models directory exists
-        self.models_dir = os.path.join(dlc_path, "models")
+        self.models_dir = "models"
         os.makedirs(self.models_dir, exist_ok=True)
         
         # Download the required model if not present
@@ -179,7 +179,7 @@ class DeepLiveCamNode:
     
     def _download_model(self):
         """Download the face swapping model if it doesn't exist."""
-        model_path = os.path.join(self.models_dir, "inswapper_128_fp16.onnx")
+        model_path = os.path.join("models", "inswapper_128_fp16.onnx")
         if not os.path.exists(model_path):
             logger.info("Downloading face swapper model...")
             conditional_download(
@@ -410,7 +410,7 @@ class DeepLiveCamNode:
         # Convert all results to tensor at once
         result_tensor = torch.from_numpy(result_stacked).to(device)
         
-        return (result_tensor, result_stacked)
+        return (result_tensor, frame)
 
 # Node class mappings
 NODE_CLASS_MAPPINGS = {

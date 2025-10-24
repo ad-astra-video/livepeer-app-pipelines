@@ -138,9 +138,10 @@ services:
     ports:
       - 8000:8000
     volumes:
-      - ./data/models:/root/.cache/huggingface/hub/
-      - ./data/models:/app/DeepLiveCam/models
-      - ./data/models:/app/detect/training/pretrained
+      - ./data/models/deep-live-cam:/root/.cache/huggingface/hub/
+      - ./data/models/deep-live-cam:/app/models
+      - ./data/models/deep-live-cam/dlib_tools:/app/detect/preprocessing/dlib_tools
+      - ./data/models/deep-live-cam/pretrained:/app/detect/training/pretrained
       ##development examples##
       #- C:\dev\pytrickle\pytrickle:/opt/venv/lib/python3.12/site-packages/pytrickle
 ####  Monitoring  ####
