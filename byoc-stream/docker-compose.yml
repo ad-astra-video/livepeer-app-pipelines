@@ -2,7 +2,7 @@ services:
 ### webserver ###
   webserver:
     image: caddy:latest
-    container_name: byoc-${CAPABILITY_NAME}-webserver
+    container_name: byoc-stream-webserver
     ports:
       - 8088:8088
     volumes:
@@ -25,7 +25,7 @@ services:
 ###  INGEST  ###
   mediamtx:
     image: livepeerci/mediamtx
-    container_name: byoc-${CAPABILITY_NAME}-mediamtx
+    container_name: byoc-stream-mediamtx
     volumes:
       - ./mediamtx/mediamtx.yml:/mediamtx.yml
     environment:
@@ -44,7 +44,7 @@ services:
   gateway:
     #image: adastravideo/go-livepeer:data-url-seg-writer-opt
     image: adastravideo/go-livepeer:byoc-streaming-v2
-    container_name: byoc-${CAPABILITY_NAME}-gateway
+    container_name: byoc-stream-gateway
     volumes:
       - ./data/gateway:/data
     ports:
@@ -83,18 +83,17 @@ services:
   orchestrator:
     #image: adastravideo/go-livepeer:data-url-seg-writer-opt
     image: adastravideo/go-livepeer:byoc-streaming-v2
-    container_name: byoc-${CAPABILITY_NAME}-orchestrator
+    container_name: byoc-stream-orchestrator
     volumes:
-      - ${AI_MODELS_DIR}:${AI_MODELS_DIR}
       - ./data/orchestrator:/data
-      #- ./worker/aimodels.json:/data/aimodels.json
       - /var/run/docker.sock:/var/run/docker.sock
+      #used with live-video-to-video only
+      #- ${AI_MODELS_DIR}:${AI_MODELS_DIR}
+      #- ./worker/aimodels.json:/data/aimodels.json
     runtime: nvidia
     ports:
       - 9995:9995
     command: ["-orchestrator",
-          #"-aiWorker",
-          "-transcoder",
           "-nvidia=0",
           "-orchSecret=${ORCH_SECRET}",
           "-serviceAddr=${ORCH_SERVICE_ADDR}",
@@ -105,49 +104,19 @@ services:
           "-dataDir=/data",
           "-ethOrchAddr=${ACTIVE_ORCH_ADDR}",
           "-pricePerUnit=0",
-          "-ticketEV=1800",
+          "-ticketEV=${TICKET_EV}",
           "-monitor",
-          "-aiVerboseLogs",
+          "-aiVerboseLogs"]
+          #below used with live-video-to-video only
+          #"-aiWorker",
           #"-liveAITrickleHostForRunner=localhost:9995",
           #"-aiModels=/data/aimodels.json",
           #"-aiModelsDir=${AI_MODELS_DIR}",
-          "-aiRunnerImageOverrides={\"live\":{\"${CAPABILITY_NAME}\":\"${RUNNER_IMAGE}\"}}"]
-  register-worker:
-    build:
-      context: ./register
-      dockerfile: Dockerfile.register_worker
-    container_name: byoc-${CAPABILITY_NAME}-register-worker
-    environment:
-      - "ORCH_URL=https://${ORCH_SERVICE_ADDR}"
-      - "ORCH_SECRET=${ORCH_SECRET}"
-      - "CAPABILITY_NAME=${CAPABILITY_NAME}"
-      - "CAPABILITY_DESCRIPTION=analyze video with AI"
-      - "CAPABILITY_URL=${AI_RUNNER_URL}"
-      - "CAPABILITY_PRICE_PER_UNIT=1000"
-      - "CAPABILITY_PRICE_SCALING=1"
-      - "CAPABILITY_CAPACITY=2"
-  ai-runner:
-    image: ${RUNNER_IMAGE}
-    container_name: byoc-${CAPABILITY_NAME}-runner
-    runtime: nvidia
-    environment:
-      VERSION: 0.13.9
-    #use this to limit the ephemeral port range used by webrtc if needed
-    #sysctls:
-    #    net.ipv4.ip_local_port_range: "44000 44100"
-    ports:
-      - 8000:8000
-    volumes:
-      - ./data/models/deep-live-cam:/root/.cache/huggingface/hub/
-      - ./data/models/deep-live-cam:/app/models
-      - ./data/models/deep-live-cam/dlib_tools:/app/detect/preprocessing/dlib_tools
-      - ./data/models/deep-live-cam/pretrained:/app/detect/training/pretrained
-      ##development examples##
-      #- C:\dev\pytrickle\pytrickle:/opt/venv/lib/python3.12/site-packages/pytrickle
+          #"-aiRunnerImageOverrides={\"live\":{\"${CAPABILITY_NAME}\":\"${RUNNER_IMAGE}\"}}"]
 ####  Monitoring  ####
   kafka:
     image: bitnami/kafka:3.5
-    container_name: byoc-${CAPABILITY_NAME}-kafka
+    container_name: byoc-stream-kafka
     ports:
       - 9092:9092
     environment:
@@ -168,7 +137,7 @@ services:
   #kafka-sse-api setup docs https://docs.aklivity.io/zilla/latest/tutorials/sse/sse-intro.html#setup-sse-kafka-proxy
   kafka-sse-api:
     image: ghcr.io/aklivity/zilla:latest
-    container_name: byoc-${CAPABILITY_NAME}-kafka-sse-api
+    container_name: byoc-stream-kafka-sse-api
     ports:
       - 7114:7114
     healthcheck:
@@ -189,11 +158,11 @@ services:
         restart: true
   kafka-ui:
     image: ghcr.io/kafbat/kafka-ui:latest
-    container_name: byoc-${CAPABILITY_NAME}-kafka-ui
+    container_name: byoc-stream-kafka-ui
     ports:
       - 8080:8080
     environment:
-      KAFKA_CLUSTERS_0_NAME: byoc-${CAPABILITY_NAME}
+      KAFKA_CLUSTERS_0_NAME: byoc-stream
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
     depends_on:
       kafka:
@@ -201,7 +170,7 @@ services:
         restart: true
   kafka-init:
     image: bitnami/kafka:3.5
-    container_name: byoc-${CAPABILITY_NAME}-kafka-init
+    container_name: byoc-stream-kafka-init
     command:
         - /bin/sh
         - -c
@@ -235,8 +204,5 @@ services:
       start_period: 40s
 networks:
   default:
-    name: byoc-${CAPABILITY_NAME}
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.28.0.0/16
+    name: byoc-stream
+    external: true

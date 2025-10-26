@@ -1,14 +1,13 @@
 
-# Live Video Analysis using Livepeer
+# Live Video AI Processing using Livepeer
 
-This pipeline is an example of a real-time video processing application that enables video analysis on the video frames of the stream.
+This pipeline is an example of a real-time video processing application that enables live AI processing on the video frames of the stream.
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
 - Docker and Nvidia Container Toolkit installed
-- Modern web browser with WebRTC support
 - Camera and/or microphone (optional, screen sharing supported)
 - Access to an Nvidia GPU for AI processing
 
@@ -17,7 +16,7 @@ This pipeline is an example of a real-time video processing application that ena
 1. **Clone the repository** (if not already done):
    ```bash
    git clone https://github.com/ad-astra-video/livepeer-app-pipelines.git
-   cd video-analysis
+   cd byoc-stream
    ```
 
 3. **Create required directories**:
@@ -32,7 +31,15 @@ This pipeline is an example of a real-time video processing application that ena
 
 5. **Start all services**:
    ```bash
+   docker network create --driver bridge --subnet 172.28.0.0/16 byoc-stream
    docker-compose up -d
+   
+   #start the worker and register to the Orchestrator
+   cd worker/[worker folder want to run] (e.g. cd worker/passthrough)
+   docker-compose up ai-runner register-worker -d
+   #if want to put SSL in front of runner. This would only be used
+   #docker-compose up runner-proxy -d
+
    ```
 
 6. **Access the Web Interface**:
@@ -163,68 +170,40 @@ __Documentation__
 ### Viewer Section
 
 #### **Stream Playback**
-- **WebRTC Viewer**: Low-latency stream viewing
-- **WHEP Protocol**: Industry-standard viewer protocol (default: `http://localhost:8890`)
-- **Auto-connection**: Seamless connection to available streams
-- **Playback Controls**: Start/stop viewing with connection status
+- **WebRTC Viewer**: WebRTC playback of output stream using WHEP (default: `http://localhost:8890`)
 
 ### Data Monitoring
 
 #### **Tabbed Data View**
-- **Event Logs**: Real-time streaming events and status updates
-- **Stream Analytics**: Detailed streaming metrics and performance data
-- **Kafka Integration**: Live event streaming from the processing pipeline
+- **Event Logs**: Real-time streaming events from Kafka events via SSE provided by Zilla
+- **Data Output**: Data output from stream via SSE
 
 ### Settings & Configuration
 
 #### **Settings Modal** (⚙️ icon in header)
 - **URL Configuration**: Set default WHIP/WHEP endpoints
 - **Persistent Storage**: Settings saved to browser localStorage
-- **Real-time Updates**: Changes applied immediately across components
 
 ## 🔧 Technical Features
 
 ### **Streaming Protocols**
 - **WHIP (WebRTC-HTTP Ingestion Protocol)**: For publishing streams
 - **WHEP (WebRTC-HTTP Egress Protocol)**: For consuming streams
-- **ICE/STUN Support**: NAT traversal for reliable connections
-- **Adaptive Quality**: Automatic issue detection and recovery
+- **RTMP (Real-Time Messaging Protocol): Support RTMP input and RTMP outputs
 
 ### **AI Integration**
-- **Livepeer AI**: Integration with Livepeer's AI processing network
+- **Livepeer AI**: Integration with Livepeer's BYOC streaming and live-video-to-video processing network
 - **Real-time Processing**: Live video transformation using AI models
 - **Multiple Pipelines**: Support for different AI processing workflows
-- **Prompt Engineering**: Dynamic prompt modification during streaming
+- **Prompt Engineering**: Dynamic modification of backend settings during streaming
 
 ### **Media Processing**
-- **WebRTC**: Modern web-based real-time communication
 - **Multi-format Support**: Camera, screen sharing, and microphone input
 - **Quality Control**: FPS limiting and resolution selection
-- **Cross-browser Compatibility**: Works in Chrome, Firefox, Safari, Edge
 
 ### **Monitoring & Debugging**
 - **Real-time Stats**: WebRTC statistics collection
-- **Connection Monitoring**: Automatic issue detection and recovery
 - **SDP Debugging**: Full WebRTC session description inspection
-- **Event Logging**: Comprehensive event tracking through Kafka
-
-## 📱 Usage Scenarios
-
-### **Content Creation**
-- Stream live video content with AI-enhanced processing
-- Apply real-time visual effects and transformations
-- Create interactive live streams with dynamic prompts
-
-### **Video Conferencing**
-- Enhanced video calls with AI-powered background effects
-- Real-time video processing for professional presentations
-- Screen sharing with AI enhancements
-
-### **Development & Testing**
-- Test WebRTC streaming implementations
-- Debug video processing pipelines
-- Monitor streaming performance and quality
-
 
 ## 🆘 Troubleshooting
 
@@ -270,9 +249,7 @@ __Documentation__
 ## 📝 Advanced Configuration
 
 ### **Custom AI Models**
-- Models can be placed in the `data/models` directory
-- Configure pipeline parameters through the web interface
-- Modify worker configuration for custom processing
+- Refer to worker instructions for where to put models in `data/models` folder
 
 ### **Network Configuration**
 - All endpoints can be customized through the Settings modal

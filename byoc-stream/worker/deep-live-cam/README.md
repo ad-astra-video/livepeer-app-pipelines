@@ -1,6 +1,6 @@
-# Deep Live Cam for ComfyUI
+# Deep Live Cam and Deep Fake Detection
 
-This node integrates the face-swapping capabilities from Deep Live Cam into ComfyUI, allowing you to perform real-time face swapping on images and video streams.
+This node integrates the face-swapping capabilities from Deep Live Cam, allowing you to perform real-time face swapping on images and video streams.
 
 ## Features
 
@@ -8,59 +8,69 @@ This node integrates the face-swapping capabilities from Deep Live Cam into Comf
 - Option to process multiple faces in the same frame
 - Mouth masking to preserve mouth movements from the original image/video
 - Support for GPU acceleration through various ONNX Runtime execution providers
-- Easy integration with existing ComfyUI workflows
 
+- Detect deep fake when active (in development)
+- C2PA signing service when a segment does not have a deep fake (in development)
+
+## Setup
+
+1. Pull in submodules `git submodule update --init`
+2. Create models folder in `data/models/deep-live-cam`
+3. Download detect models from `https://huggingface.co/ad-astra-video/deep-live-cam` and put in `data/models/deep-live-cam` folder.  Models needed for DeepLiveCam will download automatically.
+4. Copy `.env.worker` to `.env` and update variables to values applicable to the runner
+
+## Launch
+
+```
+#no runner proxy
+docker compose up ai-runner register-worker -d
+
+#with runner proxy
+docker compose up -d
+```
+
+Note: the startup takes a little while to load the models. If all models load successfully will see log lines as follows:
+Different execution providers may have different devices.
+```
+MTCNN initialized on device: cuda
+Effort model initialized on device: cuda
+Load HRNet-W48
+FaceXray model initialized on device: cuda
+```
 ## Usage
 
-1. Ensure you have a valid source image containing a face
-2. Add the "Deep Live Cam Face Swap" node to your workflow
-3. Connect an image source to the "image" input
-4. Provide the path to your source face image
-5. Select appropriate execution provider for your hardware
-6. Configure options as needed
-7. Connect the output to your desired destination node
+Supported fields are below and can be sent from UI or as POST request to `/ai/stream/{stream id}/update`.  The update url is returned from the `/ai/stream/start` POST request.
 
-## Parameters
-
-- **image**: The input image/frame (can be from a video stream)
-- **source_image_path**: Path to the source face image (the face to swap onto the image/stream)
-- **execution_provider**: Hardware acceleration option (CUDA for NVIDIA GPUs, ROCm for AMD GPUs, etc.)
-- **many_faces**: Process all detected faces in the frame (instead of just the first one)
-- **mouth_mask**: Preserve the original mouth movements by masking the mouth area
-
-## Example Workflow
-
-A basic workflow would look like:
-
-1. Image/Video Source
-2. → Deep Live Cam Face Swap
-3. → Display/Output
-
-For use with ComfyStream:
-1. Stream Source (webcam, video file, etc.)
-2. → Deep Live Cam Face Swap
-3. → Stream Output/Display
-
-## Requirements
-
-This node requires the Deep Live Cam models. The first time you run the node, it will automatically download the required model files.
+1. Select execution provider, defaults to CUDAExecutionProvider
+   - must be set in start request if not using default.
+   - Send `execution_provider` with value set to options listed below.
+1. Add source image to fake
+   - send base64 encoded `source_image` with value being the base64 encoded string
+2. Turn off deep fake alternations
+   - send `do_deep_fake` as `false`
+3. Process multiple faces
+   - send `many_faces` as `true`
+4. Mask the mouth separately to enhance the result
+   - send `mouth_mask` as `true`
 
 ## Tested Versions
 
-This node has been tested with the following versions:
-- PyTorch 2.5.1+cu118 (NVIDIA GPU)
-- PyTorch 2.5.1 (CPU/Mac)
-- torchvision 0.20.1
+Tested with the following versions:
+- PyTorch 2.8+cu128 (NVIDIA GPU)
+- PyTorch 2.8 (CPU/Mac)
 
-## Performance Tips
+## Execution Providers and Performance Tips
 
 - For best performance, select the appropriate execution provider:
-  - **CUDA**: For NVIDIA GPUs
-  - **ROCm**: For AMD GPUs
-  - **DirectML**: For Windows DirectX-compatible GPUs
-  - **CPU**: For systems without GPU acceleration
+  - **CUDAExecutionProvider**: For NVIDIA GPUs
+  - **TensorrtExecutionProvider**: For NVIDIA GPUs
+  - **ROCMExecutionProvider**: For AMD GPUs
+  - **DmlExecutionProvider**: For Windows DirectX-compatible GPUs
+  - **CPUExecutionProvider**: For systems without GPU acceleration
+  - **OpenVINOExecutionProvider**: For Intel GPUs
 - Processing multiple faces will be more demanding on resources
 - Consider using a lower resolution for smoother performance
+- Adjust the input FPS down until playback is smooth (suggest start at 30fps and move down 5fps each iteration until smooth)
 
 ## Troubleshooting
 
@@ -70,4 +80,5 @@ This node has been tested with the following versions:
 
 ## Credits
 
-This ComfyUI node is based on the [Deep Live Cam](https://github.com/hacksider/Deep-Live-Cam) project by [hacksider](https://github.com/hacksider). The core face swapping functionality and models are from the original repository. This implementation adapts the technology for use within ComfyUI workflows. 
+- [ComfyUI Node for Deep Live Cam](https://github.com/ryanontheinside/ComfyUI-DeepLiveCam)
+- [Deep Live Cam](https://github.com/hacksider/Deep-Live-Cam)

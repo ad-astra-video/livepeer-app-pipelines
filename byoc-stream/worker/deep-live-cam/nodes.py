@@ -171,7 +171,7 @@ class DeepLiveCamNode:
         self.last_source_face = None
         
         # Ensure models directory exists
-        self.models_dir = "models"
+        self.models_dir = "/app/DeepLiveCam/models"
         os.makedirs(self.models_dir, exist_ok=True)
         
         # Download the required model if not present

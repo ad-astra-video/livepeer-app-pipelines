@@ -20,7 +20,7 @@ https://{$HOST}:8088 {
 		@options method OPTIONS
 		respond @options 204
 
-		reverse_proxy http://byoc-{$CAPABILITY_NAME}-runner:8000
+		reverse_proxy http://byoc-stream-runner:8000
 	}
 
 	handle_path /orchestrator/* {
@@ -33,7 +33,7 @@ https://{$HOST}:8088 {
 		@options method OPTIONS
 		respond @options 204
 
-		reverse_proxy https://byoc-{$CAPABILITY_NAME}-orchestrator:9995 {
+		reverse_proxy https://byoc-stream-orchestrator:9995 {
 			transport http {
 				tls_insecure_skip_verify
 			}
@@ -50,7 +50,7 @@ https://{$HOST}:8088 {
 		@options method OPTIONS
 		respond @options 204
 
-		reverse_proxy http://byoc-{$CAPABILITY_NAME}-gateway-admin:3000
+		reverse_proxy http://byoc-stream-gateway-admin:3000
 	}
 
 	handle_path /mediamtx/* {
@@ -63,7 +63,7 @@ https://{$HOST}:8088 {
 		@options method OPTIONS
 		respond @options 204
 
-		reverse_proxy http://byoc-{$CAPABILITY_NAME}-mediamtx:8890
+		reverse_proxy http://byoc-stream-mediamtx:8890
 	}
 
 	handle_path /gateway/* {
@@ -76,7 +76,7 @@ https://{$HOST}:8088 {
 		@options method OPTIONS
 		respond @options 204
 
-		reverse_proxy http://byoc-{$CAPABILITY_NAME}-gateway:5937
+		reverse_proxy http://byoc-stream-gateway:5937
 	}
 
 	handle_path /kafka/events/* {
@@ -89,7 +89,7 @@ https://{$HOST}:8088 {
 		@options method OPTIONS
 		respond @options 204
 
-		reverse_proxy http://byoc-{$CAPABILITY_NAME}-kafka-sse-api:7114
+		reverse_proxy http://byoc-stream-kafka-sse-api:7114
 	}
 	handle_path /kafka/ui/* {
 		header {
@@ -101,7 +101,7 @@ https://{$HOST}:8088 {
 		@options method OPTIONS
 		respond @options 204
 
-		reverse_proxy http://byoc-{$CAPABILITY_NAME}-kafka-ui:8080
+		reverse_proxy http://byoc-stream-kafka-ui:8080
 	}
 	handle {
 		header {

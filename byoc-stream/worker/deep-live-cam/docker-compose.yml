@@ -1,0 +1,50 @@
+services:
+  register-worker:
+    build:
+      context: ../../register
+      dockerfile: Dockerfile.register_worker
+    env_file:
+      - .env.worker
+    container_name: byoc-stream-register-worker
+    environment:
+      - "ORCH_URL=https://${ORCH_SERVICE_ADDR}"
+      - "ORCH_SECRET=${ORCH_SECRET}"
+      - "CAPABILITY_NAME=${CAPABILITY_NAME}"
+      - "CAPABILITY_DESCRIPTION=deep fake alteration and detection"
+      - "CAPABILITY_URL=${AI_RUNNER_URL}"
+      - "CAPABILITY_PRICE_PER_UNIT=${CAPABILITY_PRICE}"
+      - "CAPABILITY_PRICE_SCALING=1"
+      - "CAPABILITY_CAPACITY=${CAPABILITY_CAPACITY}"
+  ai-runner:
+    image: ${RUNNER_IMAGE}
+    container_name: byoc-stream-runner
+    runtime: nvidia
+    env_file:
+      - .env.worker
+    environment:
+      VERSION: 0.13.9
+    #use this to limit the ephemeral port range used by webrtc if needed
+    #sysctls:
+    #    net.ipv4.ip_local_port_range: "44000 44100"
+    ports:
+      - 8000:8000
+    volumes:
+      - ../../data/models/deep-live-cam:/root/.cache/huggingface/hub/
+      - ../../data/models/deep-live-cam/face_swapper:/app/DeepLiveCam/models
+      - ../../data/models/deep-live-cam/dlib_tools:/app/detect/preprocessing/dlib_tools
+      - ../../data/models/deep-live-cam/pretrained:/app/detect/training/pretrained
+      ##development examples##
+      #- C:\dev\pytrickle\pytrickle:/opt/venv/lib/python3.12/site-packages/pytrickle
+  runner-proxy:
+    image: caddy:latest
+    container_name: byoc-stream-runner-proxy
+    ports:
+      - 9099:9099
+    volumes:
+      - ../../webserver/Caddyfile.runner_proxy:/etc/caddy/Caddyfile
+    environment:
+      - HOST=${HOST}
+networks:
+  default:
+    name: byoc-stream
+    external: true

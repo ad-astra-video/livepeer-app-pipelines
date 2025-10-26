@@ -31,6 +31,8 @@ models_dir = os.path.join(
 # Setup detailed logging
 logger = logging.getLogger('DeepLiveCam.FaceSwapper')
 
+logger.info(f"Face Swapper Module Path: {abs_dir}")
+logger.info(f"Models Directory Path: {models_dir}")
 
 def pre_check() -> bool:
     download_directory_path = abs_dir
