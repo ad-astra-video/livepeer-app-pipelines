@@ -38,6 +38,8 @@ services:
       - ../../webserver/Caddyfile.runner_proxy:/etc/caddy/Caddyfile
     environment:
       - HOST=${HOST}
+      - AI_RUNNER_PORT=${AI_RUNNER_PORT}
+      - AI_RUNNER_HTTPS_EMAIL=${AI_RUNNER_HTTPS_EMAIL}
 networks:
   default:
     name: byoc-stream
