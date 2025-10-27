@@ -10,6 +10,8 @@ services:
       - ./webapp/dist:/var/www/html/app
     environment:
       - HOST=${HOST}
+      - HTTPS_PORT=${HTTPS_PORT}
+      - HTTPS_EMAIL=${HTTPS_EMAIL}
 ### webapp ###
   webapp:
     image: node:20

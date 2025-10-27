@@ -1,14 +1,14 @@
 {
-	https_port 8088
+	https_port {$HTTPS_PORT}
 }
 
-https://{$HOST}:8088 {
+https://{$HOST}:{$HTTPS_PORT} {
 	log {
 		output stdout
 		level debug
 	}
 
-	tls internal
+	tls {$HTTPS_EMAIL}
 
 	handle_path /ai-runner/* {
 		header {
