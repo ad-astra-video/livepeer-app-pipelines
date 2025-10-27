@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { Video, Mic, MicOff, VideoOff, Play, Square, Settings, Radio, Monitor, AlertTriangle } from 'lucide-react'
+import { Video, Mic, MicOff, VideoOff, Play, Square, Settings, Radio, Monitor, AlertTriangle, X } from 'lucide-react'
 import StreamControls from './components/StreamControls'
 import ViewerControls from './components/ViewerControls'
 import ConnectionStatus from './components/ConnectionStatus'
@@ -18,7 +18,7 @@ function App() {
   // Error state
   const [streamErrorMessage, setStreamErrorMessage] = useState<string | null>(null)
   const [viewerErrorMessage, setViewerErrorMessage] = useState<string | null>(null)
-  const [showErrorTooltip, setShowErrorTooltip] = useState(false)
+  const [showErrorModal, setShowErrorModal] = useState(false)
   
   const [latestFrameTimestamp, setLatestFrameTimestamp] = useState<number | null>(null)
   const [processingDelay, setProcessingDelay] = useState<number | null>(null)
@@ -71,36 +71,15 @@ function App() {
                 <span className="text-sm text-gray-300">Viewer:</span>
                 <ConnectionStatus status={viewerConnectionStatus} />
               </div>
-              {/* Error Icon with Tooltip */}
+              {/* Error Icon with Modal */}
               {(streamErrorMessage || viewerErrorMessage) && (
-                <div className="relative">
-                  <button 
-                    className="p-2 text-amber-400 hover:text-amber-300 transition-colors"
-                    title="Show Error Details"
-                    onMouseEnter={() => setShowErrorTooltip(true)}
-                    onMouseLeave={() => setShowErrorTooltip(false)}
-                  >
-                    <AlertTriangle className="w-5 h-5" />
-                  </button>
-                  
-                  {showErrorTooltip && (
-                    <div className="absolute right-0 top-full mt-2 w-72 bg-black/90 backdrop-blur-sm text-white text-xs p-3 rounded-lg border border-amber-500/30 z-[9999] shadow-xl">
-                      <h4 className="text-amber-400 font-medium mb-2">Error Details</h4>
-                      {streamErrorMessage && (
-                        <div className="mb-2">
-                          <p className="text-amber-300 font-medium">Stream Error:</p>
-                          <p className="text-white/80 break-all">{streamErrorMessage}</p>
-                        </div>
-                      )}
-                      {viewerErrorMessage && (
-                        <div>
-                          <p className="text-amber-300 font-medium">Viewer Error:</p>
-                          <p className="text-white/80 break-all">{viewerErrorMessage}</p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
+                <button 
+                  className="p-2 text-amber-400 hover:text-amber-300 transition-colors"
+                  title="Show Error Details"
+                  onClick={() => setShowErrorModal(true)}
+                >
+                  <AlertTriangle className="w-5 h-5" />
+                </button>
               )}
               <button
                 onClick={handleOpenSettings}
@@ -195,6 +174,84 @@ function App() {
         onClose={() => setIsSettingsModalOpen(false)}
         onSave={handleSettingsChange}
       />
+
+      {/* Error Modal */}
+      {showErrorModal && (streamErrorMessage || viewerErrorMessage) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm"
+            onClick={() => setShowErrorModal(false)}
+          />
+          
+          {/* Modal */}
+          <div className="relative bg-slate-900 border border-amber-500/30 rounded-xl w-full max-w-2xl mx-4 shadow-2xl flex flex-col max-h-[80vh]">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-amber-500/20 shrink-0">
+              <div className="flex items-center space-x-3">
+                <div className="flex items-center justify-center w-10 h-10 bg-amber-500/20 rounded-full">
+                  <AlertTriangle className="w-6 h-6 text-amber-400" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-semibold text-white">Error Details</h2>
+                  <p className="text-sm text-gray-400 mt-1">
+                    Connection errors from stream or viewer
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowErrorModal(false)}
+                className="p-2 text-gray-400 hover:text-white transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-auto p-6">
+              <div className="space-y-4">
+                {streamErrorMessage && (
+                  <div className="bg-red-900/30 border border-red-500/30 rounded-lg p-4">
+                    <h3 className="text-red-400 font-semibold mb-2 flex items-center">
+                      <AlertTriangle className="w-5 h-5 mr-2" />
+                      Stream Error
+                    </h3>
+                    <div className="bg-black/40 rounded-lg p-4 mt-3">
+                      <pre className="text-sm text-red-300 whitespace-pre-wrap break-words font-mono">
+                        {streamErrorMessage}
+                      </pre>
+                    </div>
+                  </div>
+                )}
+                
+                {viewerErrorMessage && (
+                  <div className="bg-red-900/30 border border-red-500/30 rounded-lg p-4">
+                    <h3 className="text-red-400 font-semibold mb-2 flex items-center">
+                      <AlertTriangle className="w-5 h-5 mr-2" />
+                      Viewer Error
+                    </h3>
+                    <div className="bg-black/40 rounded-lg p-4 mt-3">
+                      <pre className="text-sm text-red-300 whitespace-pre-wrap break-words font-mono">
+                        {viewerErrorMessage}
+                      </pre>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-6 border-t border-white/10 flex justify-end shrink-0">
+              <button
+                onClick={() => setShowErrorModal(false)}
+                className="px-6 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-medium transition-all duration-200 shadow-lg hover:shadow-amber-500/50"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

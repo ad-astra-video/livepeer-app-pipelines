@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react'
 import { Video, Mic, MicOff, VideoOff, Play, Square, Upload, AlertCircle, Download, X, Wifi, WifiOff, RefreshCw, Camera, Monitor } from 'lucide-react'
 import { getDefaultStreamStartUrl, generateStreamId } from '../utils/urls'
 import { loadSettingsFromStorage } from './SettingsModal'
+import ErrorModal from './ErrorModal'
 import { 
   constructWhipUrl, 
   sendWhipOffer, 
@@ -134,6 +135,11 @@ const StreamControls: React.FC<StreamControlsProps> = ({
   const [statusData, setStatusData] = useState<any>(null)
   const [statusLoading, setStatusLoading] = useState(false)
   const [statusError, setStatusError] = useState<string | null>(null)
+  
+  // Error modal state
+  const [errorModalOpen, setErrorModalOpen] = useState(false)
+  const [errorModalTitle, setErrorModalTitle] = useState('')
+  const [errorModalMessage, setErrorModalMessage] = useState('')
   
   // Store URLs from stream start response
   const statusUrlRef = useRef<string | null>(null)
@@ -288,6 +294,12 @@ const StreamControls: React.FC<StreamControlsProps> = ({
     loadMediaDevices()
   }
 
+  const showErrorModal = (title: string, message: string) => {
+    setErrorModalTitle(title)
+    setErrorModalMessage(message)
+    setErrorModalOpen(true)
+  }
+
   const handleScreenShare = () => {
     setUseScreenShare(!useScreenShare)
     if (!useScreenShare) {
@@ -298,7 +310,7 @@ const StreamControls: React.FC<StreamControlsProps> = ({
 
   const handleStartStreamClick = () => {
     if (!whipUrl) {
-      alert('Please enter a WHIP URL')
+      showErrorModal('WHIP URL Required', 'Please enter a WHIP URL to start streaming')
       return
     }
     
@@ -313,7 +325,7 @@ const StreamControls: React.FC<StreamControlsProps> = ({
 
   const startStream = async () => {
     if (!whipUrl) {
-      alert('Please enter a WHIP URL')
+      showErrorModal('WHIP URL Required', 'Please enter a WHIP URL to start streaming')
       return
     }
 
@@ -359,7 +371,16 @@ const StreamControls: React.FC<StreamControlsProps> = ({
       })
 
       if (!startResp.ok) {
-        throw new Error('Failed to start stream')
+        let errorBody = ''
+        try {
+          errorBody = await startResp.text()
+        } catch (e) {
+          // Ignore if we can't read the body
+        }
+        const errorMsg = errorBody 
+          ? `Failed to start stream (${startResp.status}): ${errorBody}`
+          : `Failed to start stream (${startResp.status})`
+        throw new Error(errorMsg)
       }
       const urls = await startResp.json()
       console.log(urls)
@@ -691,17 +712,17 @@ const StreamControls: React.FC<StreamControlsProps> = ({
   // Update function to send custom parameters and resolution changes
   const sendUpdate = async () => {
     if (!isStreaming) {
-      alert('No active stream to update')
+      showErrorModal('No Active Stream', 'No active stream to update. Please start streaming first.')
       return
     }
 
     if (!updateUrlRef.current) {
-      alert('Update URL not available from stream start')
+      showErrorModal('Update URL Unavailable', 'Update URL not available from stream start')
       return
     }
 
     if (!currentStreamId) {
-      alert('Stream ID not available')
+      showErrorModal('Stream ID Unavailable', 'Stream ID not available')
       return
     }
 
@@ -724,7 +745,7 @@ const StreamControls: React.FC<StreamControlsProps> = ({
       // You could show a success message here
     } catch (error) {
       console.error('Error sending update:', error)
-      alert('Failed to send update')
+      showErrorModal('Update Failed', error instanceof Error ? error.message : 'Failed to send update')
     }
   }
 
@@ -1985,6 +2006,14 @@ const StreamControls: React.FC<StreamControlsProps> = ({
           </div>
         </div>
       )}
+      
+      {/* Error Modal */}
+      <ErrorModal
+        isOpen={errorModalOpen}
+        title={errorModalTitle}
+        message={errorModalMessage}
+        onClose={() => setErrorModalOpen(false)}
+      />
     </>
   )
 }

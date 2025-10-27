@@ -107,7 +107,17 @@ export const sendWhipOffer = async (
       }
 
       if (attempt === maxRetries) {
-        throw new Error(`All ${maxRetries} attempts failed. Last status: ${response.status}`)
+        // Try to get response body for error details
+        let errorBody = ''
+        try {
+          errorBody = await response.text()
+        } catch (e) {
+          // Ignore if we can't read the body
+        }
+        const errorMsg = errorBody 
+          ? `All ${maxRetries} attempts failed. Status: ${response.status}, Response: ${errorBody}`
+          : `All ${maxRetries} attempts failed. Last status: ${response.status}`
+        throw new Error(errorMsg)
       }
 
       // Wait before retry with exponential backoff

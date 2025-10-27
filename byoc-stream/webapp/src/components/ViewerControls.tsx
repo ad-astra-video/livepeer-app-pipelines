@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { Play, Square, Monitor, AlertCircle, Download, X, Wifi, WifiOff, RefreshCw } from 'lucide-react'
 import { getDefaultWhepUrl } from '../utils/urls'
 import { loadSettingsFromStorage } from './SettingsModal'
+import ErrorModal from './ErrorModal'
 import { constructWhepUrl, sendWhepOffer } from '../api'
 
 interface ViewerControlsProps {
@@ -36,6 +37,12 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
   const [qualityIssues, setQualityIssues] = useState<string[]>([])
   const [isRecovering, setIsRecovering] = useState(false)
   const [reconnectAttempts, setReconnectAttempts] = useState(0)
+  
+  // Error modal state
+  const [errorModalOpen, setErrorModalOpen] = useState(false)
+  const [errorModalTitle, setErrorModalTitle] = useState('')
+  const [errorModalMessage, setErrorModalMessage] = useState('')
+  
   const videoRef = useRef<HTMLVideoElement>(null)
   const [currentStats, setCurrentStats] = useState({
     bitrate: 0,
@@ -88,17 +95,23 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
     }
   }, [])
 
+  const showErrorModal = (title: string, message: string) => {
+    setErrorModalTitle(title)
+    setErrorModalMessage(message)
+    setErrorModalOpen(true)
+  }
+
   const startViewing = async () => {
     // Use WHEP URL from stream start response if available, otherwise use user input
     const actualWhepUrl = whepUrlFromStart || whepUrl
     
     if (!actualWhepUrl) {
-      alert('Please enter a WHEP URL or start a stream first to get the WHEP endpoint')
+      showErrorModal('WHEP URL Required', 'Please enter a WHEP URL or start a stream first to get the WHEP endpoint')
       return
     }
 
     if (!playbackUrl && !whepUrlFromStart) {
-      alert('No playback URL available. Please start publishing first.')
+      showErrorModal('Playback URL Required', 'No playback URL available. Please start publishing first.')
       return
     }
 
@@ -736,6 +749,14 @@ const ViewerControls: React.FC<ViewerControlsProps> = ({
         </div>
       </div>
       </div>
+      
+      {/* Error Modal */}
+      <ErrorModal
+        isOpen={errorModalOpen}
+        title={errorModalTitle}
+        message={errorModalMessage}
+        onClose={() => setErrorModalOpen(false)}
+      />
     </>
   )
 }
