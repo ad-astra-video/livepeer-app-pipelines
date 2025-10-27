@@ -34,12 +34,14 @@ services:
       - 9997:9997
       - 1935:1935
   gateway_admin:
-    image: node:20
-    working_dir: /app
+    build:
+      context: ./gateway_admin
+      dockerfile: Dockerfile
+    container_name: byoc-stream-gateway-admin
     volumes:
-      - ./gateway_admin:/app
       - ./gateway_admin/db:/app/db
-    command: sh -c "npm install && npm start"
+    ports:
+      - 3000:3000
   gateway:
     #image: adastravideo/go-livepeer:data-url-seg-writer-opt
     image: adastravideo/go-livepeer:byoc-streaming-v3
