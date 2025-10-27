@@ -179,8 +179,6 @@ async def whip_delete(request):
     else:
         return web.Response(status=404, text="Session not found")
 
-gen_url = "http://192.168.50.81:3478"
-
 if __name__ == "__main__":
     logger.info("Starting video generator worker")
 

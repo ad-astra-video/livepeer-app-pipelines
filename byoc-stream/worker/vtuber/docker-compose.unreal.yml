@@ -26,7 +26,7 @@ services:
       retries: 3
       start_period: 40s
     networks:
-      - byoc-vtuber-network
+      - byoc-stream
     logging:
       driver: "json-file"
       options:
@@ -67,7 +67,7 @@ services:
       - /usr/share/glvnd:/host-libs/usr/share/glvnd:ro
       - ${VTUBER_SESSION_DIR:-/home/ubuntu/vtuber_sessions}:/opt/embody/sessions
     networks:
-      - byoc-vtuber-network
+      - byoc-stream
     logging:
       driver: "json-file"
       options:
@@ -80,3 +80,7 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
+networks:
+  default:
+    name: byoc-stream
+    external: true

@@ -19,16 +19,17 @@ services:
     runtime: nvidia
     environment:
       VERSION: 0.13.9
+      SIGNALING_WEBSERVER_URL: ${SIGNALING_WEBSERVER_URL}
+      GAME_UPDATER_URL: ${GAME_UPDATER_URL}
+      VTUBER_SESSION_DIR: ${VTUBER_SESSION_DIR}
     #use this to limit the ephemeral port range used by webrtc if needed
     #sysctls:
     #    net.ipv4.ip_local_port_range: "44000 44100"
     ports:
       - 8000:8000
     volumes:
-      - ../../data/models/deep-live-cam:/root/.cache/huggingface/hub/
-      - ../../data/models/deep-live-cam/face_swapper:/app/DeepLiveCam/models
-      - ../../data/models/deep-live-cam/dlib_tools:/app/detect/preprocessing/dlib_tools
-      - ../../data/models/deep-live-cam/pretrained:/app/detect/training/pretrained
+      #example to include models in the runner
+      - ../../data/models/vtuber:/data
       ##development examples##
       #- C:\dev\pytrickle\pytrickle:/opt/venv/lib/python3.12/site-packages/pytrickle
   runner-proxy:

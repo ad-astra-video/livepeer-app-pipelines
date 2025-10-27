@@ -18,6 +18,7 @@ This node integrates the face-swapping capabilities from Deep Live Cam, allowing
 2. Create models folder in `data/models/deep-live-cam`
 3. Download detect models from `https://huggingface.co/ad-astra-video/deep-live-cam` and put in `data/models/deep-live-cam` folder.  Models needed for DeepLiveCam will download automatically.
 4. Copy `.env.worker` to `.env` and update variables to values applicable to the runner
+5. Build worker docker image:  `docker build -f Dockerfile.worker -t deep-live-cam-worker:latest .`
 
 ## Launch
 
@@ -29,8 +30,8 @@ docker compose up ai-runner register-worker -d
 docker compose up -d
 ```
 
-Note: the startup takes a little while to load the models. If all models load successfully will see log lines as follows:
-Different execution providers may have different devices.
+Note: the startup takes a little while to load the models. Different execution providers may have different devices. If all models load successfully will see log lines as follows:
+
 ```
 MTCNN initialized on device: cuda
 Effort model initialized on device: cuda
@@ -56,8 +57,8 @@ Supported fields are below and can be sent from UI or as POST request to `/ai/st
 ## Tested Versions
 
 Tested with the following versions:
-- PyTorch 2.8+cu128 (NVIDIA GPU)
-- PyTorch 2.8 (CPU/Mac)
+- PyTorch 2.5.1+cu118 (NVIDIA GPU)
+- PyTorch 2.5 (CPU/Mac)
 
 ## Execution Providers and Performance Tips
 

@@ -3,6 +3,8 @@ services:
     build:
       context: ../../register
       dockerfile: Dockerfile.register_worker
+    env_file:
+      - .env.worker
     container_name: byoc-stream-register-worker
     environment:
       - "ORCH_URL=https://${ORCH_SERVICE_ADDR}"
@@ -17,6 +19,8 @@ services:
     image: ${RUNNER_IMAGE}
     container_name: byoc-stream-runner
     runtime: nvidia
+    env_file:
+      - .env.worker
     environment:
       VERSION: 0.13.9
     #use this to limit the ephemeral port range used by webrtc if needed
@@ -25,10 +29,8 @@ services:
     ports:
       - 8000:8000
     volumes:
-      - ../../data/models/deep-live-cam:/root/.cache/huggingface/hub/
-      - ../../data/models/deep-live-cam/face_swapper:/app/DeepLiveCam/models
-      - ../../data/models/deep-live-cam/dlib_tools:/app/detect/preprocessing/dlib_tools
-      - ../../data/models/deep-live-cam/pretrained:/app/detect/training/pretrained
+      #example to include models in the runner
+      #- ../../data/models/deep-live-cam:/root/.cache/huggingface/hub/
       ##development examples##
       #- C:\dev\pytrickle\pytrickle:/opt/venv/lib/python3.12/site-packages/pytrickle
   runner-proxy:
