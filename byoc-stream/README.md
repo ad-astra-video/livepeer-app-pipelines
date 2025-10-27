@@ -27,7 +27,7 @@ This pipeline is an example of a real-time video processing application that ena
    ```
 
 4. **Configure the environment (see instructions below)**
-
+- 
 
 5. **Start all services**:
    ```bash
@@ -91,11 +91,11 @@ __Documentation__
 - for off-chain testing: set `-network` to `offchain`
 
 #### **Worker Configuration**
-- Review `worker/aimodels.json` to adjust settings as needed.
+- Setup the worker you want to run in the worker folder per the README.md in that folder
 
 #### **MediaMTX Configuration** ####
 - If running MediaMTX on a separate machine add the IP address to `mediamtx.yml`
-  - example `webrtcAdditionalHosts: [192.168.1.10]`
+  - example `webrtcAdditionalHosts: [192.168.1.1]`
 
 
 ### **Default Endpoints**

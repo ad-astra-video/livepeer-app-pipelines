@@ -43,7 +43,7 @@ services:
     command: sh -c "npm install && npm start"
   gateway:
     #image: adastravideo/go-livepeer:data-url-seg-writer-opt
-    image: adastravideo/go-livepeer:byoc-streaming-v2
+    image: adastravideo/go-livepeer:byoc-streaming-v3
     container_name: byoc-stream-gateway
     volumes:
       - ./data/gateway:/data
@@ -82,7 +82,7 @@ services:
 ### LOCAL LIVEPEER NETWORK ###
   orchestrator:
     #image: adastravideo/go-livepeer:data-url-seg-writer-opt
-    image: adastravideo/go-livepeer:byoc-streaming-v2
+    image: adastravideo/go-livepeer:byoc-streaming-v3
     container_name: byoc-stream-orchestrator
     volumes:
       - ./data/orchestrator:/data
@@ -115,7 +115,7 @@ services:
           #"-aiRunnerImageOverrides={\"live\":{\"${CAPABILITY_NAME}\":\"${RUNNER_IMAGE}\"}}"]
 ####  Monitoring  ####
   kafka:
-    image: bitnami/kafka:3.5
+    image: bitnamilegacy/kafka:3.5
     container_name: byoc-stream-kafka
     ports:
       - 9092:9092
