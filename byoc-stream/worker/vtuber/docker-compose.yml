@@ -27,7 +27,7 @@ services:
     #    net.ipv4.ip_local_port_range: "44000 44100"
     ports:
       - 8000:8000
-    volumes:
+    #volumes:
       #example to include models in the runner
       - ../../data/models/vtuber:/data
       ##development examples##

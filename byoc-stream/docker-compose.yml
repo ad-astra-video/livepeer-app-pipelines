@@ -10,7 +10,6 @@ services:
       - ./webapp/dist:/var/www/html/app
     environment:
       - HOST=${HOST}
-      - CAPABILITY_NAME=${CAPABILITY_NAME}
 ### webapp ###
   webapp:
     image: node:20
@@ -76,9 +75,6 @@ services:
           "-monitor",
           "-kafkaBootstrapServers=kafka:9092",
           "-kafkaGatewayTopic=streaming-events"]
-    networks:
-      default:
-        ipv4_address: 172.28.0.50
 ### LOCAL LIVEPEER NETWORK ###
   orchestrator:
     #image: adastravideo/go-livepeer:data-url-seg-writer-opt
@@ -169,7 +165,7 @@ services:
         condition: service_healthy
         restart: true
   kafka-init:
-    image: bitnami/kafka:3.5
+    image: bitnamilegacy/kafka:3.5
     container_name: byoc-stream-kafka-init
     command:
         - /bin/sh
@@ -181,27 +177,6 @@ services:
         condition: service_healthy
         restart: true
     init: true
-  c2pa-video-service:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-      - "8001:8000"
-    volumes:
-      - ./uploads:/app/uploads
-      - ./outputs:/app/outputs
-      - ./certs:/app/certs
-      - ./temp:/app/temp
-    environment:
-      - PYTHONUNBUFFERED=1
-      - LOG_LEVEL=INFO
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
 networks:
   default:
     name: byoc-stream
