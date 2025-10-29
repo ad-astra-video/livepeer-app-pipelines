@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react'
-import { Video, Mic, MicOff, VideoOff, Play, Square, Upload, AlertCircle, Download, X, Wifi, WifiOff, RefreshCw, Camera, Monitor } from 'lucide-react'
+import { Video, Mic, MicOff, VideoOff, Play, Square, Upload, AlertCircle, Download, X, Wifi, WifiOff, RefreshCw, Camera, Monitor, ChevronDown, Trash2, Tag } from 'lucide-react'
 import { getDefaultStreamStartUrl, generateStreamId } from '../utils/urls'
 import { loadSettingsFromStorage } from './SettingsModal'
 import ErrorModal from './ErrorModal'
@@ -12,6 +12,7 @@ import {
   fetchStreamStatus,
   startStream as startStreamApi
 } from '../api'
+import PromptManager from './PromptManager'
 
 interface MediaDevice {
   deviceId: string
@@ -103,6 +104,9 @@ const StreamControls: React.FC<StreamControlsProps> = ({
   const [customParams, setCustomParams] = useState<Record<string, any>>({})
   const [customParamKey, setCustomParamKey] = useState('')
   const [customParamValue, setCustomParamValue] = useState('')
+  const [deleteConfirmParam, setDeleteConfirmParam] = useState<string | null>(null)
+  // Track which parameters came from saved prompts
+  const [parameterSources, setParameterSources] = useState<Record<string, { type: 'manual' | 'prompt', promptName?: string }>>({})
   const [audioEnabled, setAudioEnabled] = useState(true)
   const [enableVideoIngress, setEnableVideoIngress] = useState(true)
   const [enableVideoEgress, setEnableVideoEgress] = useState(true)
@@ -249,6 +253,10 @@ const StreamControls: React.FC<StreamControlsProps> = ({
         ...prev,
         [customParamKey.trim()]: parsedValue
       }))
+      setParameterSources(prev => ({
+        ...prev,
+        [customParamKey.trim()]: { type: 'manual' }
+      }))
       setCustomParamKey('')
       setCustomParamValue('')
     }
@@ -260,12 +268,47 @@ const StreamControls: React.FC<StreamControlsProps> = ({
       delete newParams[key]
       return newParams
     })
+    setParameterSources(prev => {
+      const newSources = { ...prev }
+      delete newSources[key]
+      return newSources
+    })
+    setDeleteConfirmParam(null)
+  }
+
+  const handleDeleteParamClick = (key: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (deleteConfirmParam === key) {
+      // Second click - confirm delete
+      removeCustomParam(key)
+    } else {
+      // First click - show confirmation
+      setDeleteConfirmParam(key)
+      // Auto-cancel confirmation after 3 seconds
+      setTimeout(() => {
+        setDeleteConfirmParam(null)
+      }, 3000)
+    }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && customParamKey.trim() && customParamValue.trim()) {
       e.preventDefault()
       addCustomParam()
+    }
+  }
+
+  // Function to handle appending prompts from PromptManager
+  const handleAppendPrompts = (prompts: string, promptName: string) => {
+    if (prompts.trim()) {
+      setCustomParams(prev => ({
+        ...prev,
+        prompts: prompts.trim()
+      }))
+      setParameterSources(prev => ({
+        ...prev,
+        prompts: { type: 'prompt', promptName: promptName }
+      }))
     }
   }
 
@@ -1749,6 +1792,17 @@ const StreamControls: React.FC<StreamControlsProps> = ({
                 Custom Parameters & Updates
               </label>
               
+              {/* Prompt Manager */}
+              <div className="mb-4">
+                <PromptManager 
+                  onAppendPrompts={handleAppendPrompts}
+                  className="mb-3"
+                />
+                <p className="text-xs text-gray-400">
+                  Save and reuse prompts with memorable names. Selected prompts will be added to the 'prompts' parameter.
+                </p>
+              </div>
+              
               {/* Add Parameter Input */}
               <div className="space-y-3 mb-4">
                 <div className="flex space-x-2">
@@ -1784,23 +1838,58 @@ const StreamControls: React.FC<StreamControlsProps> = ({
               {/* Current Parameters Display */}
               {Object.keys(customParams).length > 0 && (
                 <div className="space-y-2 mb-4">
-                  <h4 className="text-sm font-medium text-gray-300">Current Parameters:</h4>
-                  <div className="bg-black/30 border border-white/20 rounded-lg p-3 max-h-32 overflow-y-auto">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-medium text-gray-300">Current Parameters:</h4>
+                    <button
+                      onClick={() => {
+                        if (confirm(`Clear all ${Object.keys(customParams).length} parameters?`)) {
+                          setCustomParams({})
+                          setParameterSources({})
+                        }
+                      }}
+                      className="text-xs text-red-400 hover:text-red-300 hover:bg-red-400/10 px-2 py-1 rounded transition-colors"
+                      title="Clear all parameters"
+                    >
+                      Clear All
+                    </button>
+                  </div>
+                  <div className="bg-black/30 border border-white/20 rounded-lg p-2 max-h-32 overflow-y-auto">
                     {Object.entries(customParams).map(([key, value]) => (
-                      <div key={key} className="flex items-center justify-between py-1">
-                        <div className="flex-1 min-w-0">
-                          <span className="text-sm text-emerald-400 font-mono">{key}</span>
-                          <span className="text-gray-300 mx-2">:</span>
-                          <span className="text-sm text-white font-mono">
-                            {typeof value === 'string' ? `"${value}"` : JSON.stringify(value)}
-                          </span>
+                      <div 
+                        key={key} 
+                        className="group flex items-center justify-between py-1 hover:bg-white/5 rounded px-2"
+                        title={`${key}: ${typeof value === 'string' ? `"${value}"` : JSON.stringify(value)}`}
+                      >
+                        <div className="flex items-center space-x-2 flex-1 min-w-0">
+                          {parameterSources[key]?.type === 'prompt' ? (
+                            <>
+                              <Tag className="w-3 h-3 text-emerald-400 flex-shrink-0" />
+                              <span className="text-sm text-emerald-400 font-medium truncate">
+                                {parameterSources[key]?.promptName || key}
+                              </span>
+                              <span className="text-gray-500 text-xs">(saved prompt)</span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-sm text-emerald-400 font-mono truncate">{key}</span>
+                              <span className="text-gray-500 text-xs">({typeof value})</span>
+                            </>
+                          )}
                         </div>
                         <button
-                          onClick={() => removeCustomParam(key)}
-                          className="ml-2 p-1 text-red-400 hover:text-red-300 transition-colors"
-                          title="Remove parameter"
+                          onClick={(e) => handleDeleteParamClick(key, e)}
+                          className={`p-1.5 rounded transition-all duration-200 ${
+                            deleteConfirmParam === key
+                              ? 'text-white bg-red-600 hover:bg-red-700 animate-pulse'
+                              : 'text-red-400 hover:text-red-300 hover:bg-red-400/20'
+                          }`}
+                          title={deleteConfirmParam === key ? "Click again to confirm delete" : "Delete parameter"}
                         >
-                          <X className="w-4 h-4" />
+                          {deleteConfirmParam === key ? (
+                            <Trash2 className="w-4 h-4" />
+                          ) : (
+                            <X className="w-4 h-4" />
+                          )}
                         </button>
                       </div>
                     ))}
