@@ -198,5 +198,5 @@ byoc-stream/data/zilla/hostname
 byoc-stream/data/zilla/hosts
 byoc-stream/data/zilla/resolv.conf
 
-transcode-push/source/
-transcode-push/transcode-result
+byoc-stream/transcode-push/source
+bypc-stream/transcode-push/transcode-result
