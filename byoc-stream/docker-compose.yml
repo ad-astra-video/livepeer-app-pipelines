@@ -8,6 +8,8 @@ services:
     volumes:
       - ./webserver/Caddyfile:/etc/caddy/Caddyfile
       - ./webapp/dist:/var/www/html/app
+      # Uncomment to use custom certificates
+      # - ./certs:/certs 
     environment:
       - HOST=${HOST}
       - HTTPS_PORT=${HTTPS_PORT}
