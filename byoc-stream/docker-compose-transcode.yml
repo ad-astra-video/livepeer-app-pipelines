@@ -1,0 +1,188 @@
+services:
+### webserver ###
+  webserver:
+    image: caddy:latest
+    container_name: byoc-stream-webserver
+    ports:
+      - 8088:8088
+    volumes:
+      - ./webserver/Caddyfile:/etc/caddy/Caddyfile
+      - ./webapp/dist:/var/www/html/app
+    environment:
+      - HOST=${HOST}
+      - HTTPS_PORT=${HTTPS_PORT}
+      - HTTPS_EMAIL=${HTTPS_EMAIL}
+### webapp ###
+  webapp:
+    image: node:20
+    working_dir: /webapp
+    volumes:
+      - ./webapp:/webapp
+    command: sh -c "npm install && npm run build"
+#  uncomment if want to run dev server
+#    ports:
+#     - 3001:3001
+#    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 3001"
+###  INGEST  ###
+  mediamtx:
+    image: livepeerci/mediamtx
+    container_name: byoc-stream-mediamtx
+    volumes:
+      - ./mediamtx/mediamtx.yml:/mediamtx.yml
+    environment:
+      - MTX_WEBRTCADDITIONALHOSTS=${HOST}
+    ports:
+      - 8890:8890
+      - 9997:9997
+      - 1935:1935
+  gateway_admin:
+    build:
+      context: ./gateway_admin
+      dockerfile: Dockerfile
+    container_name: byoc-stream-gateway-admin
+    volumes:
+      - ./gateway_admin/db:/app/db
+    ports:
+      - 3000:3000
+  gateway:
+    #image: adastravideo/go-livepeer:byoc-streaming-v3
+    image: adastravideo/go-livepeer:transcoding-with-ai
+    container_name: byoc-stream-gateway
+    volumes:
+      - ./data/gateway:/data
+    ports:
+      - 5937:5937
+      - 7280:7280
+    environment:
+      - LIVE_AI_ALLOW_CORS=1
+      - LIVE_AI_WHIP_ADDR=gateway:7280
+#       input LIVE_AI_GATHER_TIMEOUT as integer (parses to seconds)
+      - LIVE_AI_GATHER_TIMEOUT=5
+#      input LIVE_AI_MIN_SEG_DUR as duration string (e.g. 1s)
+      - LIVE_AI_MIN_SEG_DUR=1s
+      - LIVE_AI_NAT_IP=${HOST_IP}
+      - LIVE_AI_PLAYBACK_HOST=rtmp://${HOST}:1935
+#      should match to the mediamtx webrtcAddress in mediamtx.yml
+      - LIVE_AI_WHEP_URL=https://${HOST}:8088/mediamtx/
+    command: ["-gateway",
+          "-orchAddr=https://${ORCH_SERVICE_ADDR}",
+          "-gatewayHost=${GATEWAY_HOST}",
+          "-rtmpAddr=gateway:1937",
+          "-httpAddr=gateway:5937",
+          "-httpIngest=true",
+          "-v=99",
+          "-network=arbitrum-one-mainnet",
+          "-blockPollingInterval=10",
+          "-ethUrl=${ARB_ETH_URL}",
+          "-ethPassword=testbroadcaster",
+          "-dataDir=/data",
+          "-monitor",
+          "-kafkaBootstrapServers=kafka:9092",
+          "-kafkaGatewayTopic=streaming-events"]
+### LOCAL LIVEPEER NETWORK ###
+  orchestrator:
+    #image: adastravideo/go-livepeer:byoc-streaming-v3
+    image: adastravideo/go-livepeer:transcoding-with-ai
+    container_name: byoc-stream-orchestrator
+    volumes:
+      - ./data/orchestrator:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+      #used with live-video-to-video only
+      #- ${AI_MODELS_DIR}:${AI_MODELS_DIR}
+      #- ./worker/aimodels.json:/data/aimodels.json
+    runtime: nvidia
+    ports:
+      - 9995:9995
+    command: ["-orchestrator",
+          "-transcoder",
+          "-nvidia=0",
+          "-orchSecret=${ORCH_SECRET}",
+          "-serviceAddr=${ORCH_SERVICE_ADDR}",
+          "-v=99",
+          "-network=arbitrum-one-mainnet",
+          "-ethUrl=${ARB_ETH_URL}",
+          "-ethPassword=some-random-password",
+          "-dataDir=/data",
+          "-ethOrchAddr=${ACTIVE_ORCH_ADDR}",
+          "-pricePerUnit=0",
+          "-ticketEV=${TICKET_EV}",
+          "-monitor",
+          "-aiVerboseLogs"]
+          #below used with live-video-to-video only
+          #"-aiWorker",
+          #"-liveAITrickleHostForRunner=localhost:9995",
+          #"-aiModels=/data/aimodels.json",
+          #"-aiModelsDir=${AI_MODELS_DIR}",
+          #"-aiRunnerImageOverrides={\"live\":{\"${CAPABILITY_NAME}\":\"${RUNNER_IMAGE}\"}}"]
+####  Monitoring  ####
+  kafka:
+    image: bitnamilegacy/kafka:3.5
+    container_name: byoc-stream-kafka
+    ports:
+      - 9092:9092
+    environment:
+      KAFKA_CFG_NODE_ID: 1
+      KAFKA_CFG_BROKER_ID: 1
+      KAFKA_CFG_PROCESS_ROLES: broker,controller
+      KAFKA_CFG_LISTENERS: PLAINTEXT://kafka:9092,CONTROLLER://localhost:9093
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: true
+    healthcheck:
+      test: /opt/bitnami/kafka/bin/kafka-cluster.sh cluster-id --bootstrap-server kafka:9092 || exit 1
+      interval: 1s
+      timeout: 60s
+      retries: 60
+  #kafka-sse-api setup docs https://docs.aklivity.io/zilla/latest/tutorials/sse/sse-intro.html#setup-sse-kafka-proxy
+  kafka-sse-api:
+    image: ghcr.io/aklivity/zilla:latest
+    container_name: byoc-stream-kafka-sse-api
+    ports:
+      - 7114:7114
+    healthcheck:
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      test: ["CMD", "bash", "-c", "echo -n '' > /dev/tcp/127.0.0.1/7114"]
+    environment:
+      KAFKA_BOOTSTRAP_SERVER: kafka:9092
+      ZILLA_INCUBATOR_ENABLED: "true"
+    volumes:
+      - ./data/zilla:/etc/zilla
+      - ./data/zilla/index.html:/var/www/index.html
+    command: start -v -e
+    depends_on:
+      kafka:
+        condition: service_healthy
+        restart: true
+  kafka-ui:
+    image: ghcr.io/kafbat/kafka-ui:latest
+    container_name: byoc-stream-kafka-ui
+    ports:
+      - 8080:8080
+    environment:
+      KAFKA_CLUSTERS_0_NAME: byoc-stream
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+    depends_on:
+      kafka:
+        condition: service_healthy
+        restart: true
+  kafka-init:
+    image: bitnamilegacy/kafka:3.5
+    container_name: byoc-stream-kafka-init
+    command:
+        - /bin/sh
+        - -c
+        - |
+          /opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic streaming-events
+    depends_on:
+      kafka:
+        condition: service_healthy
+        restart: true
+    init: true
+networks:
+  default:
+    name: byoc-stream
+    external: true

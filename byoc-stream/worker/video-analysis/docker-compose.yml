@@ -8,7 +8,7 @@ services:
       - "ORCH_URL=https://${ORCH_SERVICE_ADDR}"
       - "ORCH_SECRET=${ORCH_SECRET}"
       - "CAPABILITY_NAME=${CAPABILITY_NAME}"
-      - "CAPABILITY_DESCRIPTION=deep fake alteration and detection"
+      - "CAPABILITY_DESCRIPTION=video analysis"
       - "CAPABILITY_URL=${AI_RUNNER_URL}"
       - "CAPABILITY_PRICE_PER_UNIT=${CAPABILITY_PRICE}"
       - "CAPABILITY_PRICE_SCALING=1"
@@ -24,6 +24,7 @@ services:
     #    net.ipv4.ip_local_port_range: "44000 44100"
     ports:
       - 8000:8000
+      - 23333:23333
     volumes:
       #example to include models in the runner
       - ../../data/models/video-analysis:/root/.cache/huggingface/hub/
