@@ -9,7 +9,8 @@ import {
   stopStream as stopStreamApi,
   sendStreamUpdate,
   StreamUpdateData,
-  fetchStreamStatus
+  fetchStreamStatus,
+  startStream as startStreamApi
 } from '../api'
 
 interface MediaDevice {
@@ -340,50 +341,12 @@ const StreamControls: React.FC<StreamControlsProps> = ({
         ...customParams,
       }
 
-      const reqParams = {
+      // Start the stream using the API function
+      const urls = await startStreamApi(whipUrl, streamName, pipeline, params, {
         enable_video_ingress: enableVideoIngress,
         enable_video_egress: enableVideoEgress,
         enable_data_output: enableDataOutput
-      }
-      const req = {
-        request: "{}",
-        parameters: JSON.stringify(reqParams),
-        capability: pipeline,
-        timeout_seconds: 120
-      }
-      const reqStr = JSON.stringify(req)
-
-      let startReq = {
-        stream_name: streamName,
-        params: JSON.stringify(params),
-        stream_id: "",
-        rtmp_output: "",
-      }
-      
-      // Start the stream
-      const startResp = await fetch(whipUrl, {
-        method: 'POST',
-        headers: {
-          "Content-Type": "application/json",
-          "Livepeer": btoa(reqStr)
-        },
-        body: JSON.stringify(startReq)
       })
-
-      if (!startResp.ok) {
-        let errorBody = ''
-        try {
-          errorBody = await startResp.text()
-        } catch (e) {
-          // Ignore if we can't read the body
-        }
-        const errorMsg = errorBody 
-          ? `Failed to start stream (${startResp.status}): ${errorBody}`
-          : `Failed to start stream (${startResp.status})`
-        throw new Error(errorMsg)
-      }
-      const urls = await startResp.json()
-      console.log(urls)
 
       // Capture URLs from start response for later use
       if (urls?.status_url && typeof urls.status_url === 'string') {

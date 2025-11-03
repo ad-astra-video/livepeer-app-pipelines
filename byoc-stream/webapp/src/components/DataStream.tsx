@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Database, Play, Square, Server, MessageSquare, X, Download, RefreshCw, ChevronRight } from 'lucide-react'
 import { loadSettingsFromStorage } from './SettingsModal'
+import { connectToDataStream as connectToDataStreamApi, disconnectFromDataStream as disconnectFromDataStreamApi } from '../api'
 
 interface DataLog {
   id: string
@@ -102,87 +103,43 @@ const DataStream: React.FC<DataStreamProps> = ({
       setConnectionStatus('connecting')
       setManuallyDisconnected(false) // Reset manual disconnect flag
       
-      // Use data URL from start response if available, otherwise fall back to settings
-      let sseUrl: string
+      const eventSource = await connectToDataStreamApi(
+        {
+          streamName,
+          dataUrlFromStart
+        },
+        {
+          onOpen: () => {
+            setIsConnected(true)
+            setConnectionStatus('connected')
+          },
+          onMessage: (data) => {
+            const log: DataLog = {
+              id: `data-${logCounterRef.current++}`,
+              type: data._parseError ? 'raw' : (data.type || 'data'),
+              data: data,
+              expanded: true
+            }
+            
+            setLogs(prevLogs => {
+              const newLogs = [...prevLogs, log]
+              console.log('Updated logs count:', newLogs.length)
+              // Keep only the last maxLogs entries
+              return newLogs.slice(-maxLogs)
+            })
+          },
+          onError: (error) => {
+            setIsConnected(false)
+            setConnectionStatus('error')
+            if (eventSourceRef.current) {
+              eventSourceRef.current.close()
+              eventSourceRef.current = null
+            }
+          }
+        }
+      )
       
-      if (dataUrlFromStart) {
-        // Use data_url directly from start response without appending anything
-        sseUrl = dataUrlFromStart
-        console.log(`Using direct data URL from start response: ${sseUrl}`)
-      } else {
-        // Fallback to constructing URL from settings
-        sseUrl = `${dataUrl}/live/video-to-video/${streamName}/data`
-        console.log(`Using constructed data URL from settings: ${sseUrl}`)
-      }
-      
-      console.log(`Connecting to data stream: ${sseUrl}`)
-      
-      const eventSource = new EventSource(sseUrl)
       eventSourceRef.current = eventSource
-
-      // Debug: Log all properties of the EventSource
-      console.log('EventSource created:', {
-        url: eventSource.url,
-        readyState: eventSource.readyState,
-        withCredentials: eventSource.withCredentials
-      })
-
-      eventSource.onopen = () => {
-        console.log('Connected to Data Stream')
-        console.log('EventSource readyState:', eventSource.readyState)
-        console.log('EventSource url:', eventSource.url)
-        setIsConnected(true)
-        setConnectionStatus('connected')
-      }
-
-      eventSource.onmessage = (event) => {
-        console.log('Data stream message received:', event.data)
-        try {
-          const data = JSON.parse(event.data.trim())
-          console.log('Parsed data:', data)
-          
-          const log: DataLog = {
-            id: `data-${logCounterRef.current++}`,
-            type: data.type || 'data',
-            data: data,
-            expanded: true
-          }
-          
-          setLogs(prevLogs => {
-            const newLogs = [...prevLogs, log]
-            console.log('Updated logs count:', newLogs.length)
-            // Keep only the last maxLogs entries
-            return newLogs.slice(-maxLogs)
-          })
-        } catch (error) {
-          console.error('Error parsing data stream message:', error)
-          
-          // Create a log entry even if parsing fails
-          const log: DataLog = {
-            id: `data-${logCounterRef.current++}`,
-            type: 'raw',
-            data: { raw: event.data, error: error.message },
-            expanded: true
-          }
-          
-          setLogs(prevLogs => {
-            const newLogs = [...prevLogs, log]
-            return newLogs.slice(-maxLogs)
-          })
-        }
-      }
-
-      eventSource.onerror = (error) => {
-        console.error('Data Stream SSE error:', error)
-        console.error('SSE readyState:', eventSource.readyState)
-        setIsConnected(false)
-        setConnectionStatus('error')
-  // Removed timestamp update on error
-        if (eventSourceRef.current) {
-          eventSourceRef.current.close()
-          eventSourceRef.current = null
-        }
-      }
 
     } catch (error) {
       console.error('Error connecting to Data Stream:', error)
@@ -191,10 +148,8 @@ const DataStream: React.FC<DataStreamProps> = ({
   }
 
   const disconnectFromDataStream = () => {
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close()
-      eventSourceRef.current = null
-    }
+    disconnectFromDataStreamApi(eventSourceRef.current)
+    eventSourceRef.current = null
     setIsConnected(false)
     setConnectionStatus('disconnected')
     setManuallyDisconnected(true) // Mark as manually disconnected

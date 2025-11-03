@@ -8,8 +8,14 @@ export * from './whip'
 // WHEP API
 export * from './whep'
 
+// Stream Start API
+export * from './start'
+
 // Stream Update API
 export * from './stream-update'
+
+// Data Stream API
+export * from './data'
 
 // Status API
 export * from './status'
