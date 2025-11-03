@@ -9,6 +9,9 @@ https://{$HOST}:{$HTTPS_PORT} {
 	}
 
 	tls {$HTTPS_EMAIL}
+	# Uncomment to use custom certificates
+	# mount volume to /certs folder in docker-compose.yml
+	# tls /certs/fullchain.pem /certs/privkey.pem
 
 	handle_path /ai-runner/* {
 		header {
