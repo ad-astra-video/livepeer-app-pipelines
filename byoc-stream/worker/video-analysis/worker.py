@@ -14,7 +14,7 @@ import requests
 import torch
 import io
 import base64
-import multiprocessing
+import torch.multiprocessing as mp
 
 # Logging
 logging.basicConfig(
@@ -47,13 +47,8 @@ cmd = [
     sys.executable, "-m", "lmdeploy", "serve", "api_server", model_name,
     "--server-port", "23333", "--tp", "1", "--backend", "pytorch"
 ]
-proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
 
-def print_vlm_logs():
-    for line in proc.stdout:
-        print("vlm:", line.strip())
-
-threading.Thread(target=print_vlm_logs, daemon=True).start()
+proc = None
 
 # Wait until server is ready
 def _wait_for_model():
@@ -70,10 +65,10 @@ def _wait_for_model():
             logger.info("VLM not ready yet, retrying...")
         time.sleep(2)
 
-def load_model():
-    _wait_for_model()
+async def load_model():
+    await asyncio.get_event_loop().run_in_executor(None, _wait_for_model)
 
-def update_params(params: dict):
+async def update_params(params: dict):
     global user_prompt, history_length, max_new_tokens
     if "user_prompt" in params:
         user_prompt = params["user_prompt"]
@@ -85,15 +80,10 @@ def update_params(params: dict):
 # ------------------------
 # Webserver process
 # ------------------------
-def start_webserver(frame_queue, result_queue):
+def start_webserver(frame_queue, result_queue, lock_frame_queue):
     async def video_proc(frame: VideoFrame) -> VideoFrame:
         try:
             img_tensor = frame.tensor.squeeze(0).permute(2, 0, 1)
-            img = to_pil(img_tensor)
-
-            buf = io.BytesIO()
-            img.save(buf, format="JPEG")
-            buf.seek(0)
 
             if frame.timestamp is not None and frame.time_base is not None:
                 timestamp_sec = float(frame.timestamp * frame.time_base)
@@ -101,7 +91,8 @@ def start_webserver(frame_queue, result_queue):
                 timestamp_sec = None
 
             # Send buffer + timestamp to inference process
-            frame_queue.put((buf, timestamp_sec))
+            if not lock_frame_queue.is_set():
+                frame_queue.put((img_tensor, timestamp_sec))
             return frame
         except Exception as e:
             logger.error(f"Video processing failed: {e}")
@@ -136,80 +127,125 @@ def start_webserver(frame_queue, result_queue):
 # ------------------------
 # Inference process
 # ------------------------
-def start_inference(frame_queue, result_queue):
+def start_inference(frame_queue, result_queue, lock_frame_queue):
+    # Start the LMDeploy server in this process
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    
+    def print_vlm_logs():
+        import os
+        pid = os.getpid()
+        for line in proc.stdout:
+            print(f"vlm[{pid}]:", line.strip())
+    
+    threading.Thread(target=print_vlm_logs, daemon=True).start()
+    logger.info("LMDeploy server starting...")
+    
+    # Wait for server to be ready
+    _wait_for_model()
+    logger.info("LMDeploy server ready, starting inference loop")
+
     async def run():
         history = []
 
-        while True:
+        try:
+            while True:
+                try:
+                    # Wait until at least 5 frames are in the queue
+                    if frame_queue.qsize() < 5:
+                        await asyncio.sleep(0.05)
+                        continue
+
+                    # Drain all frames
+                    lock_frame_queue.set()
+                    frame_contents = []
+                    start = time.time()
+                    last_timestamp = None
+                    while not frame_queue.empty():
+                        frame = frame_queue.get()
+                        img = to_pil(frame[0])
+
+                        buf = io.BytesIO()
+                        img.save(buf, format="JPEG")
+                        buf.seek(0)
+                        frame_contents.append({
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{base64.b64encode(buf.getvalue()).decode('utf-8')}"
+                            },
+                        })
+                        last_timestamp = frame[1]
+
+                    logger.info(f"processed frames for inference: {len(frame_contents)} frames in {time.time() - start:.2f}s")
+
+
+                    # Build multimodal message: prompt + history + frames
+                    content = [{"type": "text", "text": user_prompt}]
+                    content.extend(history[-history_length:])
+                    content.extend(frame_contents)
+                    messages = [{"role": "user", "content": content}]
+
+                    # Call OpenAI-compatible API
+                    start = time.time()
+                    resp = client.chat.completions.create(
+                        model=model_name,
+                        messages=messages,
+                        max_tokens=max_new_tokens,
+                    )
+                    logger.info(f"Inference call done in {time.time() - start:.2f}s")
+                    result_text = resp.choices[0].message.content
+
+                    # Update history
+                    history.append({"type": "text", "text": result_text})
+
+                    # Send result back to webserver
+                    result_queue.put({"analysis": result_text, "timestamp": last_timestamp})
+                    #open for new frames
+                    lock_frame_queue.clear()
+                except Exception as e:
+                    logger.error(f"Inference failed: {e}")
+                    await asyncio.sleep(0.1)  # prevent tight error loop
+        finally:
+            # Cleanup: terminate the LMDeploy server when inference stops
+            logger.info("Shutting down LMDeploy server...")
+            proc.terminate()
             try:
-                # Wait until at least 5 frames are in the queue
-                if frame_queue.qsize() < 5:
-                    await asyncio.sleep(0.05)
-                    continue
+                proc.wait(timeout=5)
+                logger.info("LMDeploy server terminated cleanly")
+            except subprocess.TimeoutExpired:
+                logger.warning("LMDeploy server didn't stop, killing it")
+                proc.kill()
+                proc.wait()
 
-                # Drain all frames
-                frames_to_process = []
-                while not frame_queue.empty():
-                    frames_to_process.append(frame_queue.get())
-
-                if not frames_to_process:
-                    continue
-
-                # Use the latest timestamp
-                max_timestamp = max(frames_to_process, key=lambda x: x[1])[1]
-
-                # Convert frames to base64
-                frame_contents = [
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": f"data:image/jpeg;base64,{base64.b64encode(buf.getvalue()).decode('utf-8')}"
-                        },
-                    }
-                    for buf, _ in frames_to_process
-                ]
-
-                # Build multimodal message: prompt + history + frames
-                content = [{"type": "text", "text": user_prompt}]
-                content.extend(history[-history_length:])
-                content.extend(frame_contents)
-                messages = [{"role": "user", "content": content}]
-
-                # Call OpenAI-compatible API
-                resp = client.chat.completions.create(
-                    model=model_name,
-                    messages=messages,
-                    max_tokens=max_new_tokens,
-                )
-                result_text = resp.choices[0].message.content
-
-                # Update history
-                history.append({"type": "text", "text": result_text})
-
-                # Send result back to webserver
-                result_queue.put({"analysis": result_text, "timestamp": max_timestamp})
-
-            except Exception as e:
-                logger.error(f"Inference failed: {e}")
-                await asyncio.sleep(0.1)  # prevent tight error loop
-
-    asyncio.run(run())
+    try:
+        asyncio.run(run())
+    except KeyboardInterrupt:
+        logger.info("Inference process interrupted")
+    finally:
+        # Ensure cleanup even if asyncio.run fails
+        if proc and proc.poll() is None:
+            logger.info("Final cleanup: terminating LMDeploy server")
+            proc.terminate()
+            try:
+                proc.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                proc.kill()
 
 # ------------------------
 # Main launcher
 # ------------------------
 if __name__ == "__main__":
-    mp_frame_queue = multiprocessing.Queue(maxsize=20)
-    mp_result_queue = multiprocessing.Queue(maxsize=20)
+    mp_frame_queue = mp.Queue(maxsize=5)
+    mp_result_queue = mp.Queue(maxsize=20)
+    lock_frame_queue = mp.Event()
 
-    web_proc = multiprocessing.Process(
+    web_proc = mp.Process(
         target=start_webserver,
-        args=(mp_frame_queue, mp_result_queue),
+        args=(mp_frame_queue, mp_result_queue, lock_frame_queue),
         daemon=True,
     )
-    inf_proc = multiprocessing.Process(
+    inf_proc = mp.Process(
         target=start_inference,
-        args=(mp_frame_queue, mp_result_queue),
+        args=(mp_frame_queue, mp_result_queue, lock_frame_queue),
         daemon=True,
     )
 
@@ -223,4 +259,5 @@ if __name__ == "__main__":
         logger.info("Shutting down...")
         web_proc.terminate()
         inf_proc.terminate()
-        proc.terminate()  # kill lmdeploy server
+        if proc:
+            proc.terminate()  # kill lmdeploy server
