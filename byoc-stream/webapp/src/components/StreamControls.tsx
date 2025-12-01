@@ -164,6 +164,71 @@ const StreamControls: React.FC<StreamControlsProps> = ({
     frameCount: 0
   })
 
+  // Pipeline management functions
+  const PIPELINES_STORAGE_KEY = 'livepeer-ai-saved-pipelines'
+  
+  const loadPipelinesFromStorage = (): string[] => {
+    try {
+      const saved = localStorage.getItem(PIPELINES_STORAGE_KEY)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        return Array.isArray(parsed) ? parsed : []
+      }
+    } catch (error) {
+      console.warn('Failed to load pipelines from localStorage:', error)
+    }
+    return ['comfystream', 'video-analysis', 'vtuber', 'passthrough', 'noop']
+  }
+  
+  const savePipelinesToStorage = (pipelines: string[]) => {
+    try {
+      localStorage.setItem(PIPELINES_STORAGE_KEY, JSON.stringify(pipelines))
+    } catch (error) {
+      console.warn('Failed to save pipelines to localStorage:', error)
+    }
+  }
+  
+  const handlePipelineChange = (newValue: string) => {
+    setPipeline(newValue)
+  }
+  
+  // Save pipeline to saved list and settings after successful stream start
+  const savePipelineAfterSuccess = (pipelineValue: string) => {
+    if (!pipelineValue.trim()) return
+    
+    // Add to saved pipelines if not already in list
+    if (!savedPipelines.includes(pipelineValue.trim())) {
+      const updatedPipelines = [pipelineValue.trim(), ...savedPipelines]
+      setSavedPipelines(updatedPipelines)
+      savePipelinesToStorage(updatedPipelines)
+    }
+    
+    // Save as default pipeline in settings
+    const currentSettings = loadSettingsFromStorage()
+    const updatedSettings = {
+      ...currentSettings,
+      defaultPipeline: pipelineValue.trim()
+    }
+    try {
+      localStorage.setItem('livepeer-ai-video-streaming-url-settings', JSON.stringify(updatedSettings))
+    } catch (error) {
+      console.warn('Failed to save default pipeline:', error)
+    }
+  }
+  
+  const selectPipeline = (pipelineValue: string) => {
+    handlePipelineChange(pipelineValue)
+    setShowPipelineDropdown(false)
+  }
+  
+  const clearAllPipelines = () => {
+    // Reset to default pipelines
+    const defaultPipelines = ['comfystream', 'video-analysis', 'vtuber', 'passthrough', 'noop']
+    setSavedPipelines(defaultPipelines)
+    savePipelinesToStorage(defaultPipelines)
+    setShowPipelineDropdown(false)
+  }
+
   // Helper functions for custom parameters
   const addCustomParam = () => {
     if (customParamKey.trim() && customParamValue.trim()) {
@@ -379,6 +444,9 @@ const StreamControls: React.FC<StreamControlsProps> = ({
         console.log('Skipping WebRTC/WHIP setup (RTMP mode or ingress disabled)')
         setIsStreaming(true)
         setConnectionStatus('connected')
+        
+        // Save pipeline after successful stream start
+        savePipelineAfterSuccess(pipeline)
         return
       }
       
@@ -556,6 +624,9 @@ const StreamControls: React.FC<StreamControlsProps> = ({
         setIsStreaming(true)
         setConnectionStatus('connected')
         setPlaybackUrl(playbackUrl)
+        
+        // Save pipeline after successful stream start
+        savePipelineAfterSuccess(pipeline)
         
         // Start collecting real-time stats
         statsIntervalRef.current = window.setInterval(() => {
@@ -1507,14 +1578,58 @@ const StreamControls: React.FC<StreamControlsProps> = ({
               <label className="block text-sm font-medium text-gray-300 mb-2">
                 Pipeline
               </label>
-              <input
-                type="text"
-                value={pipeline}
-                onChange={(e) => setPipeline(e.target.value)}
-                placeholder="Default: noop"
-                className="w-full px-4 py-3 bg-black/20 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                disabled={isStreaming}
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  value={pipeline}
+                  onChange={(e) => handlePipelineChange(e.target.value)}
+                  onFocus={() => setShowPipelineDropdown(true)}
+                  placeholder="Default: noop"
+                  className="w-full px-4 py-3 pr-10 bg-black/20 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  disabled={isStreaming}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPipelineDropdown(!showPipelineDropdown)}
+                  disabled={isStreaming}
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1.5 text-gray-400 hover:text-white transition-colors disabled:opacity-50"
+                  title="Show saved pipelines"
+                >
+                  <ChevronDown className="w-5 h-5" />
+                </button>
+              </div>
+              
+              {/* Dropdown List */}
+              {showPipelineDropdown && savedPipelines.length > 0 && (
+                <div className="absolute z-10 w-full mt-1 bg-slate-800 border border-white/20 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+                  {/* Reset to Default Button */}
+                  <div className="border-b border-white/10">
+                    <button
+                      type="button"
+                      onClick={clearAllPipelines}
+                      className="w-full px-4 py-2.5 text-left text-sm text-orange-400 hover:bg-orange-900/30 transition-colors flex items-center"
+                      title="Reset to default pipelines"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Reset to Default List
+                    </button>
+                  </div>
+                  {savedPipelines.map((savedPipeline, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => selectPipeline(savedPipeline)}
+                      className={`w-full px-4 py-2.5 text-left text-sm transition-colors ${
+                        pipeline === savedPipeline
+                          ? 'bg-emerald-600 text-white'
+                          : 'text-gray-300 hover:bg-slate-700'
+                      }`}
+                    >
+                      {savedPipeline}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Stream Configuration Checkboxes */}
