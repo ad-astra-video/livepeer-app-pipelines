@@ -30,7 +30,7 @@ services:
       - ../../data/models/video-analysis:/root/.cache/huggingface/hub/
       - ./worker.py:/app/worker.py
       ##development examples##
-      - C:\dev\pytrickle\pytrickle:/opt/venv/lib/python3.12/site-packages/pytrickle
+      #- C:\dev\pytrickle\pytrickle:/opt/venv/lib/python3.12/site-packages/pytrickle
   runner-proxy:
     image: caddy:latest
     container_name: byoc-stream-runner-proxy
