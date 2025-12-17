@@ -1,49 +1,50 @@
-services:
-  register-worker:
-    build:
-      context: ../../register
-      dockerfile: Dockerfile.register_worker
-    container_name: byoc-stream-register-worker
-    environment:
-      - "ORCH_URL=https://${ORCH_SERVICE_ADDR}"
-      - "ORCH_SECRET=${ORCH_SECRET}"
-      - "CAPABILITY_NAME=${CAPABILITY_NAME}"
-      - "CAPABILITY_DESCRIPTION=deep fake alteration and detection"
-      - "CAPABILITY_URL=${AI_RUNNER_URL}"
-      - "CAPABILITY_PRICE_PER_UNIT=${CAPABILITY_PRICE}"
-      - "CAPABILITY_PRICE_SCALING=1"
-      - "CAPABILITY_CAPACITY=${CAPABILITY_CAPACITY}"
-  ai-runner:
-    image: ${RUNNER_IMAGE}
-    container_name: byoc-stream-runner
-    runtime: nvidia
-    environment:
-      VERSION: 0.13.9
-      SIGNALING_WEBSERVER_URL: ${SIGNALING_WEBSERVER_URL}
-      GAME_UPDATER_URL: ${GAME_UPDATER_URL}
-      VTUBER_SESSION_DIR: ${VTUBER_SESSION_DIR}
-    #use this to limit the ephemeral port range used by webrtc if needed
-    #sysctls:
-    #    net.ipv4.ip_local_port_range: "44000 44100"
-    ports:
-      - 8000:8000
-    #volumes:
-      #example to include models in the runner
-      - ../../data/models/vtuber:/data
-      ##development examples##
-      #- C:\dev\pytrickle\pytrickle:/opt/venv/lib/python3.12/site-packages/pytrickle
-  runner-proxy:
-    image: caddy:latest
-    container_name: byoc-stream-runner-proxy
-    ports:
-      - 9099:9099
-    volumes:
-      - ../../webserver/Caddyfile.runner_proxy:/etc/caddy/Caddyfile
-    environment:
-      - HOST=${HOST}
-      - AI_RUNNER_PORT=${AI_RUNNER_PORT}
-      - AI_RUNNER_HTTPS_EMAIL=${AI_RUNNER_HTTPS_EMAIL}
-networks:
-  default:
-    name: byoc-stream
-    external: true
+# CUDA 12.8 (with cuDNN) on Ubuntu 24.04
+FROM nvidia/cuda:12.8.1-cudnn-runtime-ubuntu24.04
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 python3-venv python3-dev \
+    build-essential pkg-config git curl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# install uv
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh \
+    && ln -s /root/.local/bin/uv /usr/local/bin/uv
+
+# Configure uv to use venv in /opt/venv
+ENV UV_PYTHON=python3 \
+    UV_PROJECT_ENVIRONMENT=/opt/venv \
+    PATH="/opt/venv/bin:${PATH}" \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    NVIDIA_VISIBLE_DEVICES=all \
+    NVIDIA_DRIVER_CAPABILITIES=compute,utility,video
+
+RUN mkdir -p /opt/embody/sessions
+
+WORKDIR /app
+
+# Create venv
+RUN uv venv "$UV_PROJECT_ENVIRONMENT"
+
+RUN uv pip install --upgrade pip packaging wheel setuptools && \
+    uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128 
+
+#install flash attn if needed
+#RUN apt-get install -y --no-install-recommends cuda-toolkit-12-8 && \
+#    uv pip install flash-attn --no-build-isolation
+
+# Copy dependency files first (for caching)
+COPY ./requirements.txt* ./pyproject.toml* ./
+
+RUN if [ -f requirements.txt ]; then \
+        uv pip install -r requirements.txt ; \
+    fi && \
+    if [ -f pyproject.toml ]; then \
+        uv sync --frozen --no-dev || uv sync --no-dev ; \
+    fi
+
+# Copy in worker files
+COPY . .
+
+# Default command
+CMD ["python3", "/app/worker.py"]
