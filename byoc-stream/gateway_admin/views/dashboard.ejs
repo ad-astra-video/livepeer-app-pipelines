@@ -9,12 +9,12 @@
 <div class="card">
   <h2>Pool entries</h2>
   <form method="post" action="/admin/pool">
-    <label for="address">Stream URL</label>
-    <input id="address" name="address" type="url" placeholder="https://example.com/stream" <%= canManage ? '' : 'disabled' %> required />
+    <label for="address">Orchestrator URL</label>
+    <input id="address" name="address" type="url" placeholder="https://example.com" <%= canManage ? '' : 'disabled' %> required />
     <button class="btn" type="submit" <%= canManage ? '' : 'disabled' %>>Add to pool</button>
   </form>
   <% if (poolEntries.length === 0) { %>
-    <p>No entries yet. Add the first stream URL above.</p>
+    <p>No entries yet. Add the first orchestrator URL above.</p>
   <% } else { %>
     <table>
       <thead>
