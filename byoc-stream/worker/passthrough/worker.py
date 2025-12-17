@@ -8,7 +8,7 @@ logger = logging.getLogger()
 logging.getLogger("pytrickle").setLevel(logging.INFO)
 
 processor = None
-def load_model():
+async def load_model():
     pass
 
 async def process_video(frame: VideoFrame) -> VideoFrame:
