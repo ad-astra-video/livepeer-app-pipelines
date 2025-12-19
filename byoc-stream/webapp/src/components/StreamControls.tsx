@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react'
-import { Video, Mic, MicOff, VideoOff, Play, Square, Upload, AlertCircle, Download, X, Wifi, WifiOff, RefreshCw, Camera, Monitor, ChevronDown } from 'lucide-react'
-import { getDefaultStreamStartUrl, generateStreamId } from '../utils/urls'
+import { Video, Mic, MicOff, VideoOff, Play, Square, Upload, AlertCircle, Download, X, Wifi, WifiOff, RefreshCw, Camera, Monitor, ChevronDown, Tag, Trash2 } from 'lucide-react'
+import { getDefaultStreamStartUrl } from '../utils/urls'
 import { loadSettingsFromStorage } from './SettingsModal'
 import ErrorModal from './ErrorModal'
 import { 
@@ -152,6 +152,7 @@ const StreamControls: React.FC<StreamControlsProps> = ({
   // Store URLs from stream start response
   const statusUrlRef = useRef<string | null>(null)
   const updateUrlRef = useRef<string | null>(null)
+  const stopUrlRef = useRef<string | null>(null)
   const [actualWhipUrl, setActualWhipUrl] = useState<string | null>(null)
   const [rtmpUrlFromStart, setRtmpUrlFromStart] = useState<string | null>(null)
   
@@ -488,6 +489,9 @@ const StreamControls: React.FC<StreamControlsProps> = ({
       if (urls?.rtmp_url && typeof urls.rtmp_url === 'string') {
         setRtmpUrlFromStart(urls.rtmp_url)
       }
+      if (urls?.stop_url && typeof urls.stop_url === 'string') {
+        stopUrlRef.current = urls.stop_url
+      }
 
       // Use streamId from response or generate one as fallback
       const streamId = urls?.stream_id
@@ -501,7 +505,7 @@ const StreamControls: React.FC<StreamControlsProps> = ({
         setConnectionStatus('connected')
         
         // Save pipeline after successful stream start
-        savePipelineAfterSuccess(pipeline)
+        //savePipelineAfterSuccess(pipeline)
         return
       }
       
@@ -681,7 +685,7 @@ const StreamControls: React.FC<StreamControlsProps> = ({
         setPlaybackUrl(playbackUrl)
         
         // Save pipeline after successful stream start
-        savePipelineAfterSuccess(pipeline)
+        //savePipelineAfterSuccess(pipeline)
         
         // Start collecting real-time stats
         statsIntervalRef.current = window.setInterval(() => {
@@ -710,7 +714,7 @@ const StreamControls: React.FC<StreamControlsProps> = ({
     try {
       // Send stop request to server if we have a stream ID
       if (currentStreamId) {
-        await stopStreamApi({ streamId: currentStreamId, whipUrl, pipeline })
+        await stopStreamApi(stopUrlRef.current)
       }
     } catch (error) {
       console.error('Error sending stop request:', error)

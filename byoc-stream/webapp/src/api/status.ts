@@ -6,13 +6,13 @@ import { loadSettingsFromStorage } from '../components/SettingsModal'
 /**
  * Fetch stream status data
  */
-export const fetchStreamStatus = async (customStatusUrl?: string): Promise<any> => {
+export const fetchStreamStatus = async (statusUrl?: string): Promise<any> => {
   try {
     let endpoint: string
     
-    if (customStatusUrl) {
+    if (statusUrl) {
       // Use direct status URL from stream start response
-      endpoint = customStatusUrl
+      endpoint = statusUrl
       console.log(`Using direct status URL from start response: ${endpoint}`)
     } else {
       console.log("no status url provided")

@@ -10,12 +10,6 @@ export interface WhipOfferResponse {
   locationHeader: string | null
 }
 
-export interface WhipStopRequest {
-  streamId: string
-  whipUrl: string
-  pipeline: string
-}
-
 export interface PipelineParams {
   width?: number
   height?: number
@@ -136,43 +130,4 @@ export const sendWhipOffer = async (
   }
 
   throw new Error('All retry attempts failed')
-}
-
-/**
- * Sends a stop stream request
- */
-export const stopStream = async ({ streamId, whipUrl, pipeline }: WhipStopRequest): Promise<boolean> => {
-  try {
-    console.log(`Stopping stream with ID: ${streamId}`)
-
-    const stopUrl = whipUrl.replace('/stream/start', '/stream/'+streamId+'/stop')
-    const requestData = {
-      "request": JSON.stringify({"stream_id": streamId}),
-      "parameters": JSON.stringify({}),
-      "capability": pipeline,
-      "timeout_seconds": 5
-    }
-
-    const livepeerHeader = btoa(JSON.stringify(requestData))
-
-    const response = await fetch(stopUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Livepeer': livepeerHeader
-      },
-      body: JSON.stringify({ stream_id: streamId })
-    })
-
-    if (response.ok) {
-      console.log('Stream stop request sent successfully')
-      return true
-    } else {
-      console.warn('Failed to send stream stop request:', response.status)
-      return false
-    }
-  } catch (error) {
-    console.error('Error sending stop request:', error)
-    return false
-  }
 }

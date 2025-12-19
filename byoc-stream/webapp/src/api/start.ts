@@ -23,6 +23,7 @@ export interface StreamStartResponse {
   whip_url?: string
   whep_url?: string
   rtmp_url?: string
+  stop_url?: string
   stream_id?: string
 }
 

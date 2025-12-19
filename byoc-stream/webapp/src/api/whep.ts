@@ -15,15 +15,6 @@ export interface WhepOfferResponse {
 export const constructWhepUrl = (whepUrl: string, playbackUrl: string): string => {
   if (!playbackUrl) return whepUrl
   return playbackUrl
-  try {
-    const playbackUrlObj = new URL(playbackUrl)
-    const pathFromPlayback = playbackUrlObj.pathname
-    // Remove trailing slash from whepUrl if present and append the path
-    return whepUrl.replace(/\/$/, '') + pathFromPlayback
-  } catch (error) {
-    console.warn('Failed to parse playback URL, using WHEP URL as-is:', error)
-    return whepUrl
-  }
 }
 
 /**

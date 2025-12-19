@@ -12,7 +12,7 @@ export * from './whep'
 export * from './start'
 
 // Stream Update API
-export * from './stream-update'
+export * from './update'
 
 // Data Stream API
 export * from './data'
@@ -20,3 +20,5 @@ export * from './data'
 // Status API
 export * from './status'
 
+// Stream Stop API
+export * from './stop'
