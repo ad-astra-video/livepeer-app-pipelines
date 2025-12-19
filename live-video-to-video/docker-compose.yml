@@ -34,7 +34,8 @@ services:
       - 9997:9997
       - 1935:1935
   gateway:
-    image: livepeer/go-livepeer:latest
+    #image: livepeer/go-livepeer:latest
+    image: adastravideo/go-livepeer:byoc-streaming-final
     container_name: live-video-to-video-gateway
     volumes:
       - ./data/gateway:/data
@@ -68,7 +69,8 @@ services:
           "-kafkaGatewayTopic=streaming-events"]
 ### LOCAL LIVEPEER NETWORK ###
   orchestrator:
-    image: livepeer/go-livepeer:latest
+    #image: livepeer/go-livepeer:latest
+    image: adastravideo/go-livepeer:byoc-streaming-final
     container_name: live-video-to-video-orchestrator
     volumes:
       - ${AI_MODELS_DIR}:${AI_MODELS_DIR}
@@ -100,7 +102,7 @@ services:
           "-aiRunnerImageOverrides={\"live\":{\"${CAPABILITY_NAME}\":\"${RUNNER_IMAGE}\"}}"]
 ####  Monitoring  ####
   kafka:
-    image: bitnami/kafka:3.5
+    image: bitnamilegacy/kafka:3.5
     container_name: live-video-to-video-kafka
     ports:
       - 9092:9092
@@ -154,7 +156,7 @@ services:
         condition: service_healthy
         restart: true
   kafka-init:
-    image: bitnami/kafka:3.5
+    image: bitnamilegacy/kafka:3.5
     container_name: live-video-to-video-kafka-init
     command:
         - /bin/sh
