@@ -1798,13 +1798,26 @@ const StreamControls: React.FC<StreamControlsProps> = ({
               
               {/* Prompt Manager */}
               <div className="mb-4">
-                <PromptManager 
-                  onAppendPrompts={handleAppendPrompts}
-                  className="mb-3"
-                />
-                <p className="text-xs text-gray-400">
-                  Save and reuse prompts with memorable names. Selected prompts will be added to the 'prompts' parameter.
-                </p>
+                {pipeline === 'comfystream' ? (
+                  <>
+                    <PromptManager
+                      onAppendPrompts={handleAppendPrompts}
+                      className="mb-3"
+                    />
+                    <p className="text-xs text-gray-400">
+                      Save and reuse prompts with memorable names. Selected prompts will be added to the 'prompts' parameter.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <div className="p-3 bg-gray-800/50 rounded-lg border border-gray-600/30">
+                      <h4 className="text-sm font-medium text-gray-300 mb-2">Prompt Manager</h4>
+                      <p className="text-xs text-gray-400">
+                        Prompt management is only available for the 'comfystream' pipeline.
+                      </p>
+                    </div>
+                  </>
+                )}
               </div>
               
               {/* Add Parameter Input */}
