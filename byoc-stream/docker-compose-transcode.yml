@@ -46,7 +46,7 @@ services:
       - 3000:3000
   gateway:
     #image: adastravideo/go-livepeer:byoc-streaming-v3
-    image: adastravideo/go-livepeer:transcoding-with-ai
+    image: adastravideo/go-livepeer:transcoding-and-ai
     container_name: byoc-stream-gateway
     volumes:
       - ./data/gateway:/data
@@ -82,7 +82,7 @@ services:
 ### LOCAL LIVEPEER NETWORK ###
   orchestrator:
     #image: adastravideo/go-livepeer:byoc-streaming-v3
-    image: adastravideo/go-livepeer:transcoding-with-ai
+    image: adastravideo/go-livepeer:transcoding-and-ai
     container_name: byoc-stream-orchestrator
     volumes:
       - ./data/orchestrator:/data
@@ -107,10 +107,10 @@ services:
           "-pricePerUnit=0",
           "-ticketEV=${TICKET_EV}",
           "-monitor",
-          "-aiVerboseLogs"]
+          "-aiVerboseLogs",
           #below used with live-video-to-video only
           #"-aiWorker",
-          #"-liveAITrickleHostForRunner=localhost:9995",
+          "-liveAITrickleHostForRunner=${ORCH_TRICKLE_SERVICE_ADDR}"]
           #"-aiModels=/data/aimodels.json",
           #"-aiModelsDir=${AI_MODELS_DIR}",
           #"-aiRunnerImageOverrides={\"live\":{\"${CAPABILITY_NAME}\":\"${RUNNER_IMAGE}\"}}"]

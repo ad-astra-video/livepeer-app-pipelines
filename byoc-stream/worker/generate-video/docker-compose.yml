@@ -1,10 +1,8 @@
 services:
   register-worker:
     build:
-      context: ../../register
+      context: ../_register
       dockerfile: Dockerfile.register_worker
-    env_file:
-      - .env.worker
     container_name: byoc-stream-register-worker
     environment:
       - "ORCH_URL=https://${ORCH_SERVICE_ADDR}"

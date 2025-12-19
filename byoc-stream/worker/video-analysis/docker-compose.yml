@@ -1,7 +1,7 @@
 services:
   register-worker:
     build:
-      context: ../../register
+      context: ../_register
       dockerfile: Dockerfile.register_worker
     container_name: byoc-stream-register-worker
     environment:

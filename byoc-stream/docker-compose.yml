@@ -4,7 +4,7 @@ services:
     image: caddy:latest
     container_name: byoc-stream-webserver
     ports:
-      - 8088:8088
+      - ${HTTPS_PORT}:${HTTP_PORT}
     volumes:
       - ./webserver/Caddyfile:/etc/caddy/Caddyfile
       - ./webapp/dist:/var/www/html/app
@@ -47,7 +47,7 @@ services:
     ports:
       - 3000:3000
   gateway:
-    image: adastravideo/go-livepeer:byoc-streaming-v3-2
+    image: adastravideo/go-livepeer:byoc-streaming-final
     container_name: byoc-stream-gateway
     volumes:
       - ./data/gateway:/data
@@ -64,7 +64,7 @@ services:
       - LIVE_AI_NAT_IP=${HOST_IP}
       - LIVE_AI_PLAYBACK_HOST=rtmp://${HOST}:1935
 #      should match to the mediamtx webrtcAddress in mediamtx.yml
-      - LIVE_AI_WHEP_URL=https://${HOST}:8088/mediamtx/
+      - LIVE_AI_WHEP_URL=https://${HOST}:${HTTPS_PORT}/mediamtx/
     command: ["-gateway",
           "-orchAddr=https://${ORCH_SERVICE_ADDR}",
           "-gatewayHost=${GATEWAY_HOST}",
@@ -86,7 +86,7 @@ services:
         ipv4_address: 172.28.0.50
 ### LOCAL LIVEPEER NETWORK ###
   orchestrator:
-    image: adastravideo/go-livepeer:byoc-streaming-v3-2
+    image: adastravideo/go-livepeer:byoc-streaming-final
     container_name: byoc-stream-orchestrator
     volumes:
       - ./data/orchestrator:/data
@@ -110,10 +110,10 @@ services:
           "-pricePerUnit=0",
           "-ticketEV=${TICKET_EV}",
           "-monitor",
+          "-liveAITrickleHostForRunner=${ORCH_TRICKLE_SERVICE_ADDR}",
           "-aiVerboseLogs"]
           #below used with live-video-to-video only
           #"-aiWorker",
-          #"-liveAITrickleHostForRunner=localhost:9995",
           #"-aiModels=/data/aimodels.json",
           #"-aiModelsDir=${AI_MODELS_DIR}",
           #"-aiRunnerImageOverrides={\"live\":{\"${CAPABILITY_NAME}\":\"${RUNNER_IMAGE}\"}}"]

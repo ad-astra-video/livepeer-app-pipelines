@@ -6,6 +6,9 @@ import requests
 from requests_toolbelt import MultipartDecoder
 import json
 import os
+import base64
+import threading
+import time
 
 # parses header attributes; there might be a built-in way to do this
 def attrs(hdr):
@@ -26,16 +29,16 @@ ai_job_params_str = json.dumps(ai_job_params)
 
 transcode_config = {
     "manifestID": "11223344",
-    "streamKey":  "secret-key",
     "profiles":   [
         {"name": "240p-test", "width": 320, "height": 240, "bitrate": 1000000, "fps": 30, "fpsDen": 1, "profile": "H264Baseline", "gop": "2.5"}
     ],
-    "useAIProcessing": True,
-    "aiProcessingSettings": {
-        "id": "11223344",
-        "capability": "video-analysis",
+    "aiParams": {
+        "capability": "video-understanding",
         "parameters": ai_job_params_str,
-        "request": "{}"
+        "request": "{}",
+        "timeout_seconds": 60,
+        "stream_id": "11223344",
+        "params": json.dumps({"modality": "audio", "correction_enabled": False, "audio_window_s": 2.0})
     }
 }
 tsc_str = json.dumps(transcode_config)
@@ -45,6 +48,24 @@ headers = {
     'Content-Duration': '2000',
     'Livepeer-Transcode-Configuration': tsc_str
 }
+
+sse_running = False
+def listen_sse(url):
+    url = url.replace("https://192.168.1.15.sslip.io:8088/gateway", "http://localhost:5937")
+    print(f"\n=== Subscribing to SSE: {url} ===")
+    try:
+        with requests.get(url, stream=True, headers={"Accept": "text/event-stream"}) as r:
+            print(r.status_code)
+            r.raise_for_status()
+            for line in r.iter_lines(decode_unicode=True):
+                if not line:
+                    continue
+                # Standard SSE payload
+                if line.startswith("data:"):
+                    data = line[len("data:"):].strip()
+                    print(f"[SSE] {data}")
+    except Exception as e:
+        print(f"SSE subscription failed: {e}")
 
 # Loop through 0–10 and process each segment
 for i in range(0, 11):
@@ -58,14 +79,25 @@ for i in range(0, 11):
         payload = f.read()
 
     try:
-        r = requests.post(f"http://localhost:5937/live/test/{i}.mp4", data=payload, headers=headers)
+        r = requests.post(f"http://localhost:5937/live2/test/{i}.ts", data=payload, headers=headers)
     except Exception as e:
         print(f"Request failed for {seg_name}: {e}")
         continue
 
+    ai_stream_urls = {}
+    print("request headers to gateway")
+    print(headers)
+    
+    stream_hdr = r.headers.get("X-AI-Stream-Urls", "")
+    if stream_hdr != "":
+        decoded = base64.b64decode(stream_hdr).decode("utf-8")
+        ai_stream_urls = json.loads(decoded)
+        print("AI Stream Urls")
+        print(str(ai_stream_urls))
+        
     content_type = r.headers.get("Content-Type", "")
     if content_type.startswith("text/plain"):
-        print(r.text)
+        #print(r.text)
         continue
 
     # write raw response (optional)
@@ -87,3 +119,20 @@ for i in range(0, 11):
         with open(output_name, 'wb') as f:
             f.write(part.content)
         print(f"Saved rendition: {output_name}")
+
+    if not sse_running:
+        if not "data_url" in ai_stream_urls:
+            print("no data url to connect to")
+            continue
+        
+        data_url = ai_stream_urls["data_url"]
+        t = threading.Thread(
+            target=listen_sse,
+            args=(data_url,),
+            daemon=True,  # dies with main process
+        )
+        t.start()
+        sse_running = True
+     
+    #sleep a bit to simulate live stream
+    time.sleep(1.5)
