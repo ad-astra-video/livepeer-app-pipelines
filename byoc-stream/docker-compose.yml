@@ -4,7 +4,7 @@ services:
     image: caddy:latest
     container_name: byoc-stream-webserver
     ports:
-      - ${HTTPS_PORT}:${HTTP_PORT}
+      - ${HTTPS_PORT}:${HTTPS_PORT}
     volumes:
       - ./webserver/Caddyfile:/etc/caddy/Caddyfile
       - ./webapp/dist:/var/www/html/app
