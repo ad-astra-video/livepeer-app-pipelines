@@ -13,19 +13,6 @@ https://{$HOST}:{$HTTPS_PORT} {
 	# mount volume to /certs folder in docker-compose.yml
 	# tls /certs/fullchain.pem /certs/privkey.pem
 
-	handle_path /ai-runner/* {
-		header {
-			Access-Control-Allow-Origin *
-			Access-Control-Allow-Methods "GET, HEAD, POST, OPTIONS"
-			Access-Control-Allow-Headers *
-		}
-
-		@options method OPTIONS
-		respond @options 204
-
-		reverse_proxy http://byoc-stream-runner:8000
-	}
-
 	handle_path /orchestrator/* {
 		header {
 			Access-Control-Allow-Origin *

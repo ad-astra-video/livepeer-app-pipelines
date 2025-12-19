@@ -1,0 +1,25 @@
+{
+	https_port {$AI_RUNNER_PORT}}
+}
+
+https://{$HOST}:{$AI_RUNNER_PORT} {
+	log {
+		output stdout
+		level debug
+	}
+
+	tls internal
+
+	handle_path /ai-runner/* {
+		header {
+			Access-Control-Allow-Origin *
+			Access-Control-Allow-Methods "GET, HEAD, POST, OPTIONS"
+			Access-Control-Allow-Headers *
+		}
+
+		@options method OPTIONS
+		respond @options 204
+
+		reverse_proxy http://byoc-stream-runner:8000
+	}
+}

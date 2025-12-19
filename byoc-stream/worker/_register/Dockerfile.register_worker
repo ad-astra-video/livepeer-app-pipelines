@@ -1,0 +1,11 @@
+FROM python:3.11-slim
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN pip install --no-cache-dir requests
+
+WORKDIR /app
+
+COPY register_worker.py /app
+
+CMD ["python", "-u", "/app/register_worker.py"]

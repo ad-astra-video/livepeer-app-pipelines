@@ -4,7 +4,6 @@ import sys
 import time
 import requests
 import json
-from huggingface_hub import hf_hub_download, snapshot_download
 
 #set where to send registration request
 ORCH_URL = os.environ.get("ORCH_URL", "")
@@ -56,30 +55,7 @@ def register_to_orchestrator():
             else:
                 time.sleep(delay)
 
-def check_models_exist():
-    #make nested folder to accomodate config.yaml looking for bpe.model in /checkpoints/checkpoints/bpe.model
-    folder = "/models"
-    os.makedirs(folder, exist_ok=True)
-
-    repo_id = os.environ.get("MODEL_ID","")
-    if repo_id == "":
-        logger.error("must set MODEL_ID environment variable")
-        raise ValueError("MODEL_ID environment variable not set")
-        
-    try:
-        snapshot_download(
-            repo_id=repo_id,
-            local_dir=folder,
-            local_dir_use_symlinks=False  # Ensures actual file copy instead of symlink
-        )
-        logger.info(f"Downloaded all model files")
-    except Exception as e:
-        logger.error(f"Failed to download model files: {e}")
-
 if __name__ == "__main__":
-    if "localhost" in CAPABILITY_URL:
-        check_models_exist()
-    
     registered = register_to_orchestrator()
     if registered:
         #startup server
