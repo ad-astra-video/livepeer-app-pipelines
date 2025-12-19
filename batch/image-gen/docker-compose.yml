@@ -26,15 +26,15 @@ services:
       - "CAPABILITY_NAME=gen-image"
       - "CAPABILITY_DESCRIPTION=generate image from text"
       - "CAPABILITY_URL=http://worker:9876"
-      - "CAPABILITY_PRICE_PER_UNIT=100"
+      - "CAPABILITY_PRICE_PER_UNIT=0"
       - "CAPABILITY_PRICE_SCALING=1"
       - "CAPABILITY_CAPACITY=2"
       - "PYTHONUNBUFFERED=1"
       - "TORCH_DTYPE=BFLOAT16"
-      - "TORCH_COMPILE_TRANSFORMER=true"
+      #- "TORCH_COMPILE_TRANSFORMER=true"
       - "QUANTIZE_MODEL=true"
   gateway:
-    image: adastravideo/go-livepeer:dynamic-capabilities-3
+    image: adastravideo/go-livepeer:byoc-streaming-final
     container_name: byoc-gateway
     volumes:
       - ./data/gateway:/data
@@ -50,7 +50,7 @@ services:
           "-ethPassword=testbroadcaster",
           "-dataDir=/data"]
   orchestrator:
-    image: adastravideo/go-livepeer:dynamic-capabilities-3
+    image: adastravideo/go-livepeer:byoc-streaming-final
     container_name: byoc-orchestrator
     volumes:
       - ./data/orchestrator:/data

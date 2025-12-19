@@ -24,7 +24,7 @@ services:
       - "CAPABILITY_NAME=gen-story"
       - "CAPABILITY_DESCRIPTION=generate story from prompt"
       - "CAPABILITY_URL=http://worker:9876"
-      - "CAPABILITY_PRICE_PER_UNIT=100"
+      - "CAPABILITY_PRICE_PER_UNIT=0"
       - "CAPABILITY_PRICE_SCALING=1"
       - "CAPABILITY_CAPACITY=2"
       - "PYTHONUNBUFFERED=1"
@@ -34,14 +34,14 @@ services:
     ipc: host
     runtime: nvidia
     environment:
-      - HF_TOKEN=[hf_token]
+      - HF_TOKEN=[hf token]
     volumes:
       - ./data/models:/root/.cache/huggingface
     ports:
       - 8000:8000
     command: ["--model", "google/gemma-3-4b-it", "--dtype", "bfloat16"]
   gateway:
-    image: adastravideo/go-livepeer:dynamic-capabilities-3
+    image: adastravideo/go-livepeer:byoc-streaming-final
     container_name: byoc-gateway
     volumes:
       - ./data/gateway:/data
@@ -57,7 +57,7 @@ services:
           "-ethPassword=testbroadcaster",
           "-dataDir=/data"]
   orchestrator:
-    image: adastravideo/go-livepeer:dynamic-capabilities-3
+    image: adastravideo/go-livepeer:byoc-streaming-final
     container_name: byoc-orchestrator
     volumes:
       - ./data/orchestrator:/data
