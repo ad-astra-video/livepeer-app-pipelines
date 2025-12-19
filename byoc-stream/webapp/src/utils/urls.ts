@@ -3,7 +3,7 @@ const baseUrl = `${window.location.protocol}//${window.location.hostname}:${wind
 
 // Get default WHIP endpoint URL
 export const getDefaultStreamStartUrl = (): string => {
-  return `${baseUrl}/gateway/ai/stream/start`
+  return `${baseUrl}/gateway/process/stream/start`
 }
 
 // Get WHIP URL with streamId
