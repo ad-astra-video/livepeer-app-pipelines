@@ -140,39 +140,26 @@ dist
 
 db/
 #voice cloning sample app exclusions
-not-updated/voice-cloning/worker/
-not-updated/voice-cloning/data/orchestrator/
-not-updated/voice-cloning/data/checkpoints/
-not-updated/voice-cloning/data/outputs/
+batch/voice-cloning/worker/
+batch/voice-cloning/data/orchestrator/
+batch/voice-cloning/data/checkpoints/
+batch/voice-cloning/data/outputs/
 
 #llm chat sample app exclusions
-not-updated/llm/data/
+batch/llm/data/
 
 #gen video sample app exclusions
 gen-video/data/orchestrator*
 
 #image gen sample app
-image-gen/data/orchestrator/
-image-gen/data/gateway/
-image-gen/data/models/
+batch/image-gen/data/orchestrator/
+batch/image-gen/data/gateway/
+batch/image-gen/data/models/
 
 #create a tall tale sample app
-create-a-tall-tale/data/orchestrator/
-create-a-tall-tale/data/gateway/
-create-a-tall-tale/data/models/
-
-#webrtc stream sample app
-webrtc-stream/data/orchestrator/
-webrtc-stream/data/gateway/
-webrtc-stream/data/models/
-
-#comfystream stream sample app
-comfystream/data/orchestrator/
-comfystream/data/gateway/
-comfystream/data/models/
-comfystream/data/zilla/hostname
-comfystream/data/zilla/hosts
-comfystream/data/zilla/resolv.conf
+batch/create-a-tall-tale/data/orchestrator/
+batch/create-a-tall-tale/data/gateway/
+batch/create-a-tall-tale/data/models/
 
 #live-video-to-video stream sample app
 live-video-to-video/data/orchestrator/
@@ -181,14 +168,6 @@ live-video-to-video/data/models/
 live-video-to-video/data/zilla/hostname
 live-video-to-video/data/zilla/hosts
 live-video-to-video/data/zilla/resolv.conf
-
-#video-analysis stream sample app
-video-analysis/data/orchestrator/
-video-analysis/data/gateway/
-video-analysis/data/models/
-video-analysis/data/zilla/hostname
-video-analysis/data/zilla/hosts
-video-analysis/data/zilla/resolv.conf
 
 #byoc-stream stream sample app
 byoc-stream/data/orchestrator/
@@ -199,4 +178,6 @@ byoc-stream/data/zilla/hosts
 byoc-stream/data/zilla/resolv.conf
 
 byoc-stream/transcode-push/source
-bypc-stream/transcode-push/transcode-result
+byoc-stream/transcode-push/transcode-result
+byoc-stream/transcode-push/venv
+byoc-stream/transcode-push/__pycache__
