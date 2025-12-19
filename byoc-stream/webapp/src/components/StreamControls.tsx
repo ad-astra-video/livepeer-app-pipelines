@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react'
-import { Video, Mic, MicOff, VideoOff, Play, Square, Upload, AlertCircle, Download, X, Wifi, WifiOff, RefreshCw, Camera, Monitor } from 'lucide-react'
+import { Video, Mic, MicOff, VideoOff, Play, Square, Upload, AlertCircle, Download, X, Wifi, WifiOff, RefreshCw, Camera, Monitor, ChevronDown } from 'lucide-react'
 import { getDefaultStreamStartUrl, generateStreamId } from '../utils/urls'
 import { loadSettingsFromStorage } from './SettingsModal'
 import ErrorModal from './ErrorModal'
@@ -12,6 +12,7 @@ import {
   fetchStreamStatus,
   startStream as startStreamApi
 } from '../api'
+import PromptManager from './PromptManager'
 
 interface MediaDevice {
   deviceId: string
@@ -98,11 +99,17 @@ const StreamControls: React.FC<StreamControlsProps> = ({
     const savedSettings = loadSettingsFromStorage()
     return savedSettings.defaultPipeline
   })
+  const [savedPipelines, setSavedPipelines] = useState<string[]>([])
+  const [showPipelineDropdown, setShowPipelineDropdown] = useState(false)
+  const pipelineDropdownRef = useRef<HTMLDivElement>(null)
   const [jsonParams, setJsonParams] = useState('')
   const [videoEnabled, setVideoEnabled] = useState(true)
   const [customParams, setCustomParams] = useState<Record<string, any>>({})
   const [customParamKey, setCustomParamKey] = useState('')
   const [customParamValue, setCustomParamValue] = useState('')
+  const [deleteConfirmParam, setDeleteConfirmParam] = useState<string | null>(null)
+  // Track which parameters came from saved prompts
+  const [parameterSources, setParameterSources] = useState<Record<string, { type: 'manual' | 'prompt', promptName?: string }>>({})
   const [audioEnabled, setAudioEnabled] = useState(true)
   const [enableVideoIngress, setEnableVideoIngress] = useState(true)
   const [enableVideoEgress, setEnableVideoEgress] = useState(true)
@@ -164,6 +171,60 @@ const StreamControls: React.FC<StreamControlsProps> = ({
     frameCount: 0
   })
 
+  // Pipeline management functions
+  const PIPELINES_STORAGE_KEY = 'livepeer-ai-saved-pipelines'
+  
+  const loadPipelinesFromStorage = (): string[] => {
+    try {
+      const saved = localStorage.getItem(PIPELINES_STORAGE_KEY)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        return Array.isArray(parsed) ? parsed : []
+      }
+    } catch (error) {
+      console.warn('Failed to load pipelines from localStorage:', error)
+    }
+    return ['comfystream', 'video-analysis', 'vtuber', 'passthrough', 'noop']
+  }
+  
+  const savePipelinesToStorage = (pipelines: string[]) => {
+    try {
+      localStorage.setItem(PIPELINES_STORAGE_KEY, JSON.stringify(pipelines))
+    } catch (error) {
+      console.warn('Failed to save pipelines to localStorage:', error)
+    }
+  }
+  
+  const handlePipelineChange = (newValue: string) => {
+    setPipeline(newValue)
+    
+    // Add to saved pipelines if not empty and not already in list
+    if (newValue.trim() && !savedPipelines.includes(newValue.trim())) {
+      const updatedPipelines = [newValue.trim(), ...savedPipelines]
+      setSavedPipelines(updatedPipelines)
+      savePipelinesToStorage(updatedPipelines)
+    }
+    
+    // Save as default pipeline in settings (so it persists)
+    if (newValue.trim()) {
+      const currentSettings = loadSettingsFromStorage()
+      const updatedSettings = {
+        ...currentSettings,
+        defaultPipeline: newValue.trim()
+      }
+      try {
+        localStorage.setItem('livepeer-ai-video-streaming-url-settings', JSON.stringify(updatedSettings))
+      } catch (error) {
+        console.warn('Failed to save default pipeline:', error)
+      }
+    }
+  }
+  
+  const selectPipeline = (pipelineValue: string) => {
+    handlePipelineChange(pipelineValue)
+    setShowPipelineDropdown(false)
+  }
+
   // Helper functions for custom parameters
   const addCustomParam = () => {
     if (customParamKey.trim() && customParamValue.trim()) {
@@ -184,6 +245,10 @@ const StreamControls: React.FC<StreamControlsProps> = ({
         ...prev,
         [customParamKey.trim()]: parsedValue
       }))
+      setParameterSources(prev => ({
+        ...prev,
+        [customParamKey.trim()]: { type: 'manual' }
+      }))
       setCustomParamKey('')
       setCustomParamValue('')
     }
@@ -195,12 +260,47 @@ const StreamControls: React.FC<StreamControlsProps> = ({
       delete newParams[key]
       return newParams
     })
+    setParameterSources(prev => {
+      const newSources = { ...prev }
+      delete newSources[key]
+      return newSources
+    })
+    setDeleteConfirmParam(null)
+  }
+
+  const handleDeleteParamClick = (key: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (deleteConfirmParam === key) {
+      // Second click - confirm delete
+      removeCustomParam(key)
+    } else {
+      // First click - show confirmation
+      setDeleteConfirmParam(key)
+      // Auto-cancel confirmation after 3 seconds
+      setTimeout(() => {
+        setDeleteConfirmParam(null)
+      }, 3000)
+    }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && customParamKey.trim() && customParamValue.trim()) {
       e.preventDefault()
       addCustomParam()
+    }
+  }
+
+  // Function to handle appending prompts from PromptManager
+  const handleAppendPrompts = (prompts: string, promptName: string) => {
+    if (prompts.trim()) {
+      setCustomParams(prev => ({
+        ...prev,
+        prompts: prompts.trim()
+      }))
+      setParameterSources(prev => ({
+        ...prev,
+        prompts: { type: 'prompt', promptName: promptName }
+      }))
     }
   }
 
@@ -222,6 +322,26 @@ const StreamControls: React.FC<StreamControlsProps> = ({
   // Load media devices on component mount
   useEffect(() => {
     loadMediaDevices()
+  }, [])
+  
+  // Load saved pipelines on component mount
+  useEffect(() => {
+    const pipelines = loadPipelinesFromStorage()
+    setSavedPipelines(pipelines)
+  }, [])
+  
+  // Handle outside click to close pipeline dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (pipelineDropdownRef.current && !pipelineDropdownRef.current.contains(event.target as Node)) {
+        setShowPipelineDropdown(false)
+      }
+    }
+    
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
   }, [])
 
   // Track current time of the video relative to when WebRTC connection was established
@@ -379,6 +499,9 @@ const StreamControls: React.FC<StreamControlsProps> = ({
         console.log('Skipping WebRTC/WHIP setup (RTMP mode or ingress disabled)')
         setIsStreaming(true)
         setConnectionStatus('connected')
+        
+        // Save pipeline after successful stream start
+        savePipelineAfterSuccess(pipeline)
         return
       }
       
@@ -556,6 +679,9 @@ const StreamControls: React.FC<StreamControlsProps> = ({
         setIsStreaming(true)
         setConnectionStatus('connected')
         setPlaybackUrl(playbackUrl)
+        
+        // Save pipeline after successful stream start
+        savePipelineAfterSuccess(pipeline)
         
         // Start collecting real-time stats
         statsIntervalRef.current = window.setInterval(() => {
@@ -1502,19 +1628,51 @@ const StreamControls: React.FC<StreamControlsProps> = ({
               />
             </div>
 
-            {/* Pipeline Input */}
-            <div>
+            {/* Pipeline Input with Dropdown */}
+            <div className="relative" ref={pipelineDropdownRef}>
               <label className="block text-sm font-medium text-gray-300 mb-2">
                 Pipeline
               </label>
-              <input
-                type="text"
-                value={pipeline}
-                onChange={(e) => setPipeline(e.target.value)}
-                placeholder="Default: noop"
-                className="w-full px-4 py-3 bg-black/20 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                disabled={isStreaming}
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  value={pipeline}
+                  onChange={(e) => handlePipelineChange(e.target.value)}
+                  onFocus={() => setShowPipelineDropdown(true)}
+                  placeholder="Default: noop"
+                  className="w-full px-4 py-3 pr-10 bg-black/20 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  disabled={isStreaming}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPipelineDropdown(!showPipelineDropdown)}
+                  disabled={isStreaming}
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1.5 text-gray-400 hover:text-white transition-colors disabled:opacity-50"
+                  title="Show saved pipelines"
+                >
+                  <ChevronDown className="w-5 h-5" />
+                </button>
+              </div>
+              
+              {/* Dropdown List */}
+              {showPipelineDropdown && savedPipelines.length > 0 && (
+                <div className="absolute z-10 w-full mt-1 bg-slate-800 border border-white/20 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+                  {savedPipelines.map((savedPipeline, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => selectPipeline(savedPipeline)}
+                      className={`w-full px-4 py-2.5 text-left text-sm transition-colors ${
+                        pipeline === savedPipeline
+                          ? 'bg-emerald-600 text-white'
+                          : 'text-gray-300 hover:bg-slate-700'
+                      }`}
+                    >
+                      {savedPipeline}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Stream Configuration Checkboxes */}
@@ -1634,6 +1792,17 @@ const StreamControls: React.FC<StreamControlsProps> = ({
                 Custom Parameters & Updates
               </label>
               
+              {/* Prompt Manager */}
+              <div className="mb-4">
+                <PromptManager 
+                  onAppendPrompts={handleAppendPrompts}
+                  className="mb-3"
+                />
+                <p className="text-xs text-gray-400">
+                  Save and reuse prompts with memorable names. Selected prompts will be added to the 'prompts' parameter.
+                </p>
+              </div>
+              
               {/* Add Parameter Input */}
               <div className="space-y-3 mb-4">
                 <div className="flex space-x-2">
@@ -1669,23 +1838,58 @@ const StreamControls: React.FC<StreamControlsProps> = ({
               {/* Current Parameters Display */}
               {Object.keys(customParams).length > 0 && (
                 <div className="space-y-2 mb-4">
-                  <h4 className="text-sm font-medium text-gray-300">Current Parameters:</h4>
-                  <div className="bg-black/30 border border-white/20 rounded-lg p-3 max-h-32 overflow-y-auto">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-medium text-gray-300">Current Parameters:</h4>
+                    <button
+                      onClick={() => {
+                        if (confirm(`Clear all ${Object.keys(customParams).length} parameters?`)) {
+                          setCustomParams({})
+                          setParameterSources({})
+                        }
+                      }}
+                      className="text-xs text-red-400 hover:text-red-300 hover:bg-red-400/10 px-2 py-1 rounded transition-colors"
+                      title="Clear all parameters"
+                    >
+                      Clear All
+                    </button>
+                  </div>
+                  <div className="bg-black/30 border border-white/20 rounded-lg p-2 max-h-32 overflow-y-auto">
                     {Object.entries(customParams).map(([key, value]) => (
-                      <div key={key} className="flex items-center justify-between py-1">
-                        <div className="flex-1 min-w-0">
-                          <span className="text-sm text-emerald-400 font-mono">{key}</span>
-                          <span className="text-gray-300 mx-2">:</span>
-                          <span className="text-sm text-white font-mono">
-                            {typeof value === 'string' ? `"${value}"` : JSON.stringify(value)}
-                          </span>
+                      <div 
+                        key={key} 
+                        className="group flex items-center justify-between py-1 hover:bg-white/5 rounded px-2"
+                        title={`${key}: ${typeof value === 'string' ? `"${value}"` : JSON.stringify(value)}`}
+                      >
+                        <div className="flex items-center space-x-2 flex-1 min-w-0">
+                          {parameterSources[key]?.type === 'prompt' ? (
+                            <>
+                              <Tag className="w-3 h-3 text-emerald-400 flex-shrink-0" />
+                              <span className="text-sm text-emerald-400 font-medium truncate">
+                                {parameterSources[key]?.promptName || key}
+                              </span>
+                              <span className="text-gray-500 text-xs">(saved prompt)</span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-sm text-emerald-400 font-mono truncate">{key}</span>
+                              <span className="text-gray-500 text-xs">({typeof value})</span>
+                            </>
+                          )}
                         </div>
                         <button
-                          onClick={() => removeCustomParam(key)}
-                          className="ml-2 p-1 text-red-400 hover:text-red-300 transition-colors"
-                          title="Remove parameter"
+                          onClick={(e) => handleDeleteParamClick(key, e)}
+                          className={`p-1.5 rounded transition-all duration-200 ${
+                            deleteConfirmParam === key
+                              ? 'text-white bg-red-600 hover:bg-red-700 animate-pulse'
+                              : 'text-red-400 hover:text-red-300 hover:bg-red-400/20'
+                          }`}
+                          title={deleteConfirmParam === key ? "Click again to confirm delete" : "Delete parameter"}
                         >
-                          <X className="w-4 h-4" />
+                          {deleteConfirmParam === key ? (
+                            <Trash2 className="w-4 h-4" />
+                          ) : (
+                            <X className="w-4 h-4" />
+                          )}
                         </button>
                       </div>
                     ))}
