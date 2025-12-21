@@ -33,6 +33,10 @@ Live-Video-to-Video is a real-time video processing application that enables liv
 5. **Start all services**:
    ```bash
    docker-compose up -d
+   
+   # note if want to test specific Orchestrator, update .env 
+   #   to point to on chain orchestrator and do not start Orchestrator here
+   # docker compose up webserver webapp mediamtx gateway kafka kafka-init kafaka-sse-api
    ```
 
 6. **Access the Web Interface**:
