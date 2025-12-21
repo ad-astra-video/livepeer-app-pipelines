@@ -1,7 +1,7 @@
 
 # Live-Video-to-Video - Livepeer Live Video-to-Video Processing
 
-Live-Video-to-Video is a real-time video processing application that enables live video-to-video transformation using AI models through the Livepeer network. It provides a complete streaming infrastructure solution with a modern local testing web interface to build and test workflows locally.
+Live-Video-to-Video is a real-time video processing application that enables live video-to-video transformation using AI models through the Livepeer network. It provides a complete streaming infrastructure solution with a local testing web interface to build and test workflows.
 
 ## 🚀 Quick Start
 
@@ -100,133 +100,11 @@ __Documentation__
 
 ## 📊 Monitoring
 
-### **Stream Health**
-- Real-time connection status monitoring
-- Automatic quality issue detection
-- Performance metrics tracking
-- Recovery mechanism status
-
 ### **Event Tracking**
 - Kafka-based event streaming
 - Real-time log viewing in web interface
 - Stream lifecycle monitoring
 - Error tracking and debugging
-
-## 🎥 Web UI Features
-
-### Publisher (Stream) Section
-
-#### **Video Preview & Controls**
-- **Live Camera Preview**: Real-time preview of your camera feed
-- **Screen Sharing**: Capture and stream your desktop
-- **Video/Audio Toggle**: Enable/disable video and audio tracks
-- **Live Status Indicator**: Shows "LIVE" when streaming is active
-
-#### **Media Source Selection**
-- **Camera Selection**: Choose from available cameras
-- **Microphone Selection**: Choose from available audio input devices
-- **Screen Share Toggle**: Switch between camera and screen capture
-- **Device Status**: Visual indicators showing ready/incomplete setup
-- **Auto-refresh**: Refresh device list to detect new hardware
-
-#### **Stream Configuration**
-- **WHIP Endpoint URL**: Configure the streaming server endpoint (default: `http://localhost:5937/live/video-to-video`)
-- **Stream Name**: Custom stream identifier
-- **Pipeline**: AI processing pipeline selection (default: streamdiffusion)
-- **Resolution Picker**: Choose from 512x512 to 4K (3840x2160)
-- **Frame Rate Limit**: Adjustable from 10-60 FPS
-- **Real-time Updates**: Modify prompts and resolution while streaming
-
-#### **AI Prompts**
-- **Three Prompt Inputs**: Primary, secondary, and tertiary prompts for AI processing
-  - One prompt at a time is well supported. More than one is not well supported and may just not work (will remove this note when support is improved)
-- **Live Updates**: Change prompts during active streaming
-- **Flexible Input**: Single prompt or multiple prompts supported
-- **Update Button**: Apply changes to the live stream
-
-#### **Advanced Features**
-- **Connection Status Indicators**: 
-  - 🟢 **Good Connection**: Stream running smoothly (green WiFi icon)
-  - 🟡 **Issues Detected**: Quality problems identified (red WiFi with issue count)
-  - 🔄 **Recovering**: Automatic recovery in progress (spinning refresh icon)
-- **Status Modal**: Click status indicators to view detailed stream information with JSON data
-- **Manual Recovery**: Force reconnection if automatic recovery fails
-- **SDP Inspection**: View WebRTC offer/answer SDP data for debugging
-
-#### **Real-time Statistics**
-- **Publisher Stats Display**:
-  - Bitrate (kbps)
-  - Frame rate (FPS)
-  - Current resolution
-  - Stream ID
-- **Quality Monitoring**: Automatic detection of connection issues
-- **Recovery Attempts**: Track reconnection attempts
-
-### Viewer Section
-
-#### **Stream Playback**
-- **WebRTC Viewer**: Low-latency stream viewing
-- **WHEP Protocol**: Industry-standard viewer protocol (default: `http://localhost:8890`)
-- **Auto-connection**: Seamless connection to available streams
-- **Playback Controls**: Start/stop viewing with connection status
-
-### Data Monitoring
-
-#### **Tabbed Data View**
-- **Event Logs**: Real-time streaming events and status updates
-- **Stream Analytics**: Detailed streaming metrics and performance data
-- **Kafka Integration**: Live event streaming from the processing pipeline
-
-### Settings & Configuration
-
-#### **Settings Modal** (⚙️ icon in header)
-- **URL Configuration**: Set default WHIP/WHEP endpoints
-- **Persistent Storage**: Settings saved to browser localStorage
-- **Real-time Updates**: Changes applied immediately across components
-
-## 🔧 Technical Features
-
-### **Streaming Protocols**
-- **WHIP (WebRTC-HTTP Ingestion Protocol)**: For publishing streams
-- **WHEP (WebRTC-HTTP Egress Protocol)**: For consuming streams
-- **ICE/STUN Support**: NAT traversal for reliable connections
-- **Adaptive Quality**: Automatic issue detection and recovery
-
-### **AI Integration**
-- **Livepeer AI**: Integration with Livepeer's AI processing network
-- **Real-time Processing**: Live video transformation using AI models
-- **Multiple Pipelines**: Support for different AI processing workflows
-- **Prompt Engineering**: Dynamic prompt modification during streaming
-
-### **Media Processing**
-- **WebRTC**: Modern web-based real-time communication
-- **Multi-format Support**: Camera, screen sharing, and microphone input
-- **Quality Control**: FPS limiting and resolution selection
-- **Cross-browser Compatibility**: Works in Chrome, Firefox, Safari, Edge
-
-### **Monitoring & Debugging**
-- **Real-time Stats**: WebRTC statistics collection
-- **Connection Monitoring**: Automatic issue detection and recovery
-- **SDP Debugging**: Full WebRTC session description inspection
-- **Event Logging**: Comprehensive event tracking through Kafka
-
-## 📱 Usage Scenarios
-
-### **Content Creation**
-- Stream live video content with AI-enhanced processing
-- Apply real-time visual effects and transformations
-- Create interactive live streams with dynamic prompts
-
-### **Video Conferencing**
-- Enhanced video calls with AI-powered background effects
-- Real-time video processing for professional presentations
-- Screen sharing with AI enhancements
-
-### **Development & Testing**
-- Test WebRTC streaming implementations
-- Debug video processing pipelines
-- Monitor streaming performance and quality
-
 
 ## 🆘 Troubleshooting
 
@@ -268,17 +146,4 @@ __Documentation__
 - Use lower resolutions for better performance on limited hardware
 - Reduce frame rate if experiencing quality issues
 - Monitor connection status indicators for optimal streaming
-
-## 📝 Advanced Configuration
-
-### **Custom AI Models**
-- Models can be placed in the `data/models` directory
-- Configure pipeline parameters through the web interface
-- Modify worker configuration for custom processing
-
-### **Network Configuration**
-- All endpoints can be customized through the Settings modal
-- Changes are automatically saved and applied across the application
-- Configure for production deployment with proper DNS and certificates
-
 

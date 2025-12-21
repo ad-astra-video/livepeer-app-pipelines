@@ -1,9 +1,9 @@
 
 # Live Video AI Processing using Livepeer
 
-This pipeline is an example of a real-time video processing application that enables live AI processing on the video frames of the stream.
+This pipeline is an example of a real-time video processing application that enables live AI processing on the video frames of the stream using BYOC streaming.
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -27,7 +27,6 @@ This pipeline is an example of a real-time video processing application that ena
    ```
 
 4. **Configure the environment (see instructions below)**
-- 
 
 5. **Start all services**:
    ```bash
@@ -52,16 +51,15 @@ The Docker Compose setup includes:
 
 - **Web UI** (`localhost:8088`) - Main Application Interface (or port 3001 if running npm dev server)
 - **Gateway** (`localhost:5937`) - Livepeer Gateway Node
-- **Orchestrator** (`localhost:8890`) - Livepeer Orchestrator Node
+- **Orchestrator** (`localhost:9995`) - Livepeer Orchestrator Node
 - **MediaMTX** (`localhost:8889`) - Media Server for RTMP/WebRTC
 - **Kafka** (`localhost:9092`) - Event Streaming Platform
 - **Kafka Web UI** (`localhost:8080`) - [Kafbat web ui](https://github.com/kafbat/kafka-ui) for Kafka server
 - **Zilla** (`localhost:7114`) - [Zilla](https://github.com/aklivity/zilla) bridge for getting Kafka events over SSE, basic SSE interface at `localhost:7114/index.html`
-- **Worker** - AI processing container (byoc stream processor) - setup in `worker/aimodels.json`
+- **Worker** - AI processing container (pytrickle)
 
 __Documentation__
-- [Livepeer Gateway](https://docs.livepeer.org/gateways/guides/gateway-overview)
-- [Livepeer Orchestrator](https://docs.livepeer.org/orchestrators/guides/get-started)
+In progress - examples in this repo provide documentation via code on how to integrate with Livepeer BYOC batch and streaming workloads.
 
 ## 🛠️ Configuration
 
@@ -81,12 +79,12 @@ __Documentation__
 
    If have your own domain name, update `webserver/Caddyfile` to replace `tls internal` with `tls [path to cert] [path to key]` or if have access to ports 80/443 you can use [automatic https with Caddy (link to docs)](https://caddyserver.com/docs/automatic-https).
 #### **Gateway Configuration**
-- Consider using a unique `-ethUrl`.  The default Arbiturm rpc url has limited rate limits and can cause issues at startup sometimes. Some options are infura, alchemy, dprc or if you are an Orchestrator or Delegator you can use https://livepeer.rpcgarage.xyz/
+- Consider using a unique `-ethUrl`.  The default Arbiturm rpc url has limited rate limits and can cause issues at startup sometimes. Some options are infura, alchemy, and dprc.
 - Update `-ethPassword` to be the password for your Ethereum wallet file
 - If want to run with a specific eth address, copy encrypted Ethereum wallet JSON to `data/gateway/keystore` or add a volume in `volumes` for the `keystore` folder like `- ./data/gateway/keystore:/data/keystore` to reuse the first one created
 
 #### **Orchestrator Configuration**
-- Consider using a unique `-ethUrl`.  The default Arbiturm rpc url has limited rate limits and can cause issues at startup sometimes. Some options are infura, alchemy, dprc or if you are an Orchestrator or Delegator you can use https://livepeer.rpcgarage.xyz/
+- Consider using a unique `-ethUrl`.  The default Arbiturm rpc url has limited rate limits and can cause issues at startup sometimes. Some options are infura, alchemy, and dprc.
 - Change `-ethOrchAddr` to your on-chain orchestrator address if testing on-chain (defaults to AI SPE Orchestrator eth address)
 - for off-chain testing: set `-network` to `offchain`
 
@@ -106,7 +104,7 @@ __Documentation__
 - **Kafka Events**: `http://localhost:7114`
 - **MediaMTX**: `http://localhost:8889`
 
-## 📊 Monitoring
+## Monitoring
 
 ### **Stream Health**
 - Real-time connection status monitoring
@@ -138,7 +136,7 @@ __Documentation__
 - **Auto-refresh**: Refresh device list to detect new hardware
 
 #### **Stream Configuration**
-- **WHIP Endpoint URL**: Configure the streaming server endpoint (default: `http://localhost:5937/live/video-to-video`)
+- **Stream Start URL**: Configure the streaming server endpoint (default: `http://localhost:5937/process/stream`)
 - **Stream Name**: Custom stream identifier
 - **Pipeline**: AI processing pipeline selection (default: video-analysis)
 - **Resolution Picker**: Choose from 512x512 to 4K (3840x2160)
@@ -146,8 +144,8 @@ __Documentation__
 - **Real-time Updates**: Modify prompts and resolution while streaming
 
 #### **Custom Parameters**
-- Add parameters that will be sent to the WHIP ingest endpoint to configure the stream at startup
-- If sending mid stream, will update the configurable parameters mid stream. This will vary with each pipeline.  See the `update_params` function in `worker/worker.py` to see what is updateable.  For video-analysis, the chat history length, max new tokens and user prompt are configurable mid stream.
+- Add parameters that will be sent to the stream start endpoint to configure the stream at startup
+- If sending updates, stream will update the configurable parameters while stream running. This will vary with each pipeline.  See the `update_params` function in `worker/worker.py` to see what is updateable.  For video-analysis, the chat history length, max new tokens and user prompt are configurable while stream is running.
 
 #### **Advanced Features**
 - **Connection Status Indicators**: 
@@ -184,15 +182,15 @@ __Documentation__
 - **URL Configuration**: Set default WHIP/WHEP endpoints
 - **Persistent Storage**: Settings saved to browser localStorage
 
-## 🔧 Technical Features
+## Technical Features
 
 ### **Streaming Protocols**
 - **WHIP (WebRTC-HTTP Ingestion Protocol)**: For publishing streams
 - **WHEP (WebRTC-HTTP Egress Protocol)**: For consuming streams
-- **RTMP (Real-Time Messaging Protocol): Support RTMP input and RTMP outputs
+- **RTMP (Real-Time Messaging Protocol)**: Support RTMP input and RTMP outputs
 
 ### **AI Integration**
-- **Livepeer AI**: Integration with Livepeer's BYOC streaming and live-video-to-video processing network
+- **Livepeer AI**: Integration with Livepeer's BYOC streaming processing network
 - **Real-time Processing**: Live video transformation using AI models
 - **Multiple Pipelines**: Support for different AI processing workflows
 - **Prompt Engineering**: Dynamic modification of backend settings during streaming
@@ -205,7 +203,7 @@ __Documentation__
 - **Real-time Stats**: WebRTC statistics collection
 - **SDP Debugging**: Full WebRTC session description inspection
 
-## 🆘 Troubleshooting
+## Troubleshooting
 
 ### **Common Issues**
 
@@ -246,7 +244,7 @@ __Documentation__
 - Reduce frame rate if experiencing quality issues
 - Monitor connection status indicators for optimal streaming
 
-## 📝 Advanced Configuration
+## Advanced Configuration
 
 ### **Custom AI Models**
 - Refer to worker instructions for where to put models in `data/models` folder
