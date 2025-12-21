@@ -24,9 +24,8 @@ from typing import Callable, Optional
 logger = logging.getLogger(__name__)
 
 class PixelStreamingClient:
-    def __init__(self, signalling_url="ws://localhost:8080", streamer_id="", frame_callback: Optional[Callable] = None, max_fps: int = 60):
+    def __init__(self, signalling_url="ws://localhost:8080", frame_callback: Optional[Callable] = None, max_fps: int = 60):
         self.signalling_url = signalling_url
-        self.streamer_id = streamer_id
         self.websocket = None
         self.max_fps = max_fps
         self.frame_interval = 1.0 / max_fps if max_fps > 0 else 0
@@ -103,24 +102,6 @@ class PixelStreamingClient:
             # ICE candidate from streamer
             logger.info(f"Received ICE candidate: {message}")
             await self.handle_ice_candidate(message)
-
-        elif msg_type == "streamerList":
-            # List of available streamers
-            streamers = message.get("ids", [])
-            logger.info(f"Available streamers: {streamers}")
-
-            if streamers:
-                if not self.streamer_id:
-                    self.streamer_id = streamers[0]
-                    logger.info(f"Selected streamer: {self.streamer_id}")
-
-                # Subscribe to the selected streamer
-                await self.send_message({
-                    "type": "subscribe",
-                    "streamerId": self.streamer_id
-                })
-            else:
-                logger.warning("No streamers available!")
 
     async def request_stream(self):
         """Request to start streaming"""

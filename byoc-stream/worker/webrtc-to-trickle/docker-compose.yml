@@ -19,8 +19,6 @@ services:
       dockerfile: Dockerfile.worker
     container_name: byoc-stream-runner
     runtime: nvidia #for gpu stats
-    volumes:
-      - ${VTUBER_SESSION_DIR:-/home/ubuntu/vtuber_sessions}:/opt/embody/sessions
     ports:
       - 8001:8000
     networks:

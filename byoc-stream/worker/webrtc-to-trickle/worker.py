@@ -7,15 +7,11 @@ Each game command opens a new async connection to avoid broken pipe errors
 import asyncio
 import logging
 import os
-import sys
-import time
-import base64
 import av
 import signal  
 import numpy as np
 import torch
 from typing import Union
-import aiohttp
 from pytrickle.stream_processor import StreamProcessor
 from pytrickle.frames import VideoFrame, AudioFrame
 from pixel_streaming import PixelStreamingClient
@@ -66,40 +62,13 @@ async def pixel_streaming_frame_callback(frame):
 
 
 # ------------------ Game Command Handling ------------------ #
-
-async def send_command(command: str):
-    """Send a command to the game server via HTTP POST."""
-    async with aiohttp.ClientSession() as session:
-        try:
-            url = os.environ.get("GAME_UPDATER_URL", "http://vtuber-unreal-game:9877/scripts/execute")
-            payload = {"session_id": "test-session", "commands": [{"type": "tcp","value": command, "delay_ms": 0}]}
-            async with session.post(url, json=payload) as response:
-                if response.status == 200:
-                    logger.info(f"Command sent to game: {command}")
-                else:
-                    text = await response.text()
-                    logger.error(f"Failed to send command '{command}': {response.status}, {text}")
-        except Exception as e:
-            logger.error(f"Error sending command '{command}': {e}")
-
-
 async def param_updates(data):
     """Handle parameter updates from Pixel Streaming or external sources."""
-    if "command" in data:
-        params[data["command"]] = time.time()
-        await send_command(data["command"])
-        logger.info(f"sent command to game: {data['command']}")
-
-    if "audio" in data and "audio_format" in data:
-        params["audio"] = data["audio"]
-        audio_bytes = base64.b64decode(data["audio"])
-        folder = "/opt/embody/sessions"
-        os.makedirs(folder, exist_ok=True)
-        filename = f"{folder}/{int(time.time()*1_000_000)}.{data['audio_format']}"
-        with open(filename, "wb") as f:
-            f.write(audio_bytes)
-        await send_command(f"TTS_BYOB_{filename}")
-        logger.info(f"sent audio file to game: {filename}")
+    
+    """
+    data : dict of params to update. This should be updated to support the webrtc app commands
+    """
+    pass
 
 
 # ------------------ Pixel Streaming Connection ------------------ #
@@ -107,13 +76,11 @@ async def param_updates(data):
 async def connect_to_pixel_streaming():
     """Connect to the Pixel Streaming signaling server."""
     global client
-    signaling_url = os.environ.get("SIGNALING_WEBSERVER_URL", "ws://vtuber-unreal-signaling:8080")
-    streamer_id = os.environ.get("STREAMER_ID", "")
+    signaling_url = os.environ.get("SIGNALING_WEBSERVER_URL", "ws://webrtc-app:8080")
     max_fps = int(os.environ.get("MAX_FPS", "60"))
 
     client = PixelStreamingClient(
         signaling_url, 
-        streamer_id, 
         pixel_streaming_frame_callback, 
         max_fps=max_fps
     )
@@ -178,8 +145,8 @@ async def main():
     logger.info("Starting VTuber worker with Pixel Streaming support")
 
     sp = StreamProcessor(
-        name="vtuber",
-        port=8001,
+        name="webrtc-to-trickle",
+        port=8000,
         param_updater=param_updates,
     )
 
@@ -197,10 +164,8 @@ async def main():
             await shutdown_event.wait()
 
         else:
-            logger.info("No SIGNALING_WEBSERVER_URL found, running in WHIP mode")
-            sp_task = asyncio.create_task(sp.run_forever())
-            background_tasks.add(sp_task)
-            await shutdown_event.wait()
+            logger.info("No SIGNALING_WEBSERVER_URL found")
+            return
 
     finally:
         await cleanup()
