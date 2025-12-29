@@ -425,7 +425,6 @@ const StreamControls: React.FC<StreamControlsProps> = ({
   const handleScreenShare = () => {
     setUseScreenShare(!useScreenShare)
     if (!useScreenShare) {
-      // When enabling screen share, we might want to also update the selected camera
       console.log('Screen sharing enabled')
     }
   }
@@ -521,19 +520,16 @@ const StreamControls: React.FC<StreamControlsProps> = ({
               width: { ideal: width },
               height: { ideal: height },
               frameRate: { ideal: fpsLimit, max: fpsLimit }
-            }
+            },
+            audio: true // Include audio by default, user can turn off in browser dialog
           })
           
-          // If audio is enabled, get audio separately and combine
-          if (audioEnabled && selectedMicrophone) {
-            const audioStream = await navigator.mediaDevices.getUserMedia({
-              audio: { deviceId: selectedMicrophone }
-            })
-            
-            // Combine streams
+          // If audio is enabled, use screen audio track from display stream
+          if (audioEnabled) {
+            // Use screen audio track from display stream
             currentStream = new MediaStream([
               ...displayStream.getVideoTracks(),
-              ...audioStream.getAudioTracks()
+              ...displayStream.getAudioTracks()
             ])
           } else {
             currentStream = displayStream
@@ -1517,6 +1513,7 @@ const StreamControls: React.FC<StreamControlsProps> = ({
                     )}
                   </button>
                 </div>
+
               </div>
 
               {/* Selected Source Info */}
@@ -1547,7 +1544,12 @@ const StreamControls: React.FC<StreamControlsProps> = ({
                     
                     <div className="flex items-center space-x-2">
                       <span className="text-xs font-medium text-gray-400">Audio:</span>
-                      {selectedMicrophone ? (
+                      {audioEnabled ? (
+                        <div className="flex items-center space-x-1">
+                          <Mic className="w-3 h-3 text-purple-400" />
+                          <span className="text-xs text-purple-400 font-medium">System Audio</span>
+                        </div>
+                      ) : selectedMicrophone ? (
                         <div className="flex items-center space-x-1">
                           <Mic className="w-3 h-3 text-purple-400" />
                           <span className="text-xs text-purple-400 font-medium">
@@ -1564,7 +1566,7 @@ const StreamControls: React.FC<StreamControlsProps> = ({
                   </div>
                   
                   <div className="flex items-center space-x-1">
-                    {(useScreenShare || selectedCamera) && selectedMicrophone ? (
+                    {(useScreenShare && audioEnabled) || (useScreenShare && selectedMicrophone) || (selectedCamera && selectedMicrophone) ? (
                       <div className="flex items-center space-x-1">
                         <div className="w-2 h-2 bg-green-400 rounded-full"></div>
                         <span className="text-xs text-green-400 font-medium">Ready</span>
