@@ -24,7 +24,7 @@ async def main():
         video_processor=process_video,
         audio_processor=process_audio,
         model_loader=load_model,
-        name="multimodal-understanding-gemma3n",
+        name="passthrough",
     )
 
     # Start HTTP server (aiohttp) on the current event loop
